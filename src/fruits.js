@@ -4,6 +4,7 @@ import { elementOf } from './elements.js';
 import { FRUITS, SWORDS, GUNS, GUN_SKILLS, swordDmg, T2 } from './data.js';
 import * as ST from './state.js';
 import { STYLES, styleOf } from './styles.js';
+import { basicShape, basicFist, cleanup as fxClean, fruitMove, ultraSpecial, ultraStyleOf, specialBody, spShape } from './themed.js';
 const B = THREE; const V = () => new B.Vector3();
 const FCOL = { gomu: 0xff9ad0, mera: 0xff6a1a, pika: 0xfff27a };
 const fcol = id => FCOL[id] || (FRUITS[id] ? FRUITS[id].col[0] : 0xffffff);
@@ -53,14 +54,14 @@ export function fruitBasic(g, id, combo) {
   const O = { mast: key, mastName: f.short, col, cls: 'fruit' };
   const hand = g.eyePos().clone().addScaledVector(g.fwd(V()), 1.1).add(new B.Vector3(0, -0.25, 0));
   if (kind === 'stretch') { g.vm.doCast(big ? 1 : 0.6); const reach = big ? 7 : 5.2; const tip = g.eyePos().clone().addScaledVector(g.fwd(V()), reach);
-    g.fx.beam(hand, tip, id === 'nika' ? 0xffffff : 0xffc9a0, big ? 0.32 : 0.2, 0.14); g.fx.orb(tip, col, big ? 1.4 : 0.8, 0.18); g.fx.burst(tip, 8, col, { speed: 3, size: 0.35, life: 0.3 });
+    g.fx.beam(hand, tip, id === 'nika' ? 0xffffff : 0xffc9a0, big ? 0.32 : 0.2, 0.14); basicFist(g, tip, g.fwd(V()), big ? 1.1 : 0.7); g.fx.shock(tip, col, big ? 1.6 : 1, 0.2); g.fx.burst(tip, 8, col, { speed: 3, size: 0.35, life: 0.3 });
     for (const e of g.enemiesInCone(reach, 0.28)) g.damageEnemy(e, dmg, { ...O, kb: big ? 8 : 3 }); return; }
   if (kind === 'bolt') { g.vm.doCast(0); const fw = g.fwd(V()); const n = big ? 3 : 1;
     for (let i = 0; i < n; i++) { const d = fw.clone().applyAxisAngle(new B.Vector3(0, 1, 0), (i - (n - 1) / 2) * 0.12);
-      const m = new B.Mesh(g.fx.sphGeo, new B.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.95, blending: B.AdditiveBlending, depthWrite: false })); m.scale.setScalar(big ? 0.42 : 0.3);
+      const m = basicShape(id, big ? 1.0 : 0.7); m.position.copy(hand); m.lookAt(hand.clone().add(d));
       g.projectile({ pos: hand.clone(), vel: d.multiplyScalar(id === 'pika' || id === 'goro' ? 60 : 34), r: 0.8, dmg: dmg * (big ? 0.7 : 0.85), kb: big ? 5 : 2, life: 0.9, player: true, mesh: m, col, mast: key,
         onTick: (pr) => { if (Math.random() < 0.6) g.fx.burst(pr.mesh.position, 1, col, { speed: 0.6, size: 0.35, life: 0.25, grav: id === 'mera' ? -2 : 0, spread: 0.2 }); },
-        onEnd: (pr) => g.fx.burst(pr.mesh.position, 8, col, { speed: 3, size: 0.4, life: 0.35 }) }); }
+        onEnd: (pr) => { g.fx.burst(pr.mesh.position, 8, col, { speed: 3, size: 0.4, life: 0.35 }); g.fx.shock(pr.mesh.position, col, 1, 0.2, 0.7); fxClean(pr.mesh); } }); }
     g.fx.burst(hand, 6, col, { speed: 2, size: 0.3, life: 0.25, grav: 0 }); return; }
   if (kind === 'slash') { g.vm.doPunch(); const r = big ? 4.4 : 3.6; const e0 = g.eyePos(); const fl = g.fwdFlat(V()); const yaw = Math.atan2(fl.x, fl.z); const sd = (g.vm.side || 1);
     for (let i = 0; i < 6; i++) { const a1 = yaw + sd * (-0.9 + i * 0.3), a2 = a1 + sd * 0.3; g.fx.beam(new B.Vector3(e0.x + Math.sin(a1) * r * 0.8, e0.y - 0.3 + i * 0.04, e0.z + Math.cos(a1) * r * 0.8), new B.Vector3(e0.x + Math.sin(a2) * r * 0.8, e0.y - 0.3 + (i + 1) * 0.04, e0.z + Math.cos(a2) * r * 0.8), id === 'ope' ? 0x7ad0ff : col, 0.1, 0.16); }
@@ -81,6 +82,7 @@ export function castMove(g, m) {
   if (m.src === 'fruit') { const el = elementOf(S.eq.fruit); audio.elementSfx(el); g.camPunch && g.camPunch(0.02, 4); } else if (m.src === 'sword') { audio.sfx('slash', { vol: 1.2 }); g.slashFx && g.slashFx(col, 1, true); setTimeout(() => g.slashFx && g.slashFx(col, -1, true), 90); } else if (m.src === 'gun') audio.sfx('gun'); else audio.sfx('heavy', { vol: 0.6 });
   const O = { mast: key, mastName: m.name, col, cls: m.src === 'fruit' ? 'fruit' : '' };
   title(g, m.name, col);
+  if (m.src === 'fruit' && fruitMove(g, m, dmg, col, O)) return;
   if (m.k.startsWith('g:')) return generic(g, m.k.slice(2), dmg, col, O, m);
   switch (m.k) {
     // ---- fighting style ----
@@ -125,22 +127,24 @@ export function castMove(g, m) {
 export function castSpecial(g, sp) {
   audio.sfx('special'); g.speedLines && g.speedLines(1);
   const p = g.p; const S = g.save; let { dmg, key } = fd(g, { src: 'fruit', dmg: sp.dmg }); if (S.awake && S.awake[S.eq.fruit]) dmg *= 1.5; const col = S.eq.fruit === 'pika' ? 0xfff27a : fcol(S.eq.fruit);
-  const F = FRUITS[S.eq.fruit] || {}; const ultra = F.rar === 7; const style = sp.style || 'rain';
+  const F = FRUITS[S.eq.fruit] || {}; const ultra = F.rar === 7; const style = (ultra && ultraStyleOf(S.eq.fruit)) || sp.style || 'rain';
   const start = g.cam.position.clone(); const startQ = g.cam.quaternion.clone(); const look = new B.PerspectiveCamera(); let t = 0; const D = ultra ? 5.6 : 4.4; let drops = 0;
   g.ui.letterbox(true); g.ui.specialCard(sp.name, '#' + col.toString(16).padStart(6, '0'), ultra ? 'ULTRA SPECIAL' : F.rar === 6 ? 'MYTHICAL SPECIAL' : F.rar === 5 ? 'GODLY SPECIAL' : 'LEGENDARY SPECIAL'); g.hideVM = true;
   const sky = g.sky.userData.mat.uniforms; const c0 = sky.top.value.clone(), c1 = sky.bot.value.clone(); const P0 = p.pos.clone();
+  const usp = ultra ? ultraSpecial(g, style, dmg, col, { mast: key, mastName: F.short, col, cls: 'fruit' }, P0) : null; const body = usp ? null : specialBody(g, P0);
   const hit = (c, r, k, o = {}) => { for (const e of g.enemiesInRadius(c, r)) g.damageEnemy(e, dmg * k, { mast: key, col, cls: 'fruit', kb: 4, up: 3, from: c, ...o }); };
   const ground = (c) => { c.y = g.groundAt(c.x, c.z); return c; };
   g.cut = { sky: true, update: (dt) => { t += dt; const k = Math.min(1, t / 0.9) ** 0.5; const back = Math.max(0, (t - (D - 0.6)) / 0.6);
     // camera: Godly/Mythical swing up and back; Ultra orbits the player
-    let camT; if (ultra) { const a = t * 0.9 + g.p.yaw; camT = P0.clone().add(new B.Vector3(Math.sin(a) * 11, 6 + Math.sin(t) * 2, Math.cos(a) * 11)); } else camT = P0.clone().add(new B.Vector3(0, 16, 9).applyAxisAngle(new B.Vector3(0, 1, 0), g.p.yaw + Math.PI));
-    const pos = start.clone().lerp(camT, k * (1 - back)); g.cam.position.copy(pos); look.position.copy(pos); look.lookAt(ultra ? P0.clone().setY(P0.y + 1.5) : P0.clone().add(g.fwdFlat(V()).multiplyScalar(6))); g.cam.quaternion.copy(startQ.clone().slerp(look.quaternion, k * (1 - back)));
+    let camT; if (ultra) { const a = t * 0.9 + g.p.yaw; const cr = usp ? 14 : 11; camT = P0.clone().add(new B.Vector3(Math.sin(a) * cr, (usp ? 7 : 6) + Math.sin(t) * 2, Math.cos(a) * cr)); } else camT = P0.clone().add(new B.Vector3(0, 16, 9).applyAxisAngle(new B.Vector3(0, 1, 0), g.p.yaw + Math.PI));
+    const pos = start.clone().lerp(camT, k * (1 - back)); g.cam.position.copy(pos); look.position.copy(pos); look.lookAt(usp && usp.look ? usp.look : ultra ? P0.clone().setY(P0.y + 1.5) : P0.clone().add(g.fwdFlat(V()).multiplyScalar(6))); g.cam.quaternion.copy(startQ.clone().slerp(look.quaternion, k * (1 - back)));
     sky.top.value.copy(c0).lerp(new B.Color(ultra ? 0x05030a : 0x1a1530), Math.min(1, t * 2) * (1 - back)); sky.bot.value.copy(c1).lerp(new B.Color(col).multiplyScalar(0.4), Math.min(1, t * 2) * (1 - back));
-    if (t < 1.1) g.fx.burst(P0.clone().setY(P0.y + 1.5), ultra ? 12 : 6, col, { speed: 4, up: 8, size: 0.5, life: 0.8, grav: -4 });
-    if (t > 1.1 && t < D - 0.5) { const T = t - 1.1;
-      if (style === 'rain') while (drops < T * 14) { drops++; const a = Math.random() * 6.28, r = 2 + Math.random() * 20; const c = ground(P0.clone().add(new B.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r))); g.fx.pillar(c, col, 0.7, 30, 0.45); g.fx.ring(c.clone().setY(c.y + 0.15), 0xffffff, 3.5, 0.4); g.fx.burst(c.clone().setY(c.y + 0.5), 8, col, { speed: 5, size: 0.4, life: 0.4 }); hit(c, 3.5, 0.35); }
-      if (style === 'nova') while (drops < T * 3) { drops++; const c = P0.clone().setY(P0.y + 0.3); g.fx.ring(c, col, 10 + drops * 5, 0.8); g.fx.ring(c.clone().setY(c.y + 1.2), 0xffffff, 8 + drops * 4, 0.7); g.fx.orb(c.clone().setY(c.y + 1), col, 4 + drops, 0.5); g.fx.burst(c.clone().setY(c.y + 1), 40, col, { speed: 14, size: 0.6, life: 0.7, grav: 0 }); hit(c, 9 + drops * 4, 0.6, { kb: 12 }); g.fx.shake = 0.5; }
-      if (style === 'meteor') while (drops < T * 5) { drops++; const a = Math.random() * 6.28, r = 3 + Math.random() * 14; const c = ground(P0.clone().add(new B.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r))); g.fx.beam(c.clone().add(new B.Vector3(6, 30, -4)), c, col, 1.6, 0.4); g.fx.orb(c.clone().setY(c.y + 1), col, 5, 0.5); g.fx.burst(c, 30, col, { speed: 10, up: 6, size: 0.6, life: 0.7 }); hit(c, 5.5, 0.55); g.fx.shake = 0.6; }
+    if (body) body.tick({ aim: t > 1.1 && t < D - 0.6 });
+    if (t < 1.1 && !usp) g.fx.burst(P0.clone().setY(P0.y + 1.5), ultra ? 12 : 6, col, { speed: 4, up: 8, size: 0.5, life: 0.8, grav: -4 });
+    if (t > 1.1 && t < D - 0.5 && !usp) { const T = t - 1.1;
+      if (style === 'rain') while (drops < T * 14) { drops++; const a = Math.random() * 6.28, r = 2 + Math.random() * 20; const c = ground(P0.clone().add(new B.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r))); g.fx.pillar(c, col, 0.7, 30, 0.45); if (drops % 2) spShape(g, 'rain', c); g.fx.ring(c.clone().setY(c.y + 0.15), 0xffffff, 3.5, 0.4); g.fx.burst(c.clone().setY(c.y + 0.5), 8, col, { speed: 5, size: 0.4, life: 0.4 }); hit(c, 3.5, 0.35); }
+      if (style === 'nova') while (drops < T * 3) { drops++; const c = P0.clone().setY(P0.y + 0.3); g.fx.ring(c, col, 10 + drops * 5, 0.8); g.fx.ring(c.clone().setY(c.y + 1.2), 0xffffff, 8 + drops * 4, 0.7); g.fx.orb(c.clone().setY(c.y + 1), col, 4 + drops, 0.5); g.fx.burst(c.clone().setY(c.y + 1), 40, col, { speed: 14, size: 0.6, life: 0.7, grav: 0 }); hit(c, 9 + drops * 4, 0.6, { kb: 12 }); spShape(g, 'nova', c); g.fx.shake = 0.5; }
+      if (style === 'meteor') while (drops < T * 5) { drops++; const a = Math.random() * 6.28, r = 3 + Math.random() * 14; const c = ground(P0.clone().add(new B.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r))); g.fx.beam(c.clone().add(new B.Vector3(6, 30, -4)), c, col, 0.7, 0.3); spShape(g, 'meteor', c); g.fx.orb(c.clone().setY(c.y + 1), col, 5, 0.5); g.fx.burst(c, 30, col, { speed: 10, up: 6, size: 0.6, life: 0.7 }); hit(c, 5.5, 0.55); g.fx.shake = 0.6; }
       if (style === 'coil') while (drops < T * 22) { drops++; const a = drops * 0.45, r = 4 + drops * 0.35, h = 1 + drops * 0.35; const c = P0.clone().add(new B.Vector3(Math.cos(a) * r, h, Math.sin(a) * r)); g.fx.orb(c, col, 2.2, 0.45); g.fx.burst(c, 6, 0x9ad4ff, { speed: 4, size: 0.5, life: 0.5, grav: 0 }); hit(ground(c.clone()), 4.5, 0.3); }
       if (style === 'nika') { while (drops < T * 10) { drops++; const a = Math.random() * 6.28, r = 2 + Math.random() * 16; const c = ground(P0.clone().add(new B.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r))); g.fx.pillar(c, 0xffffff, 1.2, 40, 0.5); g.fx.ring(c.clone().setY(c.y + 0.2), 0xfff2a0, 5, 0.5); hit(c, 4, 0.4, { up: 8 }); }
         if (Math.random() < 0.25) g.fx.burst(P0.clone().setY(P0.y + 2), 16, [0xffffff, 0xffd0f0, 0xfff27a][Math.floor(Math.random() * 3)], { speed: 9, size: 0.7, life: 0.6, grav: 0 }); g.fx.shake = 0.3 + Math.sin(t * 20) * 0.1; }
@@ -167,7 +171,7 @@ export function castSpecial(g, sp) {
       if (style === 'cannon') while (drops < T * 7) { drops++; const side = drops % 4; const a = g.p.yaw + side * Math.PI / 2 + 0.4; const from = P0.clone().add(new B.Vector3(Math.sin(a) * 30, 18, Math.cos(a) * 30)); const rr = Math.random() * 14; const ta = Math.random() * 6.283; const c = ground(P0.clone().add(new B.Vector3(Math.cos(ta) * rr, 0, Math.sin(ta) * rr)));
         g.fx.beam(from, c, 0x3a3a3a, 0.35, 0.3); g.fx.orb(c.clone().setY(c.y + 0.5), 0xff8a3a, 2.4, 0.4); g.fx.burst(c, 14, 0x9a8a7a, { speed: 5, up: 5, size: 0.8, life: 0.7 }); hit(c, 3.5, 0.7, { kb: 6, up: 4 }); }
       if (style !== 'nova' && style !== 'meteor') g.fx.shake = Math.max(g.fx.shake, 0.35); }
-    if (t >= D) { g.cut = null; g.hideVM = false; g.ui.letterbox(false); g.ui.specialCard(null); sky.top.value.copy(c0); sky.bot.value.copy(c1); }
+    if (t >= D) { if (body) body.dispose(); g.cut = null; g.hideVM = false; g.ui.letterbox(false); g.ui.specialCard(null); sky.top.value.copy(c0); sky.bot.value.copy(c1); }
   } };
 }
 

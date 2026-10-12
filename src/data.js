@@ -200,7 +200,7 @@ FRUITS.gomu.price = 2500; FRUITS.mera.price = 15000; FRUITS.pika.price = 40000;
   for (const [id, [n, st]] of Object.entries(LS)) if (FRUITS[id]) FRUITS[id].special = { k: 'leg_' + id, name: n, dmg: 7, style: st, fixed: true }; }
 for (const id of Object.keys(FRUITS)) { const f = FRUITS[id]; if (/: /.test(f.name) || / ★$/.test(f.name)) f.short = f.name.replace(/ ★$/, '').replace(/ Fruit$/, '').replace(/^[A-Za-z]+-[A-Za-z]+: (Model )?/, ''); f.original = / ★$/.test(f.name); }
 // special "style" for the cutscene (Godly rain, Mythical nova/meteor, Ultras unique)
-const SPS = { nika: 'nika', seiryu: 'coil', sound: 'nova', makami: 'meteor' };
+const SPS = { nika: 'drums', seiryu: 'kaifu', sound: 'requiem', makami: 'blizzard' };
 for (const [id, f] of Object.entries(FRUITS)) if (f.special && !f.special.fixed) f.special.style = SPS[id] || (f.rar === 6 ? (id.length % 2 ? 'nova' : 'meteor') : 'rain');
 
 // Swords: 40 standard + 15 secret (quest-only). [id, name, rarity, dmg, minLvl]

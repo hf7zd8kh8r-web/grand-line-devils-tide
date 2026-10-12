@@ -5,6 +5,7 @@ import { STYLES } from './styles.js';
 import { islandById, FRUITS } from './data.js';
 import * as ST from './state.js';
 import { migrateShips, shipOf, seaTier } from './ships.js';
+import { remoteMove } from './themed.js';
 export const MAX_CREW = 5;
 export const PLAY_URL = 'https://grand-line-devils-tide.onrender.com'; // permanent home of the game (Render)
 export const STABLE_URL = PLAY_URL; // kept for older references
@@ -53,7 +54,7 @@ export class Net {
     else if (m.t === 'shop') { const p = this.peers.get(m.id); const S = g.save; const key = m.i + ':' + m.w; S.fsold = S.fsold || {}; const sold = S.fsold[key] = S.fsold[key] || []; if (!sold.includes(m.s)) sold.push(m.s);
       if (m.i === g.island.id && p) g.ui.toast(`🍎 ${p.name} bought the ${(FRUITS[m.f] ? FRUITS[m.f].name : m.f)} from the Fruit Dealer!`, 'quest'); if (g.ui.modal === 'shop') g.ui.open('shop', 'rot'); }
     else if (m.t === 'tr') this.onTrade(m);
-    else if (m.t === 'fx') { const p = this.peers.get(m.id); if (!p || !p.av) return; const at = new B.Vector3(...m.p); if (m.k === 'atk') { p.atkT = 1; const st = STYLES[p.st]; if (st && st.id !== 'brawler' && (!p.w || p.w === 'fist')) { const R = p.av.root; const hp = R.position.clone().add(new B.Vector3(Math.sin(R.rotation.y) * 0.7, p.av.height * 0.62, Math.cos(R.rotation.y) * 0.7)); g.fx.burst(hp, 8, st.col, { speed: 3, size: 0.3, life: 0.3, grav: 0 }); } } else { g.fx.burst(at, 20, m.c, { speed: 6, size: 0.5, life: 0.5 }); g.fx.ring(at, m.c, 4, 0.4); p.atkT = 1; } }
+    else if (m.t === 'fx') { const p = this.peers.get(m.id); if (!p || !p.av) return; const at = new B.Vector3(...m.p); if (m.k === 'atk') { p.atkT = 1; const st = STYLES[p.st]; if (st && st.id !== 'brawler' && (!p.w || p.w === 'fist')) { const R = p.av.root; const hp = R.position.clone().add(new B.Vector3(Math.sin(R.rotation.y) * 0.7, p.av.height * 0.62, Math.cos(R.rotation.y) * 0.7)); g.fx.burst(hp, 8, st.col, { speed: 3, size: 0.3, life: 0.3, grav: 0 }); } } else if (typeof m.k === 'string' && m.k.startsWith('mv:')) { if (p.island === undefined || p.island === g.island.id) remoteMove(g, p, m.k, at); } else { g.fx.burst(at, 20, m.c, { speed: 6, size: 0.5, life: 0.5 }); g.fx.ring(at, m.c, 4, 0.4); p.atkT = 1; } }
   }
   dropAvatar(p) { if (p.av) { p.av.root.removeFromParent(); p.av = null; } if (p.tag) { p.tag.remove(); p.tag = null; } }
   hit(e, dmg) { if (!this.ws || e.ext || e.temp) return; const i = this.g.enemies.indexOf(e); if (i >= 0) this.send({ t: 'hit', i: this.g.island.id, e: i, d: Math.round(dmg) }); }
