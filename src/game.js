@@ -12,6 +12,8 @@ import * as FS from './fruitshop.js';
 import { STYLES, styleOf } from './styles.js';
 import { makeShipModel, migrateShips } from './ships.js';
 import { Ambience } from './ambience.js';
+import { audio } from './audio.js';
+import { elementOf } from './elements.js';
 import { Events } from './events.js';
 import { checkAch } from './achievements.js';
 import { CrewMates, hasRole } from './crew.js';
@@ -173,10 +175,10 @@ export class Game {
       migrateShips(S); if (!S.ships.length && S.island === 'windmill') { S.ships.push('dinghy'); S.ship = 'dinghy'; S.boat = true; if (this.island.boat) this.island.boat.visible = true; setTimeout(() => { this.ui.banner('FREE BOAT!', 'Makino gifted you a Small Sailboat — open 🗺 Map to set sail!'); this.ui.updateHud(); }, 2600); } }
     ST.save(S);
   }
-  addBerries(n, at) { this.save.ber += n; if (at) { this.nums.spawn(at.clone().add(new B.Vector3(0, 1, 0)), '+฿' + n, 'ber'); this.fx.burst(at, 10, 0xffd23a, { speed: 4, up: 5, size: 0.2, life: 0.7 }); } this.ui.updateHud(); }
+  addBerries(n, at) { this.save.ber += n; if (n > 0) audio.sfx('coin', { gap: 120 }); if (at) { this.nums.spawn(at.clone().add(new B.Vector3(0, 1, 0)), '+฿' + n, 'ber'); this.fx.burst(at, 10, 0xffd23a, { speed: 4, up: 5, size: 0.2, life: 0.7 }); } this.ui.updateHud(); }
   addXp(n) {
     const S = this.save; n = Math.round(n * this.st.xpM); S.xp += n; let up = false;
-    while (S.xp >= ST.xpNeed(S.lvl)) { S.xp -= ST.xpNeed(S.lvl); S.lvl++; up = true; }
+    while (S.xp >= ST.xpNeed(S.lvl)) { S.xp -= ST.xpNeed(S.lvl); S.lvl++; up = true; } if (up) audio.sfx('level');
     if (up) { this.st = ST.stats(S); S.hp = this.st.maxHp; this.ui.banner(`LEVEL ${S.lvl}!`, 'Level Up'); this.fx.burst(this.p.pos.clone().setY(this.p.pos.y + 1), 50, 0xffe85a, { speed: 6, up: 4, life: 1 }); this.fx.ring(this.p.pos.clone().setY(this.p.pos.y + 0.1), 0xffe85a, 6, 0.8); this.ui.updateMoves();
       for (const [k, l] of Object.entries(HAKI)) if (S.lvl >= l && !(S.hakiU || {})[k]) { S.hakiU = S.hakiU || {}; S.hakiU[k] = 1; setTimeout(() => this.ui.banner({ buso: 'ARMAMENT HAKI', ken: 'OBSERVATION HAKI', conq: "CONQUEROR'S HAKI" }[k], k === 'conq' ? 'Press J / CONQ to unleash it' : 'Press H / HAKI to toggle'), 2800); } }
     this.ui.updateHud();
@@ -240,6 +242,8 @@ export class Game {
     this.projs.push({ ...o, mesh: m, age: 0, hit: new Set() });
   }
   // ---------------- player actions ----------------
+  musicTheme() { const P = this.p.pos; let boss = false, near = false; for (const e of this.enemies) { if (e.dead || !e.aggro) continue; const d = e.c.root.position.distanceTo(P); if (e.boss && !e.ext && d < 45) boss = true; else if (d < 22) near = true; }
+    if (boss) return 'boss'; if (near || (this.events && this.events.cur && ['seaking', 'buster', 'davy'].includes(this.events.cur.kind))) this._battleT = 5; if ((this._battleT = (this._battleT || 0) - 0.5) > 0) return 'battle'; return this.amb && this.amb.isNight() ? 'night' : 'island'; }
   factionMul() { const fr = ST.factionRank(this.save); return fr.marine ? { ber: 1, xp: 1 + fr.tier * 0.05 } : { ber: 1 + fr.tier * 0.05, xp: 1 }; }
   rankCheck() { const S = this.save; const fr = ST.factionRank(S); if (S.rankT == null) { S.rankT = fr.tier; return; } if (fr.tier > S.rankT) { S.rankT = fr.tier; const ber = 5000 * fr.tier * fr.tier; this.addBerries(ber); this.st = ST.stats(S); this.ui.banner(fr.marine ? 'PROMOTED!' : 'BOUNTY RAISED!', `${fr.title} · ${fr.perk} · +฿${ber.toLocaleString()}`); this.ui.updateHud(); ST.save(S); } }
   baseDmg() { return (7 + this.save.lvl * 1.3) * this.st.dmg * (this.fed && this.fed.t > 0 ? this.fed.mul : 1) * (hasRole(this.save, 'musician') ? 1.08 : 1); }

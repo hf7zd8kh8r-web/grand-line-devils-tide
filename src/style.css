@@ -384,3 +384,5 @@ body.evton #travel{display:none!important}
 .achs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px}.ach{display:flex;gap:8px;align-items:center;padding:6px 8px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.12);opacity:.75}.ach.done{opacity:1;border-color:#ffd36a;background:rgba(80,60,10,.35)}
 .ach i{font-style:normal;font-size:24px;width:30px;text-align:center}.ach div{flex:1;display:flex;flex-direction:column;gap:1px}.ach b{font-size:12.5px}.ach small{font-size:10.5px}.pb{display:block;height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}.pb span{display:block;height:100%;background:#ffd36a}
 @media (max-width:460px){#ptitle span{display:none}}
+
+.snd{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:4px 0 8px}.snd label{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}.snd input[type=range]{width:130px;accent-color:#ffd36a}

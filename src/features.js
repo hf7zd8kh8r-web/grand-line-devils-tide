@@ -52,7 +52,7 @@ export class Fishing {
       this.state = 'cast'; this.t = 2.4 + Math.random() * 3.5; this.castT = 0; this.spot = w.setY(-0.95); this.from = null;
       if (!this.bob) { const b = new Builder(); b.add(new B.SphereGeometry(0.12, 8, 6), 0xff3030, mat(0, 0, 0)); b.add(new B.SphereGeometry(0.1, 8, 6), 0xffffff, mat(0, -0.08, 0), { outline: false }); b.add(new B.CylinderGeometry(0.015, 0.015, 0.14, 5), 0x222222, mat(0, 0.13, 0), { outline: false }); this.bob = b.build(WORLD_MAT);
         const N = 14; this.line = new B.Line(new B.BufferGeometry().setFromPoints(Array.from({ length: N }, () => V())), new B.LineBasicMaterial({ color: 0xf4f4f4, transparent: true, opacity: 0.85 })); this.line.frustumCulled = false; }
-      g.scene.add(this.bob, this.line); this.bob.visible = false; g.vm.setFish('cast'); g.ui.toast('Casting… wait for a bite!', 'blk'); g.ui.fishBtn('REEL'); return; }
+      g.scene.add(this.bob, this.line); this.bob.visible = false; g.vm.setFish('cast'); window.__audio && window.__audio.sfx('cast'); setTimeout(() => window.__audio && window.__audio.sfx('splash', { vol: 0.5 }), 800); g.ui.toast('Casting… wait for a bite!', 'blk'); g.ui.fishBtn('REEL'); return; }
     if (this.state === 'bite') { this.catch(); return; }
     if (this.state === 'wait' || this.state === 'cast') { this.stop(); g.ui.toast('Reeled in too early!', 'blk'); }
   }
@@ -70,10 +70,10 @@ export class Fishing {
     const pos = this.line.geometry.attributes.position, N = pos.count, b = this.bob.visible ? this.bob.position : tip; const sag = this.state === 'bite' ? 0.05 : this.state === 'cast' ? 0.2 : 0.9;
     for (let i = 0; i < N; i++) { const k = i / (N - 1); pos.setXYZ(i, tip.x + (b.x - tip.x) * k, tip.y + (b.y - tip.y) * k - Math.sin(k * Math.PI) * sag * Math.min(1, tip.distanceTo(b) / 6), tip.z + (b.z - tip.z) * k); } pos.needsUpdate = true;
     if (g.p.pos.distanceTo(this.spot) > 12) { this.stop(); return; }
-    if (this.state === 'wait') { this.bob.position.y = -0.95 + Math.sin(g.t * 3) * 0.04; if (Math.random() < dt * 0.8) g.fx.ring(this.spot.clone().setY(-0.92), 0xffffff, 0.6, 0.6); if (this.t <= 0) { this.state = 'bite'; this.t = 0.95; g.ui.biteFx(true); g.vm.setFish('bite'); g.fx.burst(this.spot, 12, 0xffffff, { speed: 3, up: 3, size: 0.25, life: 0.5 }); } }
+    if (this.state === 'wait') { this.bob.position.y = -0.95 + Math.sin(g.t * 3) * 0.04; if (Math.random() < dt * 0.8) g.fx.ring(this.spot.clone().setY(-0.92), 0xffffff, 0.6, 0.6); if (this.t <= 0) { this.state = 'bite'; this.t = 0.95; g.ui.biteFx(true); window.__audio && window.__audio.sfx('bite'); g.vm.setFish('bite'); g.fx.burst(this.spot, 12, 0xffffff, { speed: 3, up: 3, size: 0.25, life: 0.5 }); } }
     else if (this.state === 'bite') { this.bob.position.y = -1.15 + Math.sin(g.t * 30) * 0.08; if (Math.random() < dt * 10) g.fx.burst(this.spot, 2, 0xffffff, { speed: 1.5, up: 2, size: 0.15, life: 0.3 }); if (this.t <= 0) { this.stop(); g.ui.toast('The fish got away…', 'blk'); } }
   }
-  catch() {
+  catch() { window.__audio && (window.__audio.sfx('reel'), window.__audio.sfx('splash'));
     const g = this.g, S = g.save; this.stop(true); S.stats.fish = (S.stats.fish || 0) + 1; g.addXp(15 + S.lvl * 5); g.questEvent('fish');
     g.fx.burst(this.spot.clone().setY(-0.5), 25, 0x9fe8ff, { speed: 5, up: 6, size: 0.3, life: 0.8 });
     const sea = (islandById(g.island.id) || {}).sea || 1;

@@ -1,6 +1,8 @@
 # Grand Line: Devil's Tide (fan game)
 
-**Play:** https://grand-line-devils-tide.onrender.com  (Grand Line Dash, the first game: https://grand-line-devils-tide.onrender.com/dash/)
+**Play:** https://grand-line-devils-tide.onrender.com  
+Grand Line Dash (the first game): https://grand-line-devils-tide.onrender.com/dash/ and its own site https://grand-line-dash.onrender.com
+(repo hf7zd8kh8r-web/grand-line-dash, box copy /workspace/one-piece-game/dash-repo; after editing public/dash/index.html copy it there, commit, and run its ./deploy.sh)
 Co-op: share `https://grand-line-devils-tide.onrender.com/?room=CODE`.
 
 ## Run locally
@@ -10,7 +12,7 @@ Controls PC: WASD, mouse, LMB attack, RMB block, Shift dash, Space jump, 1-4 mov
 Phone: left stick move, drag right side to look, on-screen buttons.
 
 ## Hosting (Render, free plan)
-- Repo: https://github.com/hf7zd8kh8r-web/grand-line-devils-tide (public), branch `main`. Render service `grand-line-devils-tide` (Oregon, free), **auto-deploy on every push to main**.
+- Repo: https://github.com/hf7zd8kh8r-web/grand-line-devils-tide (public), branch `main`. Render service `grand-line-devils-tide` (Oregon, free), auto-deploy is ON, but because the repo is connected by public URL (no Render GitHub app) Render gets no push webhook, so **deploy with `scripts/deploy.sh`** (push + Render API deploy + wait).
 - Build: `npm ci && npx vite build`  (= `npm run build`). Start: `node server/server.js`. Health check: `/health`.
 - Server listens on `$PORT` / `0.0.0.0`. Serves `dist/` (incl. `dist/dash/` copied from `public/dash/`), WebSocket co-op at `/ws`, cloud saves at `/api/profile/*`.
 - Env vars on Render: `PROFILE_STORE=github`, `GITHUB_TOKEN` (repo scope), `NODE_VERSION=20`.
@@ -27,7 +29,7 @@ The salt must stay the same, or existing PINs stop working. Never delete `salt.t
     cd /workspace/one-piece-game/fp
     npm run build:local            # optional local check (box server on :8080 serves dist/ live)
     git add -A && git commit -m "what changed"
-    git push origin main           # Render rebuilds and goes live in ~2-4 min
+    scripts/deploy.sh              # git push origin main + trigger Render deploy, waits until live (~1-3 min); needs RENDER_API_KEY
 The `origin` remote has no token in it; pushes authenticate through a credential helper that reads `$GITHUB_TOKEN` at push time
 (`git config credential.helper` in this repo). Deploy status: Render dashboard -> grand-line-devils-tide -> Events.
 Never commit `server-data/`, `.env`, or anything from `../hosting/` (see `.gitignore`).

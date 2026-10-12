@@ -102,8 +102,14 @@ function endSail(r) { if (!sail) return; try { const S0 = game.save; S0.stats.sa
   if (r.ber) game.addBerries(r.ber); if (r.xp) game.addXp(r.xp); if (r.kills) { S.stats.seaKills = (S.stats.seaKills || 0) + r.kills; ui.toast(`Voyage: ${r.kills} enemies sunk · +฿${r.ber}`, 'quest'); } ST.save(S); IN.enabled = true; }
 // ---------- loop ----------
 let last = performance.now();
+import { audio } from './audio.js';
+window.__audio = audio;
+for (const ev of ['pointerdown', 'touchend', 'keydown']) addEventListener(ev, () => audio.unlock(), { capture: true, passive: true });
+addEventListener('pointerdown', e => { const b = e.target.closest && e.target.closest('button,.tab,[data-do]'); if (b) audio.sfx('click'); }, { capture: true, passive: true });
+let _mt = 0;
 function loop(now) {
   requestAnimationFrame(loop); const raw = Math.min(1, (now - last) / 1000), dt = Math.min(0.05, raw); last = now;
+  if ((_mt -= dt) <= 0) { _mt = 0.5; audio.setTheme(mode === 'sail' ? 'sail' : mode === 'game' && game ? game.musicTheme() : 'cover'); }
   if (mode === 'cover' || mode === 'burst') { cover.update(dt); cover.render(); }
   else if (mode === 'loading') { renderer.clear(); }
   else if (mode === 'create' && creator) { creator.update(dt); creator.render(); }
