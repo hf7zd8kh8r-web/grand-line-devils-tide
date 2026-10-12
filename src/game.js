@@ -23,6 +23,7 @@ import { CrewMates, hasRole } from './crew.js';
 import { castMove, castSpecial, fruitBasic, SP_REQ, ZOAN } from './fruits.js';
 import { Net } from './net.js';
 import { FruitHunt } from './fruithunt.js';
+import { Roller } from './roller.js';
 import { ThirdPerson } from './tpv.js';
 import { Fishing, hakiToggle, hakiVisual, conqueror, fakeSpawn, fakeUpdate, fakeRemove, HAKI, hk } from './features.js';
 const B = THREE;
@@ -57,7 +58,7 @@ export class Game {
     this.p = { pos: V(), vy: 0, yaw: Math.PI, pitch: 0, ground: true, dash: 0, dashCd: 0, dashDir: V(), iframe: 0, atkCd: 0, combo: 0, comboT: 0, phase: 0, moving: false, cds: {}, special: 0, regen: 0, hurtT: 0, swim: false, stun: 0 };
     this.shadowGeo = new B.CircleGeometry(0.5, 12); this.shadowMat = new B.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
     this.blobs = new B.InstancedMesh(this.shadowGeo, this.shadowMat, 64); this.blobs.frustumCulled = false; this.scene.add(this.blobs);
-    this.bars = document.getElementById('bars'); this.fishing = new Fishing(this); this.net = new Net(this); this.hunt = new FruitHunt(this); this.anim = (c, st) => animChar(c, st, this.t);
+    this.bars = document.getElementById('bars'); this.fishing = new Fishing(this); this.net = new Net(this); this.hunt = new FruitHunt(this); this.roller = new Roller(this); this.anim = (c, st) => animChar(c, st, this.t);
     this.markers = [];
     qualityHooks.push(() => { setOutlinesVisible(this.scene); this.cam.far = qv().far + 250; this.cam.updateProjectionMatrix(); this.scene.fog && (this.scene.fog.far = qv().far); this.water.userData.mat.uniforms.fogF.value = qv().far; });
   }
@@ -101,8 +102,8 @@ export class Game {
     if (this.island) { this.bossMem = this.bossMem || {}; for (const e of this.enemies) if (e.boss && !e.ext && !e.temp && !e.dead && e.hp < e.max) this.bossMem[this.island.id + ':' + e.s.type] = { hp: e.hp, phase2: e.phase2, t: Date.now() }; }
     if (this.events) this.events.reset(); if (this.crew) this.crew.clear(); if (this.folk) this.folk.clear();
     const disp = (root) => root.traverse(o => { if (o.geometry && o.geometry !== this.shadowGeo && o.geometry !== this.fx.sphGeo) o.geometry.dispose(); if (o.material && o.material !== WORLD_MAT && o.material.userData && !o.material.userData.keep && o.isSkinnedMesh && !o.userData.isOutline) o.material.dispose(); });
-    if (this.island) { this.scene.remove(this.island.group); disp(this.island.group); for (const e of this.enemies) disp(e.c.root); for (const n of this.npcs) { disp(n.c.root); n.mark && disp(n.mark); } for (const o of this.fakes || []) disp(o.c.root); this.net.islandChanged(); }
-    for (const e of this.enemies) this.scene.remove(e.c.root); for (const n of this.npcs) { this.scene.remove(n.c.root); if (n.mark) this.scene.remove(n.mark); }
+    if (this.island) { this.scene.remove(this.island.group); disp(this.island.group); for (const e of this.enemies) disp(e.c.root); for (const n of this.npcs) { disp(n.c.root); n.mark && disp(n.mark); n.machine && disp(n.machine); } for (const o of this.fakes || []) disp(o.c.root); this.net.islandChanged(); }
+    for (const e of this.enemies) this.scene.remove(e.c.root); for (const n of this.npcs) { this.scene.remove(n.c.root); if (n.mark) this.scene.remove(n.mark); if (n.machine) this.scene.remove(n.machine); }
     for (const p of this.projs) p.mesh && this.scene.remove(p.mesh); fakeRemove(this); this.fishing && this.fishing.stop(); this.clearGather();
     this.enemies = []; this.npcs = []; this.projs = []; this.nums.clear(); this.bars.innerHTML = ''; this.barPool = [];
     const I = this.island = (BUILDERS[id] || BUILDERS.windmill)(); this.save.island = I.id;
@@ -154,8 +155,9 @@ export class Game {
   spawnNpc(n) {
     const c = makeChar(n.look, n.over || {}); const y = this.island.hf(n.x, n.z); c.root.position.set(n.x, y, n.z); c.root.rotation.y = n.ry || 0; this.scene.add(c.root); setOutlinesVisible(c.root);
     const o = { ...n, c, anim: { phase: 0 } };
-    if (n.role === 'quest' || n.role === 'dock' || n.role === 'trader' || n.role === 'shop') {
-      const b = new Builder(); const col = { quest: 0xffd23a, dock: 0x4ad0ff, trader: 0xc77dff, shop: 0x7dff9a }[n.role];
+    if (n.role === 'roller') { const m = this.roller.model(); const ry = n.ry || 0, mx = n.x + Math.cos(ry) * 1.6, mz = n.z - Math.sin(ry) * 1.6; m.position.set(mx, this.island.hf(mx, mz), mz); m.rotation.y = ry; this.scene.add(m); o.machine = m; }
+    if (n.role === 'quest' || n.role === 'dock' || n.role === 'trader' || n.role === 'shop' || n.role === 'roller') {
+      const b = new Builder(); const col = { quest: 0xffd23a, dock: 0x4ad0ff, trader: 0xc77dff, shop: 0x7dff9a, roller: 0xff4d6d }[n.role];
       if (n.role === 'quest') { b.add(new B.BoxGeometry(0.16, 0.5, 0.16), col, mat(0, 0.3, 0)); b.add(new B.BoxGeometry(0.17, 0.17, 0.17), col, mat(0, -0.12, 0)); }
       else b.add(new B.OctahedronGeometry(0.22, 0), col, mat(0, 0.1, 0));
       o.mark = b.build(); o.mark.position.set(n.x, y + c.height + 0.6, n.z); this.scene.add(o.mark);
