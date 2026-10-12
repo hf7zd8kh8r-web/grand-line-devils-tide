@@ -294,9 +294,9 @@ export class Game {
     } else if (slot === 'sword') {
       const sw = SWORDS[S.eq.sword]; p.atkCd = 0.42 / sw.spd; this.vm.doSwing(); const key = 'sw:' + S.eq.sword;
       const hits = this.enemiesInCone(3.3, 0.25); const dmg = swordDmg(S, S.eq.sword) * (1 + S.lvl * 0.06) * this.st.dmg * ST.mastMul(S, key) * (sw.santoryu ? 1.15 : 1);
-      const scol = sw.aura || sw.col || 0xbfe0ff; this.slashFx(scol === 0xb9b9b9 ? 0xbfe0ff : scol, this.vm.side, sw.rar >= 4); audio.sfx('slash');
+      const scol = sw.aura || sw.col || 0xbfe0ff; this.vm.setTrailColor && this.vm.setTrailColor(scol === 0xb9b9b9 ? 0xbfe0ff : scol); this.slashFx(scol === 0xb9b9b9 ? 0xbfe0ff : scol, this.vm.side, sw.rar >= 4); audio.sfx('slash');
       for (const e of hits) this.damageEnemy(e, dmg, { kb: 3.5, mast: key, mastName: sw.name, col: 0xffffff, el: 'slash', snd: 'slashhit' });
-      if (hits.length) { this.fx.shake += 0.1; this.hitstop = 0.06; this.camPunch(0.012, 2.5, this.vm.side * 0.015); }
+      if (hits.length) { this.fx.shake += 0.1; this.hitstop = 0.06; this.vm.hitPause && this.vm.hitPause(0.07); this.camPunch(0.012, 2.5, this.vm.side * 0.015); }
     } else if (slot === 'gun') {
       const g = GUNS[S.eq.gun]; p.atkCd = g.cd; this.vm.doShoot(); const key = 'gn:' + S.eq.gun;
       const o = this.eyePos().clone(); const d = this.fwd(V()); const r = this.rayEnemy(o, d, g.range);

@@ -4,7 +4,8 @@ import { elementOf } from './elements.js';
 import { FRUITS, SWORDS, GUNS, GUN_SKILLS, swordDmg, T2 } from './data.js';
 import * as ST from './state.js';
 import { STYLES, styleOf } from './styles.js';
-import { basicShape, basicFist, cleanup as fxClean, fruitMove, ultraSpecial, ultraStyleOf, specialBody, spShape } from './themed.js';
+import { weaponMove } from './canonw.js';
+import { basicShape, basicFist, cleanup as fxClean, fruitMove, ultraSpecial, ultraStyleOf, specialBody, spShape, canonSpecial } from './themed.js';
 const B = THREE; const V = () => new B.Vector3();
 const FCOL = { gomu: 0xff9ad0, mera: 0xff6a1a, pika: 0xfff27a };
 const fcol = id => FCOL[id] || (FRUITS[id] ? FRUITS[id].col[0] : 0xffffff);
@@ -83,6 +84,7 @@ export function castMove(g, m) {
   const O = { mast: key, mastName: m.name, col, cls: m.src === 'fruit' ? 'fruit' : '' };
   title(g, m.name, col);
   if (m.src === 'fruit' && fruitMove(g, m, dmg, col, O)) return;
+  if (m.src !== 'fruit' && weaponMove(g, m, dmg, col, O)) return;
   if (m.k.startsWith('g:')) return generic(g, m.k.slice(2), dmg, col, O, m);
   switch (m.k) {
     // ---- fighting style ----
@@ -131,7 +133,7 @@ export function castSpecial(g, sp) {
   const start = g.cam.position.clone(); const startQ = g.cam.quaternion.clone(); const look = new B.PerspectiveCamera(); let t = 0; const D = ultra ? 5.6 : 4.4; let drops = 0;
   g.ui.letterbox(true); g.ui.specialCard(sp.name, '#' + col.toString(16).padStart(6, '0'), ultra ? 'ULTRA SPECIAL' : F.rar === 6 ? 'MYTHICAL SPECIAL' : F.rar === 5 ? 'GODLY SPECIAL' : 'LEGENDARY SPECIAL'); g.hideVM = true;
   const sky = g.sky.userData.mat.uniforms; const c0 = sky.top.value.clone(), c1 = sky.bot.value.clone(); const P0 = p.pos.clone();
-  const usp = ultra ? ultraSpecial(g, style, dmg, col, { mast: key, mastName: F.short, col, cls: 'fruit' }, P0) : null; const body = usp ? null : specialBody(g, P0);
+  const usp = ultra ? ultraSpecial(g, style, dmg, col, { mast: key, mastName: F.short, col, cls: 'fruit' }, P0) : (F.rar >= 5 ? canonSpecial(g, dmg, col, { mast: key, mastName: F.short, col, cls: 'fruit' }, P0) : null); const body = usp ? null : specialBody(g, P0);
   const hit = (c, r, k, o = {}) => { for (const e of g.enemiesInRadius(c, r)) g.damageEnemy(e, dmg * k, { mast: key, col, cls: 'fruit', kb: 4, up: 3, from: c, ...o }); };
   const ground = (c) => { c.y = g.groundAt(c.x, c.z); return c; };
   g.cut = { sky: true, update: (dt) => { t += dt; const k = Math.min(1, t / 0.9) ** 0.5; const back = Math.max(0, (t - (D - 0.6)) / 0.6);

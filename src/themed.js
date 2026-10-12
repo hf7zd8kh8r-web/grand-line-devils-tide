@@ -9,6 +9,7 @@ import { FRUITS } from './data.js';
 import { elementOf } from './elements.js';
 import { V, G, M, R, group, mesh, outline, run, after, busy, freeze, pull, chain, zone, word, puff, star, boom, wave, fist, flame, crystal, rock, cleanup, ctxFor } from './skills.js';
 import { ULTRA, ULTRA_SP, ULTRA_STYLE, showBody, spike } from './ultra.js';
+import { CANON, CANON_SP } from './canon.js';
 const B = THREE; const clamp01 = x => Math.max(0, Math.min(1, x));
 const T = {}; const th = (s, c1, c2, ids) => ids.split(' ').forEach(id => { T[id] = { s, c1, c2 }; });
 th('flame', 0xff6a1a, 0xffd060, 'mera atsu'); th('flame', 0x3ad0ff, 0xffe060, 'phoenix'); th('flame', 0xff9a3a, 0xfff0a0, 'bomu');
@@ -163,16 +164,17 @@ function themed(c, kind, Th) { const g = c.g; const s = 1 + c.rar * 0.09; const 
   return true; }
 // ---------- dispatcher ----------
 export function fruitMove(g, m, dmg, col, O) { const S = g.save; const id = S.eq.fruit; const f = FRUITS[id]; if (!f || m.beast) return false; const idx = f.moves.findIndex(x => x.name === m.name); if (idx < 0) return false;
-  const c = ctxFor(g, { fruit: id, dmg, col, O, rar: f.rar }); const U = ULTRA[id];
+  const c = ctxFor(g, { fruit: id, dmg, col, O, rar: f.rar }); const U = ULTRA[id] || CANON[id];
   try { if (U && U[idx]) U[idx](c); else if (!m.k.startsWith('g:') || !themed(c, m.k.slice(2), themeOf(id))) return false; } catch (e) { console.warn('skill', id, idx, e); return false; }
   try { g.net && g.net.fx && g.net.fx(('mv:' + id + ':' + idx).slice(0, 16), col, g.p.pos.clone().setY(g.p.pos.y + 1)); } catch (e) { /* offline */ }
   return true; }
 // co-op: replay a peer's move visually (damage arrives separately via net 'hit')
 export function remoteMove(g, peer, k, at) { const [, id, si] = k.split(':'); const f = FRUITS[id]; const idx = +si; if (!f || !f.moves[idx] || !peer.av) return; if (busy(g, 180)) return;
-  const c = ctxFor(g, { peer, fruit: id, at: at.clone().setY(at.y - 1), col: f.col[0], rar: f.rar }); try { const U = ULTRA[id]; if (U && U[idx]) U[idx](c); else themed(c, f.moves[idx].k.replace('g:', ''), themeOf(id)); } catch (e) { /* visual only */ } }
+  const c = ctxFor(g, { peer, fruit: id, at: at.clone().setY(at.y - 1), col: f.col[0], rar: f.rar }); try { const U = ULTRA[id] || CANON[id]; if (U && U[idx]) U[idx](c); else themed(c, f.moves[idx].k.replace('g:', ''), themeOf(id)); } catch (e) { /* visual only */ } }
 // specials: Ultra cutscenes, and themed falling shapes for Godly/Mythical meteor/rain/nova styles
 export function ultraSpecial(g, style, dmg, col, O, P0) { const fn = ULTRA_SP[style]; if (!fn) return null; const id = g.save.eq.fruit; const c = ctxFor(g, { fruit: id, dmg, col, O, rar: 7 }); try { return fn(c, P0) || {}; } catch (e) { console.warn('ultra special', e); return null; } }
 export const ultraStyleOf = id => ULTRA_STYLE[id];
+export function canonSpecial(g, dmg, col, O, P0) { const id = g.save.eq.fruit; const fn = CANON_SP[id]; if (!fn) return null; const c = ctxFor(g, { fruit: id, dmg, col, O, rar: FRUITS[id].rar }); try { return fn(c, P0) || {}; } catch (e) { console.warn('canon special', e); return null; } }
 export function specialBody(g, P0) { const c = ctxFor(g, { fruit: g.save.eq.fruit }); return showBody(c, P0); }
 export function spShape(g, style, at, big = 1) { const id = g.save.eq.fruit; const Th = themeOf(id); const c = ctxFor(g, { fruit: id, dmg: 0, rar: FRUITS[id] ? FRUITS[id].rar : 5 }); if (busy(g, 240)) return;
   if (style === 'nova') { for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283 + Math.random(); const sm = shapeMesh(Th, 1.6 * big); sm.position.copy(at).add(V(0, 1, 0)); const v = V(Math.cos(a) * 16, 1, Math.sin(a) * 16); sm.lookAt(sm.position.clone().add(v)); run(g, sm, 0.6, (t, dt) => { sm.position.addScaledVector(v, dt); sm.scale.setScalar(Math.max(0.01, 1.6 * big * (1 - t * 0.6))); }); } return; }
