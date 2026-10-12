@@ -18,6 +18,8 @@ const server = http.createServer((req, res) => {
   if (u.startsWith('/api/profile/')) { profiles(req, res, u); return; }
   let f = path.normalize(path.join(ROOT, u === '/' ? 'index.html' : u));
   if (!f.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
+  if (u.endsWith('/') && u !== '/') f = path.join(f, 'index.html'); // e.g. /dash/ -> dist/dash/index.html
+  else if (!path.extname(u) && fs.existsSync(path.join(f, 'index.html'))) { res.writeHead(301, { Location: u + '/' }); res.end(); return; } // /dash -> /dash/
   fs.stat(f, (err, st) => {
     if (err || !st.isFile()) { if (path.extname(u)) { res.writeHead(404, { 'Cache-Control': 'no-store' }); res.end('not found'); return; } f = path.join(ROOT, 'index.html'); }
     fs.readFile(f, (e, data) => { if (e) { res.writeHead(404); res.end('not found'); return; }
