@@ -21,6 +21,11 @@ const ok = (n, c, x = '') => { console.log(c ? 'PASS' : 'FAIL', n, x); if (!c) f
   ok('different island different stock', JSON.stringify(a) !== JSON.stringify(d));
   ok('fmtLeft m:ss', /^\d+:\d{2}$/.test(FS.fmtLeft(FS.msLeft(t0))), FS.fmtLeft(FS.msLeft(t0)));
   ok('msLeft within period', FS.msLeft(t0) > 0 && FS.msLeft(t0) <= FS.PERIOD);
+  ok('rerollPrice scales with level', FS.rerollPrice(10, 0) === 2500 && FS.rerollPrice(1, 0) === 500, String(FS.rerollPrice(10,0)) + ' / ' + FS.rerollPrice(1,0));
+  ok('rerollPrice doubles per use', FS.rerollPrice(10, 1) === 5000 && FS.rerollPrice(10, 2) === 10000, String([FS.rerollPrice(10,1), FS.rerollPrice(10,2)]));
+  ok('nonce changes stock', JSON.stringify(FS.stockFor('windmill', w0, 0)) !== JSON.stringify(FS.stockFor('windmill', w0, 1)));
+  ok('nonce 0 matches shared', JSON.stringify(FS.stockFor('windmill', w0)) === JSON.stringify(FS.stockFor('windmill', w0, 0)));
+
 
   // ---- browser: UI countdown + restock refresh + fsold persists in-window
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
@@ -141,6 +146,48 @@ const ok = (n, c, x = '') => { console.log(c ? 'PASS' : 'FAIL', n, x); if (!c) f
   ok('window change refreshes stock', afterWin.changed, JSON.stringify(afterWin));
   ok('sold cleared for new window (no gone or new set)', afterWin.soldGone === 0 || afterWin.changed, 'soldGone=' + afterWin.soldGone);
   ok('countdown still m:ss after restock', /^\d+:\d{2}$/.test(afterWin.timer || ''), afterWin.timer);
+
+  // ---- personal Restock Now
+  await p.evaluate(() => { const S = __g.game.save; S.ber = 1e7; S.lvl = 10; S.fsRoll = {}; __g.ui.updateHud(); __g.ui.open('shop', 'rot'); });
+  await p.waitForTimeout(300);
+  const beforeR = await p.evaluate(() => ({
+    names: [...document.querySelectorAll('.fslot b')].map(b => b.textContent),
+    ber: __g.game.save.ber,
+    btn: document.querySelector('[data-do="rrestock"]')?.textContent || '',
+    disabled: !!document.querySelector('[data-do="rrestock"]')?.disabled,
+  }));
+  ok('Restock Now button shows price', /Restock Now/.test(beforeR.btn) && /฿/.test(beforeR.btn) && !beforeR.disabled, beforeR.btn);
+  const r1 = await p.evaluate(() => {
+    const before = [...document.querySelectorAll('.fslot b')].map(b => b.textContent);
+    const ber0 = __g.game.save.ber;
+    const btn = document.querySelector('[data-do="rrestock"]');
+    __g.ui.act('rrestock', btn);
+    const after = [...document.querySelectorAll('.fslot b')].map(b => b.textContent);
+    const S = __g.game.save; const w = Math.floor(Date.now() / (5 * 60 * 1000));
+    const key = S.island + ':' + w;
+    return { before, after, ber0, ber1: S.ber, nonce: (S.fsRoll || {})[key], sold: (S.fsold || {})[key], btn: document.querySelector('[data-do="rrestock"]')?.textContent || '', toast: document.body.innerText.includes('Restocked') };
+  });
+  ok('restock changes stock', r1.before.join() !== r1.after.join(), JSON.stringify([r1.before, r1.after]));
+  ok('restock deducts berries', r1.ber1 === r1.ber0 - 2500, String([r1.ber0, r1.ber1]));
+  ok('restock bumps nonce', r1.nonce === 1, String(r1.nonce));
+  ok('restock clears sold', !r1.sold || r1.sold.length === 0, JSON.stringify(r1.sold));
+  const r2 = await p.evaluate(() => {
+    const ber0 = __g.game.save.ber;
+    const btn = document.querySelector('[data-do="rrestock"]');
+    const priceTxt = btn?.textContent || '';
+    __g.ui.act('rrestock', btn);
+    const S = __g.game.save; const w = Math.floor(Date.now() / (5 * 60 * 1000));
+    return { ber0, ber1: S.ber, priceTxt, nonce: (S.fsRoll || {})[S.island + ':' + w], nextBtn: document.querySelector('[data-do="rrestock"]')?.textContent || '' };
+  });
+  ok('second restock costs double (5000)', r2.ber1 === r2.ber0 - 5000 && /฿5,?000/.test(r2.priceTxt), JSON.stringify(r2));
+  ok('price escalates on button', /฿10,?000/.test(r2.nextBtn), r2.nextBtn);
+  // unaffordable disables
+  const poor = await p.evaluate(() => {
+    __g.game.save.ber = 100; __g.ui.open('shop', 'rot');
+    const btn = document.querySelector('[data-do="rrestock"]');
+    return { disabled: !!btn?.disabled, cls: btn?.className || '', text: btn?.textContent || '' };
+  });
+  ok('unaffordable Restock Now disabled', poor.disabled && /poor/.test(poor.cls), JSON.stringify(poor));
 
   ok('zero console errors', errs.length === 0, JSON.stringify(errs));
   await browser.close();
