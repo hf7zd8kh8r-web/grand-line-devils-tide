@@ -22,7 +22,7 @@ export class Net {
     clearTimeout(this.rt); this.manual = false; this.room = String(room).toUpperCase().trim(); try { localStorage.setItem('gldt_crew', this.room); } catch {} this.status = retry ? 'reconnecting' : 'connecting'; this.g.ui.netStatus();
     const u = new URL(location.href); u.searchParams.set('room', this.room); u.searchParams.delete('skip'); u.searchParams.delete('anytap'); history.replaceState(null, '', u.toString());
     let ws; try { ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${encodeURIComponent(this.room)}`); } catch (e) { this.status = 'offline'; this.g.ui.netStatus(); return; }
-    this.ws = ws; const S = this.g.save;
+    this.ws = ws; const S = this.g.save; if (this.g.hunt) this.g.hunt.net = null;
     ws.onopen = () => { ws.send(JSON.stringify({ t: 'hello', name: S.name, faction: S.faction, race: S.race, lvl: S.lvl, island: S.island, look: S.look, cos: S.cosEq, st: (S.eq && S.eq.style) || 'brawler' })); };
     ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { return; } this.on(m); };
     ws.onclose = () => { if (this.ws !== ws) return; const was = this.status; this.clearPeers(); if (!this.manual && (was === 'online' || was === 'reconnecting' || was === 'gone')) { this.reconnect(); return; } this.status = was === 'online' ? 'lost' : 'offline'; this.g.ui.netStatus(); };
@@ -55,6 +55,7 @@ export class Net {
     else if (m.t === 'shop') { const p = this.peers.get(m.id); const S = g.save; const key = m.i + ':' + m.w; S.fsold = S.fsold || {}; const sold = S.fsold[key] = S.fsold[key] || []; if (!sold.includes(m.s)) sold.push(m.s);
       if (m.i === g.island.id && p) g.ui.toast(`🍎 ${p.name} bought the ${(FRUITS[m.f] ? FRUITS[m.f].name : m.f)} from the Fruit Dealer!`, 'quest'); if (g.ui.modal === 'shop') g.ui.open('shop', 'rot'); }
     else if (m.t === 'tr') this.onTrade(m);
+    else if (m.t && m.t.startsWith('sf')) g.hunt && g.hunt.onNet(m);
     else if (m.t === 'fx') { const p = this.peers.get(m.id); if (!p || !p.av) return; const at = new B.Vector3(...m.p); if (m.k === 'atk') { p.atkT = 1; const st = STYLES[p.st]; if (st && st.id !== 'brawler' && (!p.w || p.w === 'fist')) { const R = p.av.root; const hp = R.position.clone().add(new B.Vector3(Math.sin(R.rotation.y) * 0.7, p.av.height * 0.62, Math.cos(R.rotation.y) * 0.7)); g.fx.burst(hp, 8, st.col, { speed: 3, size: 0.3, life: 0.3, grav: 0 }); } } else if (typeof m.k === 'string' && m.k.startsWith('mw:')) { if (p.island === undefined || p.island === g.island.id) remoteWeapon(g, p, m.k, at); } else if (typeof m.k === 'string' && m.k.startsWith('mv:')) { if (p.island === undefined || p.island === g.island.id) remoteMove(g, p, m.k, at); } else { g.fx.burst(at, 20, m.c, { speed: 6, size: 0.5, life: 0.5 }); g.fx.ring(at, m.c, 4, 0.4); p.atkT = 1; } }
   }
   dropAvatar(p) { if (p.av) { p.av.root.removeFromParent(); p.av = null; } if (p.tag) { p.tag.remove(); p.tag = null; } }

@@ -6,6 +6,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 import { makeProfiles } from './profiles.js';
+import { sfWindow, sfLeft, reachable, rollSpawn } from '../src/fruitspawn.js';
+import { FRUITS } from '../src/data.js';
+const SF_DEV = process.env.FRUIT_DEV === '1';
+// per-room world fruit: same spawn for every crew member, first pickup wins
+function sfState(R, room, force) { const w = sfWindow(); if (!R.sf || R.sf.w !== w || force) { const lvl = Math.max(1, ...[...R.values()].map(p => (p.info && p.info.lvl) || 1)); const sp = rollSpawn(room + ':' + w + ':' + (force ? Math.random() : ''), reachable(lvl)); R.sf = { w, n: ((R.sf && R.sf.n) || 0) + 1, ...sp, by: null, until: Date.now() + sfLeft() }; } return R.sf; }
+const sfMsg = (sf) => ({ t: 'sf', w: sf.w, n: sf.n, island: sf.island, fruit: sf.fruit, rar: sf.rar, seed: sf.seed, by: sf.by, left: Math.max(0, sf.until - Date.now()) });
 const MAX_CREW = 5; // crew (room) cap
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = process.env.DIST_DIR ? path.resolve(process.env.DIST_DIR) : path.join(__dirname, '..', 'dist');
@@ -44,12 +50,14 @@ wss.on('connection', (ws, req) => {
   ws.on('message', raw => {
     me.msgs++; if (me.msgs > 60) return; // flood guard (per second)
     let m; try { m = JSON.parse(raw); } catch { return; }
-    if (m.t === 'hello') { me.info = { name: clean(m.name), faction: m.faction === 'Marine' ? 'Marine' : 'Pirate', race: clean(m.race, 10), lvl: m.lvl | 0, island: clean(m.island, 12), look: cleanLook(m.look), cos: cleanCos(m.cos), st: clean(m.st, 12) }; bc({ t: 'join', id, ...me.info }); }
+    if (m.t === 'hello') { me.info = { name: clean(m.name), faction: m.faction === 'Marine' ? 'Marine' : 'Pirate', race: clean(m.race, 10), lvl: m.lvl | 0, island: clean(m.island, 12), look: cleanLook(m.look), cos: cleanCos(m.cos), st: clean(m.st, 12) }; bc({ t: 'join', id, ...me.info }); ws.send(JSON.stringify(sfMsg(sfState(R, room)))); }
     else if (m.t === 'look') { if (me.info) { me.info.look = cleanLook(m.look); me.info.cos = cleanCos(m.cos); bc({ t: 'look', id, look: me.info.look, cos: me.info.cos }); } }
     else if (m.t === 's') { if (me.info) me.info.island = clean(m.i, 12); if (me.info) me.info.st = clean(m.st, 12); bc({ t: 's', id, i: me.info && me.info.island, p: (m.p || []).slice(0, 5).map(Number), a: m.a | 0, l: m.l | 0, h: +m.h || 0, m: m.m & 255, st: clean(m.st, 12), w: clean(m.w, 6) }); }
     else if (m.t === 'sail') bc({ t: 'sail', id, to: clean(m.to, 12), from: clean(m.from, 12) });
     else if (m.t === 'shop') bc({ t: 'shop', id, i: clean(m.i, 12), w: m.w | 0, s: num(m.s, 16), f: clean(m.f, 24) });
     else if (m.t === 'tr') { const T = R.get(m.to | 0); if (T && T.ws.readyState === 1 && T.id !== id) T.ws.send(JSON.stringify({ t: 'tr', id, k: clean(m.k, 8), it: cleanItem(m.it), ber: num(m.ber, 1e10), n: m.n | 0 })); }
+    else if (m.t === 'sfget') { const sf = sfState(R, room); if (sf.by || (m.n | 0) !== sf.n) { ws.send(JSON.stringify({ t: 'sfno', n: m.n | 0, by: sf.by })); return; } sf.by = me.info ? me.info.name : 'Someone'; ws.send(JSON.stringify({ t: 'sfok', n: sf.n, fruit: sf.fruit })); bc({ t: 'sfgot', n: sf.n, id, name: sf.by, fruit: sf.fruit }); }
+    else if (m.t === 'sfforce') { const local = /^(localhost|127\.|\[::1\])/.test(String(req.headers.host || '')); if (!SF_DEV && !local) return; if (m.fruit && FRUITS[m.fruit]) { const sf = sfState(R, room, true); sf.fruit = String(m.fruit); sf.rar = FRUITS[sf.fruit].rar; if (m.island) sf.island = clean(m.island, 12); } else sfState(R, room, true); bc(sfMsg(R.sf), -1); }
     else if (m.t === 'chat') bc({ t: 'chat', id, name: me.info ? me.info.name : '?', msg: clean(m.msg, 120) });
     else if (m.t === 'hit') bc({ t: 'hit', id, i: clean(m.i, 12), e: m.e | 0, d: Math.min(1e7, +m.d || 0) });
     else if (m.t === 'fx') bc({ t: 'fx', id, k: clean(m.k, 16), c: m.c | 0, p: (m.p || []).slice(0, 3).map(Number) });
@@ -57,6 +65,7 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => { R.delete(id); bc({ t: 'leave', id }); if (!R.size) rooms.delete(room); });
 });
 setInterval(() => { for (const R of rooms.values()) for (const p of R.values()) p.msgs = 0; }, 1000);
+setInterval(() => { const w = sfWindow(); for (const [room, R] of rooms) if (R.sf && R.sf.w !== w) { const sf = sfState(R, room); const s = JSON.stringify(sfMsg(sf)); for (const p of R.values()) if (p.ws.readyState === 1) p.ws.send(s); } }, 5000);
 const HOST = process.env.HOST || '0.0.0.0';
 server.listen(PORT, HOST, () => console.log(`Grand Line: Devil's Tide on http://${HOST}:${PORT}  (co-op websocket at /ws)`));
 // graceful shutdown (Render sends SIGTERM on redeploy / sleep): flush pending cloud saves first

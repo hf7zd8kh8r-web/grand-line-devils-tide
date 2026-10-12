@@ -22,6 +22,7 @@ import { checkAch } from './achievements.js';
 import { CrewMates, hasRole } from './crew.js';
 import { castMove, castSpecial, fruitBasic, SP_REQ, ZOAN } from './fruits.js';
 import { Net } from './net.js';
+import { FruitHunt } from './fruithunt.js';
 import { ThirdPerson } from './tpv.js';
 import { Fishing, hakiToggle, hakiVisual, conqueror, fakeSpawn, fakeUpdate, fakeRemove, HAKI, hk } from './features.js';
 const B = THREE;
@@ -56,7 +57,7 @@ export class Game {
     this.p = { pos: V(), vy: 0, yaw: Math.PI, pitch: 0, ground: true, dash: 0, dashCd: 0, dashDir: V(), iframe: 0, atkCd: 0, combo: 0, comboT: 0, phase: 0, moving: false, cds: {}, special: 0, regen: 0, hurtT: 0, swim: false, stun: 0 };
     this.shadowGeo = new B.CircleGeometry(0.5, 12); this.shadowMat = new B.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
     this.blobs = new B.InstancedMesh(this.shadowGeo, this.shadowMat, 64); this.blobs.frustumCulled = false; this.scene.add(this.blobs);
-    this.bars = document.getElementById('bars'); this.fishing = new Fishing(this); this.net = new Net(this); this.anim = (c, st) => animChar(c, st, this.t);
+    this.bars = document.getElementById('bars'); this.fishing = new Fishing(this); this.net = new Net(this); this.hunt = new FruitHunt(this); this.anim = (c, st) => animChar(c, st, this.t);
     this.markers = [];
     qualityHooks.push(() => { setOutlinesVisible(this.scene); this.cam.far = qv().far + 250; this.cam.updateProjectionMatrix(); this.scene.fog && (this.scene.fog.far = qv().far); this.water.userData.mat.uniforms.fogF.value = qv().far; });
   }
@@ -348,7 +349,7 @@ export class Game {
       for (let i = 0; i < 4; i++) if (consume('m' + (i + 1))) this.move(i);
       if (consume('special')) this.special();
       if (consume('swap')) this.ui.cycleSlot();
-      if (consume('interact')) { const n = this.nearestNpc(); if (n) this.ui.talk(n); else if (this.fishing.nearWater()) this.fishing.press(); }
+      if (consume('interact')) { const n = this.nearestNpc(); if (this.hunt.near && !n) this.hunt.pickup(); else if (n) this.ui.talk(n); else if (this.fishing.nearWater()) this.fishing.press(); }
       if (consume('fish')) this.fishing.press();
       if (this.fishing.state === 'bite' && (IN.pressed.has('attack') || IN.pressed.has('interact'))) { IN.pressed.delete('attack'); IN.pressed.delete('interact'); this.fishing.press(); }
       if (consume('haki')) hakiToggle(this);
@@ -407,7 +408,7 @@ export class Game {
     this.net.update(dt);
     this.amb.update(dt); this.events.update(dt); this.crew.update(dt); this._rk = (this._rk || 0) - dt; if (this._rk <= 0) { this._rk = 2; this.rankCheck(); checkAch(this); } this._clk = (this._clk || 0) - dt; if (this._clk <= 0) { this._clk = 1; const ck = document.getElementById('clock'); if (ck) { const nt = this.amb.isNight(); ck.textContent = `${nt ? '🌙' : '☀️'} ${this.amb.clock()}${nt ? ' · Night +20% ฿/XP' : ''}${this.amb.stormT > 0 ? ' · ⛈ Storm' : ''}`; ck.classList.toggle('night', nt); } }
     if (this.fed && this.fed.t > 0) { this.fed.t -= dt; if (this.fed.t <= 0) { this.fed = null; this.ui.toast('Well Fed buff wore off', 'blk'); } }
-    this.updateEnemies(dt); this.updateProjs(dt); this.questTick(dt); this.stockTick(); if (this.preview) { this.preview.root.rotation.y += Math.sin(this.t * 0.7) * dt * 0.4; animChar(this.preview, { move: 0, wave: Math.sin(this.t * 0.5) > 0.7 }, this.t); } this.updateNpcs(dt); this.fishing.update(dt); fakeUpdate(this, dt);
+    this.updateEnemies(dt); this.updateProjs(dt); this.questTick(dt); this.stockTick(); try { this.hunt.update(dt); } catch (err) { if (!this._hErr) { this._hErr = 1; console.warn('hunt', err); } } if (this.preview) { this.preview.root.rotation.y += Math.sin(this.t * 0.7) * dt * 0.4; animChar(this.preview, { move: 0, wave: Math.sin(this.t * 0.5) > 0.7 }, this.t); } this.updateNpcs(dt); this.fishing.update(dt); fakeUpdate(this, dt);
     for (const u of this.island.updaters) u(dt);
     if (this.island.boat) this.island.boat.position.y = -0.1 + Math.sin(this.t * 1.2) * 0.08;
     this.water.userData.mat.uniforms.t.value = this.t; this.water.position.set(Math.round(this.cam.position.x / 10) * 10, -1.0, Math.round(this.cam.position.z / 10) * 10);
@@ -564,7 +565,7 @@ export class Game {
   }
   updateNpcs(dt) {
     this.folk && this.folk.update(dt);
-    const near = this.nearestNpc(); this.ui.prompt(near && !this.cut ? `${near.name}` : null);
+    const near = this.nearestNpc(); if (!near && this.hunt.near && !this.cut) this.ui.promptFruit(this.hunt.obj && this.hunt.obj.fruit); else this.ui.prompt(near && !this.cut ? `${near.name}` : null);
     for (const n of this.npcs) { const d = n.c.root.position.distanceTo(this.p.pos); if (d < 6) { const want = Math.atan2(this.p.pos.x - n.c.root.position.x, this.p.pos.z - n.c.root.position.z); n.c.root.rotation.y = damp(n.c.root.rotation.y, n.c.root.rotation.y + angDiff(n.c.root.rotation.y, want), 4, dt); }
       animChar(n.c, { talk: d < 4 && !!this.ui.modal, happy: d < 7 && !this.ui.modal, move: 0, look: d < 8 ? this.eyePos() : null }, this.t + n.x); if (n.mark) { n.mark.rotation.y += dt * 2; n.mark.position.y = n.c.root.position.y + n.c.height + 0.6 + Math.sin(this.t * 3) * 0.1;
         if (n.role === 'quest') { const q = this.questFor(n); n.mark.visible = !!q && !this.save.quest; } } }

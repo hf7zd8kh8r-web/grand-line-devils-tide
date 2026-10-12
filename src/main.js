@@ -19,6 +19,7 @@ applyQuality();
 const params = new URLSearchParams(location.search);
 let mode = 'logo', cover = null, creator = null, game = null, sail = null; const ui = new UI();
 window.__g = { Q, CL, saveNow: () => game && game.save && ST.save(game.save), get game() { return game; }, get mode() { return mode; }, get sail() { return sail; }, ui, IN };
+window.__forceFruit = (fruit, island) => game && game.hunt && game.hunt.force(fruit, island); // dev/test: force a world Devil Fruit spawn
 window.__info = () => { const i = renderer.info.render; return { calls: i.calls, tris: i.triangles, geos: renderer.info.memory.geometries }; };
 initMouse(renderer.domElement); initTouch($('#hud'));
 const TIPS = ['Tip: Block (right click / BLOCK) cuts damage by 80%.', 'Tip: Dash gives you a moment of invincibility.', 'Tip: Every weapon and fruit has its own mastery. Use it to unlock moves!', 'Tip: Bosses glow red right before they strike.', 'Tip: Jump over Morgan\'s Axe Slam shockwave!', 'Tip: Higher seas need higher levels. Check the World Map (M).'];
