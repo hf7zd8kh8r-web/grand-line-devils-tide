@@ -98,6 +98,7 @@ export class Game {
   }
   // ---------------- islands ----------------
   loadIsland(id, arrive = true) {
+    if (this.island) { this.bossMem = this.bossMem || {}; for (const e of this.enemies) if (e.boss && !e.ext && !e.temp && !e.dead && e.hp < e.max) this.bossMem[this.island.id + ':' + e.s.type] = { hp: e.hp, phase2: e.phase2, t: Date.now() }; }
     if (this.events) this.events.reset(); if (this.crew) this.crew.clear(); if (this.folk) this.folk.clear();
     const disp = (root) => root.traverse(o => { if (o.geometry && o.geometry !== this.shadowGeo && o.geometry !== this.fx.sphGeo) o.geometry.dispose(); if (o.material && o.material !== WORLD_MAT && o.material.userData && !o.material.userData.keep && o.isSkinnedMesh && !o.userData.isOutline) o.material.dispose(); });
     if (this.island) { this.scene.remove(this.island.group); disp(this.island.group); for (const e of this.enemies) disp(e.c.root); for (const n of this.npcs) { disp(n.c.root); n.mark && disp(n.mark); } for (const o of this.fakes || []) disp(o.c.root); this.net.islandChanged(); }
@@ -110,7 +111,7 @@ export class Game {
     const pal = I.palette; this.sky.userData.mat.uniforms.top.value.set(pal.skyTop); this.sky.userData.mat.uniforms.bot.value.set(pal.skyBot);
     this.scene.fog = new B.Fog(pal.fog, 40, qv().far); const wu = this.water.userData.mat.uniforms; wu.fogC.value.set(pal.fog); wu.fogN.value = 40; wu.fogF.value = qv().far; wu.isl.value.set(0, 0, I.R - 4); const sea = pal.sea || [0x0b5a8c, 0x2fb3d6]; wu.deep.value.set(sea[0]); wu.shallow.value.set(sea[1]); const lt = pal.light || [0xdff2ff, 0x5a7a3a, 0xfff1d6, 2.2]; this.hemi.color.set(lt[0]); this.hemi.groundColor.set(lt[1]); this.sun.color.set(lt[2]); this.sun.intensity = lt[3];
     this.amb.base();
-    for (const s of I.spawns) this.spawnEnemy(s);
+    for (const s of I.spawns) { const e = this.spawnEnemy(s); const m = e && e.boss && this.bossMem && this.bossMem[I.id + ':' + s.type]; if (m) { const age = (Date.now() - m.t) / 1000; if (age < 600) { e.hp = Math.min(e.max, Math.round(m.hp + e.max * age / 600)); e.phase2 = m.phase2 && e.hp < e.max * 0.5; } delete this.bossMem[I.id + ':' + s.type]; } }
     const tr = Object.values(STYLES).filter(st => st.island === I.id); if (tr.length && !I.npcs.some(n => n.role === 'trainer')) { const g0 = I.npcs.find(n => n.role === 'quest') || { x: 0, z: I.R * 0.4 };
       I.npcs.push({ id: 'trainer', look: 'smith', name: tr[0].name + ' Master', role: 'trainer', x: g0.x - 3.2, z: g0.z - 3, ry: Math.PI / 2, over: { shirt: tr[0].col, band: 0xffffff, hairS: 'buzz', sash: 0x1a1a1a, mouth: 'line' } }); }
     for (const n of I.npcs) this.spawnNpc(n);
@@ -171,7 +172,7 @@ export class Game {
     if (e.dead || dmg <= 0) return;
     const S0 = this.save, hon = S0.haki && S0.haki.buso; const crit = Math.random() < (o.remote ? 0.1 : 0.1 + (S0.haki && S0.haki.ken && hk(S0, 'ken', 2) ? 0.1 : 0)); if (!o.remote && this.p.fsight) { dmg *= 2; this.p.fsight = 0; } if (!o.remote && e.boss && hon && hk(S0, 'buso', 2)) dmg *= 1.15; dmg = Math.round(dmg * (crit ? (hk(S0, 'conq', 3) ? 1.9 : 1.6) : 1) * (0.9 + Math.random() * 0.2) * (!o.remote && this.seaDrain() ? 0.5 : 1));
     if (!o.remote) this.net.hit(e, dmg);
-    e.hp -= dmg; e.c.face && e.c.face.set(e.hp <= 0 ? 'ko' : 'hurt', e.hp <= 0 ? 99 : 0.35); e.flash = 0.12; e.hitT = o.stun ?? 0.22; e.aggro = true; if (!e.boss) { e.state = 'hit'; e.atk = 0; }
+    e.hp -= dmg; e.c.face && e.c.face.set(e.hp <= 0 ? 'ko' : 'hurt', e.hp <= 0 ? 99 : 0.35); e.flash = 0.12; e.hitT = o.stun ?? 0.22; e.aggro = true; e.lastHitT = this.t; e.calmT = 0; if (!e.boss) { e.state = 'hit'; e.atk = 0; }
     const kb = o.kb ?? 3; tmp.copy(e.c.root.position).sub(o.from || this.p.pos).setY(0).normalize(); e.vel.addScaledVector(tmp, kb * (e.boss ? 0.3 : 1)); if (o.up) e.vy = o.up * (e.boss ? 0.2 : 1);
     this.nums.spawn(this.chest(e, V()).add(new B.Vector3(0, 0.5, 0)), dmg, crit ? 'crit' : (o.cls || ''));
     { const hp0 = this.chest(e, V()); const el = o.el || (o.mast && o.mast.startsWith('fr:') ? elementOf(o.mast.slice(3), elementFromColor(o.col || 0xffe6a0)) : elementFromColor(o.col || 0xffe6a0)); const pw = (o.kb ?? 3) / 3.5 + (crit ? 0.6 : 0); const dirv = tmp.clone(); dirv.y = 0.3;
@@ -250,7 +251,7 @@ export class Game {
   }
   die() {
     this.dead = true; this.save.hp = 0; this.save.stats.deaths++; this.ui.banner('YOU WERE DEFEATED', 'Respawning…');
-    setTimeout(() => { this.dead = false; this.save.hp = this.st.maxHp; const sp = this.island.spawn; this.p.pos.set(sp[0], this.groundAt(sp[0], sp[1]), sp[1]); this.p.vy = 0; for (const e of this.enemies) { e.aggro = false; e.state = 'idle'; if (e.boss && !e.dead) e.hp = e.max; } this.ui.bossBar(null); this.bossIntroDone = {}; this.ui.updateHud(); }, 2200);
+    setTimeout(() => { this.dead = false; this.save.hp = this.st.maxHp; const sp = this.island.spawn; this.p.pos.set(sp[0], this.groundAt(sp[0], sp[1]), sp[1]); this.p.vy = 0; this.bossMem = {}; for (const e of this.enemies) { e.aggro = false; e.state = 'idle'; if (e.boss && !e.dead) { e.hp = e.max; e.phase2 = false; const R = e.c.root; R.position.set(e.home.x, this.island.hf(e.home.x, e.home.z), e.home.z); } } this.ui.bossBar(null); this.bossIntroDone = {}; this.ui.updateHud(); }, 2200);
   }
   enemiesInCone(range, cosA, from = this.p.pos) {
     const out = []; this.fwdFlat(tmp);
@@ -449,7 +450,9 @@ export class Game {
       if (e.boss && e.aggro) bossActive = e;
       const aggroR = e.boss ? e.s.arena.r + 2 : 13;
       if (!e.aggro && dist < aggroR && !this.dead) e.aggro = true;
-      if (e.aggro && (dist > 34 || (e.boss && Math.hypot(p.pos.x - e.s.arena.x, p.pos.z - e.s.arena.z) > e.s.arena.r + 14))) { e.aggro = false; e.state = 'idle'; if (e.boss) { e.hp = Math.min(e.max, e.hp + e.max * 0.5); } }
+      // Bosses never leash: once engaged they fight until someone dies. Grunts leash only if far AND untouched for a while; they heal slowly only once out of combat.
+      if (e.aggro && !e.boss && dist > 40 && this.t - (e.lastHitT || -99) > 6) { e.aggro = false; e.state = 'idle'; e.calmT = 0; }
+      if (!e.aggro && !e.boss && e.hp < e.max) { e.calmT = (e.calmT || 0) + dt; if (e.calmT > 5) e.hp = Math.min(e.max, e.hp + e.max * 0.08 * dt); }
       if (e.boss && !e.phase2 && e.hp < e.max * 0.5) { e.phase2 = true; this.ui.banner(`${def.name} is enraged!`, 'Phase 2'); this.fx.ring(R.position.clone().setY(R.position.y + 0.2), 0xff3a2a, 8, 0.8); }
       if (e.state === 'hit') { if (e.hitT <= 0) e.state = e.aggro ? 'chase' : 'idle'; }
       else if (e.state === 'windup') { e.atk -= dt; if (e.atk <= 0) this.enemyStrike(e, dist); }
@@ -457,7 +460,7 @@ export class Game {
       else if (e.aggro) {
         e.state = 'chase'; const want = def.ranged ? 14 : Math.max(1.6, def.reach * 0.8);
         if (e.boss && e.skillCd <= 0 && dist < 16) { this.bossSkill(e, dist); }
-        else if (dist > want) { moving = 1; }
+        else if (dist > want) { moving = e.boss && dist > 12 ? 1.6 : 1; }
         else if (def.ranged && dist < 7) { moving = -1; }
         if (dist <= def.reach && e.cd <= 0) { e.state = 'windup'; e.atk = def.ranged ? 0.9 : (e.boss ? 0.5 : 0.55) / (e.phase2 ? 1.25 : 1); }
         if (def.ranged && dist < def.reach && e.cd <= 0 && e.state !== 'windup') { e.state = 'windup'; e.atk = 0.9; }
@@ -466,11 +469,14 @@ export class Game {
         if (e.t > 3) { e.t = 0; e.wander.set(e.home.x + (Math.random() - 0.5) * 8, 0, e.home.z + (Math.random() - 0.5) * 8); }
         tmp2.copy(e.wander).sub(R.position).setY(0); if (tmp2.length() > 0.6) { moving = 0.45; e.yaw = Math.atan2(tmp2.x, tmp2.z); }
       }
+      const ox = R.position.x, oz = R.position.z;
       if (moving) { const dir = new B.Vector3(Math.sin(e.yaw), 0, Math.cos(e.yaw)); R.position.addScaledVector(dir, spd * moving * dt); e.anim.phase += dt * spd * 2.2 * Math.abs(moving); }
       R.position.addScaledVector(e.vel, dt); e.vel.multiplyScalar(Math.exp(-dt * 6));
       if (e.vy) { R.userData.air = (R.userData.air || 0) + e.vy * dt; e.vy -= 20 * dt; if (R.userData.air <= 0) { R.userData.air = 0; e.vy = 0; } }
       this.collide(R.position, e.boss ? 0.8 : 0.45);
       for (const o of this.enemies) { if (o === e || o.dead) continue; const dx = R.position.x - o.c.root.position.x, dz = R.position.z - o.c.root.position.z; const d = Math.hypot(dx, dz); if (d < 1 && d > 0.001) { R.position.x += dx / d * (1 - d) * 0.5; R.position.z += dz / d * (1 - d) * 0.5; } }
+      { const gNew = this.island.hf(R.position.x, R.position.z); if (gNew < 0.25 && gNew < this.island.hf(ox, oz)) { // don't walk/knock into the sea: slide along shore, else stay put
+        if (this.island.hf(R.position.x, oz) >= 0.25) R.position.z = oz; else if (this.island.hf(ox, R.position.z) >= 0.25) R.position.x = ox; else { R.position.x = ox; R.position.z = oz; } e.vel.set(0, 0, 0); } }
       const md = e.boss ? 1.8 : 1.3; if (dist < md && dist > 0.001) { R.position.x -= toP.x / dist * (md - dist); R.position.z -= toP.z / dist * (md - dist); }
       R.position.y = Math.max(this.island.hf(R.position.x, R.position.z), -1.2) + (R.userData.air || 0);
       R.rotation.y = damp(R.rotation.y, R.rotation.y + angDiff(R.rotation.y, e.yaw), 10, dt);
