@@ -1,3 +1,4 @@
+import { makeMount, animMount, emitTrail } from './travel.js';
 // Co-op multiplayer client (WebSocket relay in server/server.js)
 import { THREE, setOutlinesVisible } from './engine.js';
 import { makeChar, animChar, makeAvatar } from './models.js';
@@ -46,7 +47,7 @@ export class Net {
     else if (m.t === 'join') { this.peers.set(m.id, { ...m, pos: new B.Vector3(), tgt: new B.Vector3(), yaw: 0 }); g.ui.toast(`${m.name} joined your crew!`, 'quest'); g.ui.netStatus(); }
     else if (m.t === 'look') { const p = this.peers.get(m.id); if (p) { p.look = m.look; p.cos = m.cos; this.dropAvatar(p); } }
     else if (m.t === 'leave') { const p = this.peers.get(m.id); if (p && this.trade && this.trade.peer === m.id) this.tradeEnd('left'); if (p) { g.ui.toast(`${p.name} left`, 'blk'); this.dropAvatar(p); this.peers.delete(m.id); g.ui.netStatus(); } }
-    else if (m.t === 's') { const p = this.peers.get(m.id); if (!p) return; p.island = m.i; p.lvl = m.l; p.hp = m.h; p.a = m.a; p.m = m.m | 0; p.st = m.st; p.w = m.w; const [x, y, z, yaw] = m.p; p.tgt.set(x, y, z); p.yaw = yaw; if (!p.seen) { p.pos.copy(p.tgt); p.seen = true; } }
+    else if (m.t === 's') { const p = this.peers.get(m.id); if (!p) return; p.island = m.i; p.lvl = m.l; p.hp = m.h; p.a = m.a; p.m = m.m | 0; p.st = m.st; p.w = m.w; p.tv = m.tv || 0; const [x, y, z, yaw] = m.p; p.tgt.set(x, y, z); p.yaw = yaw; if (!p.seen) { p.pos.copy(p.tgt); p.seen = true; } }
     else if (m.t === 'chat') { g.ui.chat('🏴 ' + m.name, m.msg); }
     else if (m.t === 'hit') { if (m.i !== g.island.id) return; const e = g.enemies[m.e]; if (e && !e.dead) g.damageEnemy(e, m.d, { remote: true, kb: 0.5 }); }
     else if (m.t === 'sail') { const p = this.peers.get(m.id); if (!p) return; p.sailing = { to: m.to, t: performance.now() }; this.dropAvatar(p); p.island = '~sea';
@@ -58,7 +59,7 @@ export class Net {
     else if (m.t && m.t.startsWith('sf')) g.hunt && g.hunt.onNet(m);
     else if (m.t === 'fx') { const p = this.peers.get(m.id); if (!p || !p.av) return; const at = new B.Vector3(...m.p); if (m.k === 'atk') { p.atkT = 1; const st = STYLES[p.st]; if (st && st.id !== 'brawler' && (!p.w || p.w === 'fist')) { const R = p.av.root; const hp = R.position.clone().add(new B.Vector3(Math.sin(R.rotation.y) * 0.7, p.av.height * 0.62, Math.cos(R.rotation.y) * 0.7)); g.fx.burst(hp, 8, st.col, { speed: 3, size: 0.3, life: 0.3, grav: 0 }); } } else if (typeof m.k === 'string' && m.k.startsWith('mw:')) { if (p.island === undefined || p.island === g.island.id) remoteWeapon(g, p, m.k, at); } else if (typeof m.k === 'string' && m.k.startsWith('mv:')) { if (p.island === undefined || p.island === g.island.id) remoteMove(g, p, m.k, at); } else { g.fx.burst(at, 20, m.c, { speed: 6, size: 0.5, life: 0.5 }); g.fx.ring(at, m.c, 4, 0.4); p.atkT = 1; } }
   }
-  dropAvatar(p) { if (p.av) { p.av.root.removeFromParent(); p.av = null; } if (p.tag) { p.tag.remove(); p.tag = null; } }
+  dropAvatar(p) { if (p.av) { p.av.root.removeFromParent(); p.av = null; } if (p.tag) { p.tag.remove(); p.tag = null; } if (p.mount) { p.mount.removeFromParent(); p.mount = null; p.tvK = 0; } }
   hit(e, dmg) { if (!this.ws || e.ext || e.temp) return; const i = this.g.enemies.indexOf(e); if (i >= 0) this.send({ t: 'hit', i: this.g.island.id, e: i, d: Math.round(dmg) }); }
   fx(k, c, pos) { this.send({ t: 'fx', k, c, p: pos ? [pos.x, pos.y, pos.z] : [0, 0, 0] }); }
   lookChanged() { const S = this.g.save; this.send({ t: 'look', look: S.look, cos: S.cosEq }); }
@@ -98,7 +99,7 @@ export class Net {
   islandChanged() { if (this.trade) this.tradeEnd('cancel'); for (const p of this.peers.values()) this.dropAvatar(p); }
   update(dt) {
     if (!this.ws || this.status !== 'online') return; const g = this.g, P = g.p;
-    this.sendT -= dt; if (this.sendT <= 0) { this.sendT = 0.1; this.send({ t: 's', i: g.island.id, p: [+P.pos.x.toFixed(2), +P.pos.y.toFixed(2), +P.pos.z.toFixed(2), +P.yaw.toFixed(2), +P.pitch.toFixed(2)], a: P.moving ? 1 : 0, l: g.save.lvl, h: +(g.save.hp / g.st.maxHp).toFixed(2), m: (P.swim ? 1 : 0) | (g.seaDrain && g.seaDrain() ? 2 : 0) | (g.seat ? 4 : 0) | (g.save.tf === 1 ? 8 : g.save.tf === 2 ? 16 : 0), st: g.save.eq.style || 'brawler', w: g.save.slot }); }
+    this.sendT -= dt; if (this.sendT <= 0) { this.sendT = 0.1; this.send({ t: 's', i: g.island.id, p: [+P.pos.x.toFixed(2), +P.pos.y.toFixed(2), +P.pos.z.toFixed(2), +P.yaw.toFixed(2), +P.pitch.toFixed(2)], a: P.moving ? 1 : 0, l: g.save.lvl, h: +(g.save.hp / g.st.maxHp).toFixed(2), m: (P.swim ? 1 : 0) | (g.seaDrain && g.seaDrain() ? 2 : 0) | (g.seat ? 4 : 0) | (g.save.tf === 1 ? 8 : g.save.tf === 2 ? 16 : 0), st: g.save.eq.style || 'brawler', w: g.save.slot, tv: g.trv && g.trv.on ? g.trv.id : 0 }); }
     const v = new B.Vector3();
     for (const p of this.peers.values()) {
       const here = p.island === g.island.id && p.seen;
@@ -109,6 +110,7 @@ export class Net {
       const swim = p.m & 1, drain = p.m & 2, sit = p.m & 4; { if (p.baseS == null) p.baseS = R.scale.x; const ts = p.m & 16 ? 1.45 : p.m & 8 ? 1.12 : 1; R.scale.setScalar(p.baseS * ts); } if (swim) R.position.y = p.tgt.y - 0.9 + Math.sin(g.t * 2 + p.id) * 0.05; p.anim.sit = sit ? 1 : 0;
       if (sit && g.seat && p.id < this.myId && Math.hypot(p.tgt.x - g.seat.x, p.tgt.z - g.seat.z) < 0.5) g.sitAt(); // seat conflict: lower id keeps the stool
       if (sit && g.table) R.rotation.y = Math.atan2(g.table.sp.x - R.position.x, g.table.sp.z - R.position.z);
+      if (p.tv !== p.tvK) { if (p.mount) { g.scene.remove(p.mount); p.mount = null; } p.tvK = p.tv; if (p.tv) { p.mount = makeMount(p.tv); g.scene.add(p.mount); } } if (p.mount) { p.mount.position.copy(R.position); p.mount.rotation.y = R.rotation.y; animMount(p.mount, g.t, dt, sp > 1); emitTrail(g, R.position, p.tv, dt, sp > 1 ? 1.2 : 0.4); }
       if (drain && Math.random() < dt * 6) g.fx.burst(R.position.clone().add(new B.Vector3((Math.random() - 0.5), 0.9, (Math.random() - 0.5))), 2, 0xcfefff, { speed: 0.6, up: 2.2, size: 0.12, life: 0.9, grav: -1 });
       animChar(p.av, p.anim, g.t);
       v.copy(R.position); v.y += p.av.height + 0.4; v.project(g.cam); if (v.z > 1 || g.cut) { p.tag.style.display = 'none'; continue; }

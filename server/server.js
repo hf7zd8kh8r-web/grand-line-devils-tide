@@ -52,7 +52,7 @@ wss.on('connection', (ws, req) => {
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (m.t === 'hello') { me.info = { name: clean(m.name), faction: m.faction === 'Marine' ? 'Marine' : 'Pirate', race: clean(m.race, 10), lvl: m.lvl | 0, island: clean(m.island, 12), look: cleanLook(m.look), cos: cleanCos(m.cos), st: clean(m.st, 12) }; bc({ t: 'join', id, ...me.info }); ws.send(JSON.stringify(sfMsg(sfState(R, room)))); }
     else if (m.t === 'look') { if (me.info) { me.info.look = cleanLook(m.look); me.info.cos = cleanCos(m.cos); bc({ t: 'look', id, look: me.info.look, cos: me.info.cos }); } }
-    else if (m.t === 's') { if (me.info) me.info.island = clean(m.i, 12); if (me.info) me.info.st = clean(m.st, 12); bc({ t: 's', id, i: me.info && me.info.island, p: (m.p || []).slice(0, 5).map(Number), a: m.a | 0, l: m.l | 0, h: +m.h || 0, m: m.m & 255, st: clean(m.st, 12), w: clean(m.w, 6) }); }
+    else if (m.t === 's') { if (me.info) me.info.island = clean(m.i, 12); if (me.info) me.info.st = clean(m.st, 12); bc({ t: 's', id, i: me.info && me.info.island, p: (m.p || []).slice(0, 5).map(Number), a: m.a | 0, l: m.l | 0, h: +m.h || 0, m: m.m & 255, st: clean(m.st, 12), w: clean(m.w, 6), tv: clean(m.tv || '', 14) }); }
     else if (m.t === 'sail') bc({ t: 'sail', id, to: clean(m.to, 12), from: clean(m.from, 12) });
     else if (m.t === 'shop') bc({ t: 'shop', id, i: clean(m.i, 12), w: m.w | 0, s: num(m.s, 16), f: clean(m.f, 24) });
     else if (m.t === 'tr') { const T = R.get(m.to | 0); if (T && T.ws.readyState === 1 && T.id !== id) T.ws.send(JSON.stringify({ t: 'tr', id, k: clean(m.k, 8), it: cleanItem(m.it), ber: num(m.ber, 1e10), n: m.n | 0 })); }

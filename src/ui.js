@@ -1,3 +1,4 @@
+import { TRAVEL, travelLabel, flyGate } from './travel.js';
 import { isTouch, Q, qset } from './engine.js';
 import { FRUITS, SWORDS, GUNS, ACCESSORIES, RARITY, RCOL, ISLANDS, SEAS, QUESTS, islandById, RACES, T2, ENEMIES } from './data.js';
 import { fruitIcon } from './icons.js';
@@ -163,7 +164,7 @@ export class UI {
     return `<h2>🥋 ${mode === 'all' ? 'Fighting Styles' : 'Dojo — ' + islandById(isl).name}</h2><p class="dim">${Object.keys(STYLES).length} styles · you know ${S.styles.length}. Styles replace your fists: own moves, mastery and effects. Advanced styles unlock through quest chains.</p><div class="stl">${list.map(card).join('')}</div>`; }
   dexHtml(tier = 7) { tier = +tier; const S = this.g.save; const seen = new Set([...S.inv.fruits, S.eq.fruit, ...Object.keys(S.awake || {})]);
     const tabs = RARITY.map((r, i) => `<button data-do="dex:${i}" class="${i === tier ? 'on' : ''}" style="color:${RCOL[i]}">${r} (${Object.values(FRUITS).filter(f => f.rar === i).length})</button>`).join('');
-    const list = Object.entries(FRUITS).filter(([, f]) => f.rar === tier).map(([id, f]) => `<div class="dexc" style="--rc:${RCOL[tier]}"><img src="${fruitIcon(id)}"><div><b>${f.name}${seen.has(id) ? ' <i class="gold">✔</i>' : ''}</b><small>${f.moves.map(m => m.name).join(' · ')}</small>${f.special ? `<small class="gold">★ Special: ${f.special.name}</small>` : ''}${f.rar >= 4 ? '<small style="color:#7dffb0">Can Awaken</small>' : ''}</div></div>`).join('');
+    const list = Object.entries(FRUITS).filter(([, f]) => f.rar === tier).map(([id, f]) => `<div class="dexc" style="--rc:${RCOL[tier]}"><img src="${fruitIcon(id)}"><div><b>${f.name}${seen.has(id) ? ' <i class="gold">✔</i>' : ''}</b><small>${f.moves.map(m => m.name).join(' · ')}</small>${f.special ? `<small class="gold">★ Special: ${f.special.name}</small>` : ''}${f.rar >= 4 ? '<small style="color:#7dffb0">Can Awaken</small>' : ''}${TRAVEL[id] ? `<small class="dexTv">🕊 Travel: ${travelLabel(id)}</small>` : ''}</div></div>`).join('');
     return `<h2>📖 Devil Fruit Encyclopedia</h2><p class="dim">${Object.keys(FRUITS).length} fruits · Common/Uncommon/Rare: 3 moves · Epic/Legendary: 4 · Godly/Mythical/Ultra: 4 + cutscene Special (boss fights, below 35% HP, or 3+ enemies near). Legendary+ can Awaken. ★ = original fan fruit.</p><div class="tabs dextabs">${tabs}</div><div class="dexl">${list}</div>`; }
   rotHtml() { const S = this.g.save, isl = S.island, w = FS.windowId(); const key = isl + ':' + w; S.fsRoll = S.fsRoll || {}; S.fsold = S.fsold || {};
     const nonce = S.fsRoll[key] || 0; const st = FS.stockFor(isl, w, nonce); const sold = S.fsold[key] || [];
@@ -379,7 +380,9 @@ export class UI {
       if (I.secret && !(S.secrets || {})[I.id]) { info.innerHTML = `<b>??? — a hidden place</b> <em class="red">Secret quest: ${I.secret}</em>`; return; }
       let html = `<b>${I.name}</b> · ${sea.name} · Lv.${I.lvl}+ `;
       if (I.id === S.island) html += '<em>You are here</em>'; else if (S.lvl < I.lvl) html += `<em class="red">🔒 Reach level ${I.lvl}</em>`; else if (!I.built) html += '<em>Coming in a future update</em>'; else if ((migrateShips(S), !S.ship)) html += '<em class="red">Buy a ship from a Shipwright at the dock first</em>'; else if (shipOf(S).tier < seaTier(I.sea)) html += `<em class="red">🚢 Needs a Tier ${seaTier(I.sea)} ship (yours: Tier ${shipOf(S).tier}) — visit a Shipwright</em>`; else html += `<button class="go" data-do="sail:${I.id}">⛵ Set Sail</button>`;
+      if (I.id !== S.island && I.built && TRAVEL[S.eq.fruit]) html += flyGate(S, I) ? `<em class="red">${flyGate(S, I)}</em>` : `<button class="go fly" data-do="fly:${I.id}">🕊 Fly (${TRAVEL[S.eq.fruit][0]})</button>`;
       info.innerHTML = html; }
+    if (a === 'fly') { this.close(); this.g.trv.flyTo(b); return; }
     if (a === 'sail') { migrateShips(S); const I = islandById(b); if (!S.ship || shipOf(S).tier < seaTier(I.sea)) { this.toast('Your ship can\'t make that voyage', 'blk'); return; } this.close(); this.onSail && this.onSail(b); }
     if (a === 'q') { qset(b); this.open('pause'); }
     if (a === 'invy') { IN.invY = !IN.invY; localStorage.setItem('gldt_invy', IN.invY ? '1' : '0'); this.open('pause'); return; }

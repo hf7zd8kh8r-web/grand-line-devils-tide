@@ -429,3 +429,17 @@ html,body{font-family:"Nunito","Trebuchet MS","Segoe UI",sans-serif}
 .qcard .gold{color:#ffd04a}
 @media (orientation:portrait){.qboard{max-height:56vh}.qcard{padding:14px}}
 @media (orientation:landscape){.qboard{max-height:42vh;display:grid;grid-template-columns:1fr 1fr;gap:8px}.qboard .qcard{min-width:0}}
+/* Devil Fruit travel */
+#tvBar{position:fixed;left:max(12px,env(safe-area-inset-left));top:calc(max(8px,env(safe-area-inset-top)) + 108px);width:min(200px,48vw);text-align:left;opacity:0;transition:opacity .3s;pointer-events:none;z-index:6;font:800 11px "Nunito",sans-serif;color:#fff;text-shadow:0 1px 2px #000}
+#tvBar.show{opacity:1}#tvBar div{height:8px;border-radius:5px;background:rgba(0,0,0,.5);overflow:hidden;margin-top:2px;box-shadow:0 0 0 1px rgba(255,255,255,.4)}#tvBar i{display:block;height:100%;background:linear-gradient(90deg,#4ad8ff,#bff4ff);transition:width .1s}#tvBar.low i{background:linear-gradient(90deg,#ff4a4a,#ffb04a)}
+.tb.trv{right:calc(max(18px,env(safe-area-inset-right)) + 230px);bottom:calc(max(18px,env(safe-area-inset-bottom)) + 88px);width:50px;height:50px;font-size:20px;line-height:1;background:rgba(20,90,140,.6)}
+.tb.trv small{display:block;font-size:8px;letter-spacing:0;margin-top:1px}.tb.trv.on{box-shadow:0 0 16px #6ae0ff,0 0 0 2px #bff4ff}
+@media (orientation:portrait){#hud.touch .tb.trv{right:calc(max(18px,env(safe-area-inset-right)) + 165px);bottom:calc(max(18px,env(safe-area-inset-bottom)) + 300px)}}
+#tvPick{max-height:84vh;overflow:auto;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);opacity:0;pointer-events:none;z-index:40;background:rgba(10,30,55,.92);border:2px solid #7ad8ff;border-radius:16px;padding:14px 16px;width:min(340px,86vw);color:#fff;font-family:"Nunito",sans-serif;text-align:center;transition:.2s}
+#tvPick.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}#tvPick h3{margin:0 0 4px}#tvPick p{margin:0 0 10px;font-size:13px;opacity:.85}
+#tvPick button{display:block;width:100%;margin:6px 0;padding:9px;border-radius:10px;border:none;background:linear-gradient(#3aa8e8,#1a6aa8);color:#fff;font:800 14px "Nunito",sans-serif}#tvPick button small{display:block;font-weight:600;font-size:11px;opacity:.85}#tvPick button.lock{background:#4a4a5a}#tvPick button.cancel{background:rgba(255,255,255,.15)}
+#tvFly{position:fixed;inset:0;z-index:45;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,rgba(0,0,0,.1),rgba(0,20,50,.85));animation:tvIn .4s;color:#fff;font-family:"Nunito",sans-serif}
+#tvFly div{text-align:center}#tvFly b{display:block;font-size:26px;color:var(--c);text-shadow:0 0 18px var(--c)}#tvFly span{display:block;margin:6px 0 10px}#tvFly i{display:block;width:220px;height:8px;border-radius:5px;background:rgba(255,255,255,.2);overflow:hidden;margin:auto}#tvFly u{display:block;height:100%;width:0;background:var(--c);animation:tvBar linear forwards}
+@keyframes tvBar{to{width:100%}}@keyframes tvIn{from{opacity:0}}
+.dexTv{color:#7ad8ff!important}.go.fly{margin-left:6px;background:linear-gradient(#3aa8e8,#1a6aa8)}
+.traveling #prompt{display:none!important}

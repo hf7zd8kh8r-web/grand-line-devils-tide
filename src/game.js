@@ -24,6 +24,7 @@ import { CrewMates, hasRole } from './crew.js';
 import { castMove, castSpecial, fruitBasic, SP_REQ, ZOAN } from './fruits.js';
 import { Net } from './net.js';
 import { FruitHunt } from './fruithunt.js';
+import { Travel } from './travel.js';
 import { Roller } from './roller.js';
 import { ThirdPerson } from './tpv.js';
 import { Fishing, hakiToggle, hakiVisual, conqueror, fakeSpawn, fakeUpdate, fakeRemove, HAKI, hk } from './features.js';
@@ -59,7 +60,7 @@ export class Game {
     this.p = { pos: V(), vy: 0, yaw: Math.PI, pitch: 0, ground: true, dash: 0, dashCd: 0, dashDir: V(), iframe: 0, atkCd: 0, combo: 0, comboT: 0, phase: 0, moving: false, cds: {}, special: 0, regen: 0, hurtT: 0, swim: false, stun: 0 };
     this.shadowGeo = new B.CircleGeometry(0.5, 12); this.shadowMat = new B.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
     this.blobs = new B.InstancedMesh(this.shadowGeo, this.shadowMat, 64); this.blobs.frustumCulled = false; this.scene.add(this.blobs);
-    this.bars = document.getElementById('bars'); this.fishing = new Fishing(this); this.net = new Net(this); this.hunt = new FruitHunt(this); this.roller = new Roller(this); this.anim = (c, st) => animChar(c, st, this.t);
+    this.bars = document.getElementById('bars'); this.fishing = new Fishing(this); this.net = new Net(this); this.hunt = new FruitHunt(this); this.trv = new Travel(this); this.roller = new Roller(this); this.anim = (c, st) => animChar(c, st, this.t);
     this.markers = [];
     qualityHooks.push(() => { setOutlinesVisible(this.scene); this.cam.far = qv().far + 250; this.cam.updateProjectionMatrix(); this.scene.fog && (this.scene.fog.far = qv().far); this.water.userData.mat.uniforms.fogF.value = qv().far; });
   }
@@ -377,6 +378,7 @@ export class Game {
       if (consume('tf')) this.transform();
       if (S.tf && (S.slot !== 'fruit' || !ZOAN[S.eq.fruit] || (this.seaDrain && this.seaDrain()))) this.transform(0);
       if (consume('conq')) conqueror(this);
+      if (consume('travel')) this.trv.toggle();
     } else { IN.pressed.delete('attack'); IN.pressed.delete('jump'); }
     if (consume('inv') && !this.cut) this.ui.toggle('inv');
     if (consume('map') && !this.cut) this.ui.toggle('map');
@@ -391,12 +393,13 @@ export class Game {
     if (p.kb) { vx += p.kb.x; vz += p.kb.z; p.kb.multiplyScalar(Math.exp(-dt * 8)); if (p.kb.lengthSq() < 0.01) p.kb = null; }
     if (p.lunge) { vx += p.lunge.x; vz += p.lunge.z; p.lunge.multiplyScalar(Math.exp(-dt * 10)); if (p.lunge.lengthSq() < 0.05) p.lunge = null; }
     { const md = (p.dash > 0 ? 1.4 : 0.9), dd = Math.hypot(vx, vz) * dt; if (dd > md) { vx *= md / dd; vz *= md / dd; } } // clamp per-frame displacement
+    { const tv = this.trv.vel(mv, dt); if (tv) { vx = tv[0]; vz = tv[1]; const dd = Math.hypot(vx, vz) * dt; if (dd > 2.5) { vx *= 2.5 / dd; vz *= 2.5 / dd; } } }
     if (!isFinite(vx) || !isFinite(vz)) { vx = vz = 0; p.kb = null; p.lunge = null; }
     p.pos.x += vx * dt; p.pos.z += vz * dt;
     this.collide(p.pos, 0.4);
     if (this.seat) { p.pos.x = this.seat.x; p.pos.z = this.seat.z; vx = vz = 0; }
     const r = Math.hypot(p.pos.x, p.pos.z); const lim = this.island.R + 18; if (r > lim) { p.pos.x *= lim / r; p.pos.z *= lim / r; }
-    p.vy -= 22 * dt; p.pos.y += p.vy * dt;
+    if (this.trv.on) this.trv.vert(dt); else { p.vy -= 22 * dt; p.pos.y += p.vy * dt; }
     const gh = this.groundAt(p.pos.x, p.pos.z); const wl = -0.95;
     p.swim = gh < wl - 0.3 && p.pos.y <= wl + 0.05;
     // never trapped at sea: track time in water, offer 'Return to shore', auto-rescue if far out / under terrain / NaN
@@ -428,7 +431,7 @@ export class Game {
     this.net.update(dt);
     this.amb.update(dt); this.events.update(dt); this.crew.update(dt); this._rk = (this._rk || 0) - dt; if (this._rk <= 0) { this._rk = 2; this.rankCheck(); checkAch(this); } this._clk = (this._clk || 0) - dt; if (this._clk <= 0) { this._clk = 1; const ck = document.getElementById('clock'); if (ck) { const nt = this.amb.isNight(); ck.textContent = `${nt ? '🌙' : '☀️'} ${this.amb.clock()}${nt ? ' · Night +20% ฿/XP' : ''}${this.amb.stormT > 0 ? ' · ⛈ Storm' : ''}`; ck.classList.toggle('night', nt); } }
     if (this.fed && this.fed.t > 0) { this.fed.t -= dt; if (this.fed.t <= 0) { this.fed = null; this.ui.toast('Well Fed buff wore off', 'blk'); } }
-    this.updateEnemies(dt); this.updateProjs(dt); this.questTick(dt); this.stockTick(); try { this.hunt.update(dt); } catch (err) { if (!this._hErr) { this._hErr = 1; console.warn('hunt', err); } } if (this.preview) { this.preview.root.rotation.y += Math.sin(this.t * 0.7) * dt * 0.4; animChar(this.preview, { move: 0, wave: Math.sin(this.t * 0.5) > 0.7 }, this.t); } this.updateNpcs(dt); this.fishing.update(dt); fakeUpdate(this, dt);
+    this.updateEnemies(dt); this.updateProjs(dt); this.questTick(dt); this.stockTick(); try { this.trv.update(dt); } catch (err) { if (!this._tErr) { this._tErr = 1; console.warn('travel', err); } } try { this.hunt.update(dt); } catch (err) { if (!this._hErr) { this._hErr = 1; console.warn('hunt', err); } } if (this.preview) { this.preview.root.rotation.y += Math.sin(this.t * 0.7) * dt * 0.4; animChar(this.preview, { move: 0, wave: Math.sin(this.t * 0.5) > 0.7 }, this.t); } this.updateNpcs(dt); this.fishing.update(dt); fakeUpdate(this, dt);
     for (const u of this.island.updaters) u(dt);
     if (this.island.boat) this.island.boat.position.y = -0.1 + Math.sin(this.t * 1.2) * 0.08;
     this.water.userData.mat.uniforms.t.value = this.t; this.water.position.set(Math.round(this.cam.position.x / 10) * 10, -1.0, Math.round(this.cam.position.z / 10) * 10);

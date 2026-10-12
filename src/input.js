@@ -1,7 +1,7 @@
 import { isTouch } from './engine.js';
 export const IN = { invY: localStorage.getItem('gldt_invy') === '1', resetTouch: () => {}, mx: 0, mz: 0, lookX: 0, lookY: 0, held: {}, pressed: new Set(), enabled: false, locked: false, sens: parseFloat(localStorage.getItem('gldt_sens') || '1') };
 const keys = {};
-const KEYMAP = { Space: 'jump', ShiftLeft: 'dash', ShiftRight: 'dash', Digit1: 'm1', Digit2: 'm2', Digit3: 'm3', Digit4: 'm4', KeyQ: 'special', KeyE: 'interact', KeyF: 'fish', KeyI: 'inv', KeyM: 'map', Escape: 'pause', KeyR: 'gun', KeyG: 'swap', KeyT: 'swapgun', KeyH: 'haki', KeyJ: 'conq', KeyV: 'cam', KeyX: 'tf', KeyC: 'block' };
+const KEYMAP = { Space: 'jump', ShiftLeft: 'dash', ShiftRight: 'dash', Digit1: 'm1', Digit2: 'm2', Digit3: 'm3', Digit4: 'm4', KeyQ: 'special', KeyE: 'interact', KeyF: 'fish', KeyI: 'inv', KeyM: 'map', Escape: 'pause', KeyR: 'gun', KeyG: 'swap', KeyT: 'swapgun', KeyH: 'haki', KeyJ: 'conq', KeyV: 'cam', KeyX: 'tf', KeyC: 'block', KeyB: 'travel' };
 export function press(a) { IN.pressed.add(a); }
 export function consume(a) { const h = IN.pressed.has(a); IN.pressed.delete(a); return h; }
 addEventListener('keydown', e => {
@@ -9,9 +9,9 @@ addEventListener('keydown', e => {
   keys[e.code] = true; const a = KEYMAP[e.code]; if (a && !e.repeat) press(a);
   if (a === 'pause' && IN.locked) {} // pointer lock exit handled by browser
   if (['Space', 'Tab'].includes(e.code)) e.preventDefault();
-  if (a === 'block') IN.held.block = true;
+  if (a === 'block') IN.held.block = true; if (a === 'jump') IN.held.jump = true;
 });
-addEventListener('keyup', e => { keys[e.code] = false; if (KEYMAP[e.code] === 'block') IN.held.block = false; });
+addEventListener('keyup', e => { keys[e.code] = false; if (KEYMAP[e.code] === 'block') IN.held.block = false; if (KEYMAP[e.code] === 'jump') IN.held.jump = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; IN.held = {}; });
 export function pollKeys() {
   if (isTouch && !keys.KeyW && !keys.KeyA && !keys.KeyS && !keys.KeyD) return;
