@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a1018">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Grand Line: Devil's Tide</title>
+<meta name="description" content="A first-person pirate action adventure. Eat Devil Fruits, master swords, beat bosses and sail the Grand Line.">
+<meta property="og:title" content="Grand Line: Devil's Tide">
+<meta property="og:description" content="Tap the Ultra fruit. Set sail. Become the strongest on the seas.">
+<meta property="og:image" content="og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+</head>
+<body>
+<div id="app"></div>
+
+<!-- logo intro -->
+<div id="logo" class="screen">
+  <div class="emblem">
+    <svg viewBox="0 0 200 200" width="150" height="150"><defs><radialGradient id="eg" cx="50%" cy="45%"><stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#c8862a"/></radialGradient></defs>
+      <circle cx="100" cy="100" r="88" fill="none" stroke="url(#eg)" stroke-width="6"/><circle cx="100" cy="100" r="72" fill="none" stroke="#c8862a" stroke-width="2" stroke-dasharray="4 6"/>
+      <g fill="url(#eg)"><path d="M100 18 L110 100 L100 182 L90 100Z"/><path d="M18 100 L100 90 L182 100 L100 110Z"/><path d="M42 42 L104 96 L158 158 L96 104Z" opacity=".55"/><path d="M158 42 L104 104 L42 158 L96 96Z" opacity=".55"/></g>
+      <circle cx="100" cy="100" r="14" fill="#0a1018" stroke="#ffe9a8" stroke-width="3"/></svg>
+    <b>TIDEBREAKER</b><small>a fan-made adventure</small>
+  </div>
+</div>
+
+<!-- cover -->
+<div id="cover" class="screen">
+  <div class="title"><div class="t1">GRAND LINE</div><div class="t2">Devil's Tide</div></div>
+  <div class="tap"><b id="ufName">ULTRA FRUIT</b><span>TAP THE FRUIT TO BEGIN</span><em id="crewJoin"></em></div>
+  <div id="joinBox"><input id="joinCode" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="CREW CODE"><button id="joinGo">Join crew by code</button></div>
+  <div class="foot">Unofficial fan game · not affiliated with any studio · <span id="qBtn">Quality: <b></b></span></div>
+</div>
+<div id="fruitTitle" class="screen"><small>ULTRA · AWAKENED</small><b></b><span></span></div>
+<div id="white" class="screen"></div>
+
+<!-- loading -->
+<div id="loading" class="screen">
+  <div class="logpose"><div class="glass"><div class="needle"></div></div><div class="base"></div></div>
+  <div class="lbar"><i></i></div><div class="ltxt">Calibrating Log Pose…</div>
+  <div class="tip"></div>
+</div>
+
+<!-- character creation -->
+<div id="create" class="screen">
+  <div class="cbox">
+    <h1>Create Your Pirate</h1>
+    <div id="cont"></div>
+    <button id="cLoadBtn" class="cloudbtn">☁ Load my profile (name + race + PIN)</button>
+    <div id="cloudBox" style="display:none"><label>Name</label><input id="lName" maxlength="16" autocomplete="off"><label>Race</label><select id="lRace"></select><label>4-digit PIN</label><input id="lPin" inputmode="numeric" pattern="[0-9]*" maxlength="4" type="password" autocomplete="off"><button id="lGo" class="big">☁ Load & Play ▶</button><p id="lMsg" class="dim"></p></div>
+    <div class="seg ctabs" id="cTabs"><button data-t="id" class="on">🪪 Identity</button><button data-t="look">✂ Appearance</button></div>
+    <div id="cLook" style="display:none"><div class="lrows" id="cRows"></div><div class="seg"><button id="cRand">🎲 Randomize</button><button id="cTurn">↻ Turn</button></div><p class="dim small">More hats, capes, coats &amp; glasses at any Tailor (Cosmetics).</p></div>
+    <div id="cId">
+    <label>Name</label><input id="cName" maxlength="16" placeholder="Type your name" autocomplete="off">
+    <label>Cloud PIN <small class="dim">optional · 4 digits · play on any device</small></label><input id="cPin" inputmode="numeric" pattern="[0-9]*" maxlength="4" type="password" placeholder="e.g. 4821" autocomplete="off">
+    <label>Faction</label><div class="seg" id="cFac"><button data-v="Pirate" class="on">☠ Pirate</button><button data-v="Marine">⚓ Marine</button></div>
+    <label>Race</label><div class="races" id="cRace"></div>
+    <div id="cPerk" class="perk"></div>
+    </div>
+    <button id="cGo" class="big">Set Sail ▶</button>
+  </div>
+</div>
+
+<!-- sailing -->
+<div id="sail" class="screen"><b></b><div class="sbar"><i></i></div><small>Tap to skip</small></div>
+
+<!-- HUD -->
+<div id="hud"><button id="shoreBtn" class="hudbtn">🏝 Return to shore</button><div id="rotHint" onclick="this.remove()">📱↻ Turn your phone sideways for the best view<small>Not rotating? Turn off Portrait Orientation Lock in Control Center</small><b>✕</b></div>
+  <div id="vign"></div><div id="hurt"></div><div id="nums"></div><div id="bars"></div>
+  <div id="cross"></div>
+  <div id="stat">
+    <div class="who"><span class="lv">Lv.<b id="lvl">1</b></span><span id="pname"></span></div>
+    <div class="hp"><i id="hpFill"></i><span id="hpTxt"></span></div>
+    <div class="xp"><i id="xpFill"></i></div>
+    <div id="ber">฿0</div>
+  </div>
+  <div id="compass"></div>
+  <div id="quest"></div><div id="travel"></div>
+  <div id="clock"></div><div id="netDot"></div><div id="topbtns"><button class="hudbtn" data-ui="map">🗺<small>Map</small></button><button class="hudbtn" data-ui="inv">🎒<small>Bag</small></button><button class="hudbtn" id="camBtn">🎥<small>View</small></button><button class="hudbtn" data-ui="pause">⏸<small>Menu</small></button></div>
+  <div id="bossbar"><span></span><div><i id="bossFill"></i></div></div>
+  <div id="slots"><button class="hudbtn" data-slot="fist">👊<small></small></button><button class="hudbtn" data-slot="fruit">🍇<small></small></button><button class="hudbtn" data-slot="sword">🗡<small></small></button><button class="hudbtn" data-slot="gun">🔫<small></small></button></div>
+  <div id="moves"></div>
+  <div id="prompt"></div>
+  <div id="toasts"></div><div id="chat"></div><div id="bite">❗ BITE! TAP / CLICK NOW!</div><div id="chest"></div>
+  <div id="banner"></div><div id="movename"></div><div id="islandBanner"></div>
+  <div id="bosscard"></div><div id="specialcard"></div>
+  <div id="touch">
+    <div id="joy"><div id="knob"></div></div>
+    <button class="tb atk" data-act="attack">ATTACK</button>
+    <button class="tb jmp" data-act="jump">JUMP</button>
+    <button class="tb dsh" data-act="dash">DASH</button>
+    <button class="tb blk" data-act="block">BLOCK</button>
+    <button class="tb sp" id="spBtn" data-act="special">SPECIAL</button><button class="tb tf" id="tfBtn" data-act="tf" style="display:none">🐾<small>Form</small></button>
+    <button class="tb act" id="actBtn" data-act="interact">TALK</button>
+    <button class="tb fish" id="fishBtn" data-act="fish">FISH</button>
+    <button class="tb haki" id="hakiBtn" data-act="haki">HAKI</button>
+    <button class="tb conq" id="conqBtn" data-act="conq">CONQ</button>
+  </div>
+  <div class="lb top"></div><div class="lb bot"></div>
+</div>
+<div id="panel" class="panel"></div>
+<script type="module" src="/src/main.js"></script>
+<div id="sailInv"></div>
+</body>
+</html>

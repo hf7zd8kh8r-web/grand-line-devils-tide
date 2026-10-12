@@ -1,0 +1,14 @@
+// voyage events: ship race + Knock Up Stream
+const { chromium } = require('playwright-core'); const BASE = process.env.BASE || 'http://localhost:4180'; const sleep = ms => new Promise(r => setTimeout(r, ms));
+(async () => { const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] }); const errs = [];
+  const p = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage(); p.on('pageerror', e => errs.push(e.message));
+  await p.goto(BASE + '/?skip&anytap'); await sleep(1200); await p.mouse.click(480, 270); await p.waitForFunction(() => __g.mode === 'create'); await p.click('#cGo'); await sleep(1500);
+  await p.evaluate(() => { const S = __g.game.save; S.lvl = 90; S.ber = 1e8; __g.ui.act('buyship:dinghy'); __g.ui.act('buyship:caravel'); __g.ui.act('buyship:brig'); __g.ui.close(true); S.unlocked = ['windmill', 'shells', 'jaya', 'skypiea']; S.island = 'windmill'; });
+  // race: force by retrying until race appears
+  let raced = false; for (let i = 0; i < 8 && !raced; i++) { await p.evaluate(() => __g.ui.onSail('shells')); await sleep(1200); raced = await p.evaluate(() => !!(__g.sail && __g.sail.race)); if (!raced) { await p.evaluate(() => { __g.sail.skip = true; }); await sleep(2500); await p.evaluate(() => { __g.game.loadIsland('windmill'); }); await sleep(800); } }
+  console.log('race', raced); if (raced) { await sleep(2500); await p.evaluate(() => { const v = __g.sail; v.lookYaw = 0; const R = v.race.mesh.position, S0 = v.ship.position; v.lookYaw = Math.atan2(-(R.x - S0.x), -(R.z - S0.z)) - v.yaw; }); await sleep(600); await p.screenshot({ path: `${__dirname}/../shots/voy_race.png` }); console.log(await p.evaluate(() => document.querySelector('#sail .veta').textContent)); console.log(await p.evaluate(() => { const v = __g.sail, m = v.race.mesh; const bb = new (v.ship.position.constructor)(); return { m: m.position.toArray().map(Math.round), s: v.ship.position.toArray().map(Math.round), inScene: m.parent === v.s, ch: m.children.length, scale: m.scale.x, isle: v.isle.position.toArray().map(Math.round), yaw: v.yaw }; }));
+    await p.evaluate(() => { const v = __g.sail; v.dist = v.R * 0.995; v.race.rd = v.R * 0.5; }); await sleep(700); console.log('won', await p.evaluate(() => __g.sail ? [__g.sail.raceWon, __g.sail.ber] : 'ended')); await p.evaluate(() => { if (__g.sail) __g.sail.skip = true; }); await sleep(2500); }
+  await p.evaluate(() => { __g.game.loadIsland('jaya'); }); await sleep(1500); await p.evaluate(() => __g.ui.onSail('skypiea')); await sleep(1200);
+  await p.evaluate(() => { const v = __g.sail; v.dist = v.R * 0.56; }); await sleep(2200); await p.screenshot({ path: `${__dirname}/../shots/voy_knockup.png` }); await sleep(4500);
+  console.log('after knock', await p.evaluate(() => [__g.mode, __g.game.save.island]));
+  console.log('ERRS', errs); await b.close(); })();

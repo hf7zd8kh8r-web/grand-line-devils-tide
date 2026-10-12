@@ -1,0 +1,27 @@
+{
+  "name": "grand-line-devils-tide",
+  "version": "1.0.0",
+  "description": "Grand Line: Devil's Tide - fan-made 3D pirate adventure with co-op",
+  "main": "server/server.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm ci && npx vite build",
+    "build:local": "vite build",
+    "start": "node server/server.js",
+    "preview": "vite preview --port 4173 --host",
+    "server": "node server/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.186.1",
+    "vite": "^8.3.4",
+    "ws": "^8.22.0"
+  },
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}
