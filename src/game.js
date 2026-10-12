@@ -9,11 +9,14 @@ import { IN, consume, pollKeys } from './input.js';
 import * as ST from './state.js';
 import { defaultLook, lookOverrides } from './style.js';
 import * as FS from './fruitshop.js';
+import { makeDevilFruit } from './fruitart.js';
+import { decorate } from './decor.js';
+import { Folk } from './folk.js';
 import { STYLES, styleOf } from './styles.js';
 import { makeShipModel, migrateShips } from './ships.js';
 import { Ambience } from './ambience.js';
 import { audio } from './audio.js';
-import { elementOf } from './elements.js';
+import { elementOf, elementFromColor } from './elements.js';
 import { Events } from './events.js';
 import { checkAch } from './achievements.js';
 import { CrewMates, hasRole } from './crew.js';
@@ -33,7 +36,7 @@ export class Game {
     this.hemi = new B.HemisphereLight(0xdff2ff, 0x5a7a3a, 1.25); this.sun = new B.DirectionalLight(0xfff1d6, 2.2); this.sun.position.set(40, 60, -30);
     this.scene.add(this.hemi, this.sun);
     this.water = makeWater(false); this.scene.add(this.water);
-    this.sky = makeSky(0x3f9be8, 0xcfeeff); this.scene.add(this.sky); this.amb = new Ambience(this); this.events = new Events(this); this.crew = new CrewMates(this);
+    this.sky = makeSky(0x3f9be8, 0xcfeeff); this.scene.add(this.sky); this.amb = new Ambience(this); this.events = new Events(this); this.crew = new CrewMates(this); this.folk = new Folk(this);
     this.fx = new FX(this.scene, this.cam); this.nums = new DmgNums(document.getElementById('nums'));
     this.vm = new ViewModel(); this.tpv = new ThirdPerson(this);
     this.enemies = []; this.npcs = []; this.projs = []; this.island = null; this.cut = null; this.t = 0; this.paused = false;
@@ -81,7 +84,7 @@ export class Game {
   }
   // ---------------- islands ----------------
   loadIsland(id, arrive = true) {
-    if (this.events) this.events.reset(); if (this.crew) this.crew.clear();
+    if (this.events) this.events.reset(); if (this.crew) this.crew.clear(); if (this.folk) this.folk.clear();
     const disp = (root) => root.traverse(o => { if (o.geometry && o.geometry !== this.shadowGeo && o.geometry !== this.fx.sphGeo) o.geometry.dispose(); if (o.material && o.material !== WORLD_MAT && o.material.userData && !o.material.userData.keep && o.isSkinnedMesh && !o.userData.isOutline) o.material.dispose(); });
     if (this.island) { this.scene.remove(this.island.group); disp(this.island.group); for (const e of this.enemies) disp(e.c.root); for (const n of this.npcs) { disp(n.c.root); n.mark && disp(n.mark); } for (const o of this.fakes || []) disp(o.c.root); this.net.islandChanged(); }
     for (const e of this.enemies) this.scene.remove(e.c.root); for (const n of this.npcs) { this.scene.remove(n.c.root); if (n.mark) this.scene.remove(n.mark); }
@@ -97,6 +100,12 @@ export class Game {
     const tr = Object.values(STYLES).filter(st => st.island === I.id); if (tr.length && !I.npcs.some(n => n.role === 'trainer')) { const g0 = I.npcs.find(n => n.role === 'quest') || { x: 0, z: I.R * 0.4 };
       I.npcs.push({ id: 'trainer', look: 'smith', name: tr[0].name + ' Master', role: 'trainer', x: g0.x - 3.2, z: g0.z - 3, ry: Math.PI / 2, over: { shirt: tr[0].col, band: 0xffffff, hairS: 'buzz', sash: 0x1a1a1a, mouth: 'line' } }); }
     for (const n of I.npcs) this.spawnNpc(n);
+    try { decorate(this, I); } catch (err) { console.warn('decor', err); } try { this.folk.spawn(I); } catch (err) { console.warn('folk', err); }
+    { const fd = I.npcs.find(n => n.shop === 'rot'); if (fd) { const fx = Math.sin(fd.ry || 0), fz = Math.cos(fd.ry || 0); const st = new B.Group(); const tx = fd.x + fx * 1.5, tz = fd.z + fz * 1.5; st.position.set(tx, I.hf ? I.hf(tx, tz) : this.groundAt(tx, tz), tz); st.rotation.y = fd.ry || 0;
+      const wood = new B.MeshToonMaterial({ color: 0x8a5a32 }), cloth = new B.MeshToonMaterial({ color: 0x6a2a8a }); const top = new B.Mesh(new B.BoxGeometry(2.4, 0.12, 0.9), wood); top.position.y = 0.9; st.add(top); const cl = new B.Mesh(new B.BoxGeometry(2.45, 0.5, 0.92), cloth); cl.position.y = 0.66; st.add(cl);
+      for (const [x, z] of [[-1.1, -0.38], [1.1, -0.38], [-1.1, 0.38], [1.1, 0.38]]) { const lg = new B.Mesh(new B.BoxGeometry(0.1, 0.9, 0.1), wood); lg.position.set(x, 0.45, z); st.add(lg); }
+      const fr = []; FS.stockFor(I.id).slice(0, 3).forEach((o, i) => { const d = new B.Mesh(new B.CylinderGeometry(0.2, 0.24, 0.08, 14), new B.MeshToonMaterial({ color: 0xd8c8a0 })); d.position.set(-0.75 + i * 0.75, 1.0, 0); st.add(d); const m = makeDevilFruit(o.id, 0.42); m.position.set(-0.75 + i * 0.75, 1.3, 0); m.userData.baseY = 1.3; st.add(m); fr.push(m); });
+      I.group.add(st); setOutlinesVisible(st); I.updaters.push(dt => { for (const m of fr) m.userData.spin(dt, this.t); }); } }
     fakeSpawn(this); this.crew.spawn();
     const sp = arrive && I.dock ? [I.dock.x, I.dock.z - 2] : I.spawn;
     this.p.pos.set(sp[0], this.groundAt(sp[0], sp[1]), sp[1]); this.p.yaw = arrive ? 0 : Math.PI * 0.95; this.p.pitch = -0.05; this.p.vy = 0;
@@ -151,7 +160,8 @@ export class Game {
     e.hp -= dmg; e.flash = 0.12; e.hitT = o.stun ?? 0.22; e.aggro = true; if (!e.boss) { e.state = 'hit'; e.atk = 0; }
     const kb = o.kb ?? 3; tmp.copy(e.c.root.position).sub(o.from || this.p.pos).setY(0).normalize(); e.vel.addScaledVector(tmp, kb * (e.boss ? 0.3 : 1)); if (o.up) e.vy = o.up * (e.boss ? 0.2 : 1);
     this.nums.spawn(this.chest(e, V()).add(new B.Vector3(0, 0.5, 0)), dmg, crit ? 'crit' : (o.cls || ''));
-    this.fx.burst(this.chest(e, V()), 8, o.col || 0xffe6a0, { speed: 5, size: 0.25, life: 0.35 });
+    { const hp0 = this.chest(e, V()); const el = o.el || (o.mast && o.mast.startsWith('fr:') ? elementOf(o.mast.slice(3), elementFromColor(o.col || 0xffe6a0)) : elementFromColor(o.col || 0xffe6a0)); const pw = (o.kb ?? 3) / 3.5 + (crit ? 0.6 : 0); const dirv = tmp.clone(); dirv.y = 0.3;
+      if (o.remote) this.fx.burst(hp0, 6, o.col || 0xffe6a0, { speed: 5, size: 0.25, life: 0.35 }); else { this.fx.impact(hp0.addScaledVector(dirv, -0.3), el, pw, dirv); audio.sfx(o.snd || (o.mast && o.mast.startsWith('fr:') ? 'heavy' : 'punch'), { vol: Math.min(1.2, 0.6 + pw * 0.3) }); if (crit) { this.speedLines(0.7); this.camPunch(0.02, 3); } } e.kbPose = Math.min(1, 0.4 + pw * 0.4); }
     this.save.stats.dmg += dmg; this.p.special = Math.min(100, this.p.special + dmg * 0.04);
     if (o.mast) { const killing = e.hp <= 0; const amt = 1 + (killing ? (e.boss ? 40 : 5) : 0); let up = false; for (let i = 0; i < amt; i++) if (ST.addMastery(this.save, o.mast, 1)) up = true;
       if (up) { const L = ST.mastery(this.save, o.mast).lvl; this.ui.toast(`${o.mastName || 'Mastery'} up! Lv ${L}`, 'mast'); if ([10, 25, 50].includes(L) || Object.values(SP_REQ).includes(L)) { this.ui.toast(`🔓 New move unlocked at mastery ${L}!`, 'rare'); this.ui.updateMoves(); } } }
@@ -212,7 +222,11 @@ export class Game {
     if (styleOf(this.save).id === 'kenbun' && Math.random() < 0.15) { this.ui.toast('Read it! (Kenbunshoku Dodge)', 'mast'); p.iframe = 0.3; return; }
     if (this.save.haki && this.save.haki.ken && Math.random() < (hk(this.save, 'ken', 1) ? 0.35 : 0.25)) { this.ui.toast(hk(this.save, 'ken', 3) ? 'Dodged! Future Sight: next hit x2' : 'Dodged! (Observation Haki)', 'mast'); p.iframe = 0.3; if (hk(this.save, 'ken', 3)) p.fsight = 1; return; }
     let d = dmg * this.st.def;
-    if (IN.held.block && from) { this.fwdFlat(tmp); tmp2.copy(from).sub(p.pos).setY(0).normalize(); if (tmp.dot(tmp2) > 0.2) { d *= styleOf(this.save).id === 'tekkai' ? 0.12 : 0.2; this.fx.burst(this.eyePos().clone().addScaledVector(tmp, 0.8), 6, 0x9fd3ff, { speed: 3, size: 0.2, life: 0.25 }); this.ui.toast('Blocked!', 'blk'); } }
+    const blocking = IN.held.block && !(p.gbreakT > 0);
+    if (blocking && from) { this.fwdFlat(tmp); tmp2.copy(from).sub(p.pos).setY(0).normalize(); if (tmp.dot(tmp2) > 0.2) { d *= styleOf(this.save).id === 'tekkai' ? 0.12 : 0.2;
+      const fp = this.eyePos().clone().addScaledVector(this.fwd(V()), 0.9).add(new B.Vector3(0, -0.2, 0)); this.fx.sparks(fp, 14, 0xfff0b0, { speed: 9, dir: tmp2.clone().multiplyScalar(-1) }); this.fx.shock(fp, 0x7ad8ff, 0.42, 0.28, 0.9); this.fx.shock(fp.clone().addScaledVector(tmp, 0.05), 0xffffff, 0.25, 0.18, 0.7);
+      this.vm.blockHit(); audio.sfx('block'); this.camPunch(0.012, 0, (Math.random() - 0.5) * 0.02); p.guard = (p.guard ?? 100) - (14 + dmg / Math.max(1, this.st.maxHp) * 160);
+      if (p.guard <= 0) { p.guard = 0; p.gbreakT = 1.1; this.vm.guardBreak(); audio.sfx('guardbreak'); this.ui.banner('GUARD BREAK!', 'Staggered'); this.camPunch(0.05, 4, 0.04); d = dmg * this.st.def * 0.6; p.stagger = 0.6; } else this.ui.toast('Blocked!', 'blk'); } } else if (from) audio.sfx('hurt');
     d = Math.round(d); this.save.hp -= d; p.hurtT = 0.35; this.fx.shake = Math.min(1, this.fx.shake + 0.25); this.ui.hurt();
     if (from && o.kb) { // own vector (never alias the shared tmp scratch vector), capped, and replaces rather than stacks
       const k = new B.Vector3(p.pos.x - from.x, 0, p.pos.z - from.z); if (k.lengthSq() < 1e-6) this.fwdFlat(k).multiplyScalar(-1); k.normalize();
@@ -242,6 +256,11 @@ export class Game {
     this.projs.push({ ...o, mesh: m, age: 0, hit: new Set() });
   }
   // ---------------- player actions ----------------
+  camPunch(p = 0.02, f = 3, r = 0) { const k = this.kick || (this.kick = { p: 0, f: 0, r: 0 }); k.p = Math.max(k.p, p); k.f = Math.max(k.f, f); k.r = r || k.r; }
+  speedLines(k = 1) { const el = document.getElementById('speedlines'); if (!el) return; el.style.setProperty('--k', k); el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); }
+  slashFx(col, side = 1, big = false) { const cam = this.cam; const fw = this.fwd(V()); const right = new B.Vector3(1, 0, 0).applyQuaternion(cam.quaternion), up = new B.Vector3(0, 1, 0).applyQuaternion(cam.quaternion); const tilt = side * (0.35 + Math.random() * 0.25);
+    const r2 = right.clone().multiplyScalar(Math.cos(tilt)).addScaledVector(up, Math.sin(tilt)), u2 = up.clone().multiplyScalar(Math.cos(tilt)).addScaledVector(right, -Math.sin(tilt)); if (side < 0) r2.multiplyScalar(-1);
+    const c = this.eyePos().clone().addScaledVector(fw, 2.0).addScaledVector(u2, big ? -1.1 : -0.95); this.fx.slash(c, r2, u2, col, { r: big ? 1.55 : 1.25, w: big ? 0.42 : 0.3, a0: 2.75, a1: 0.35, dur: big ? 0.38 : 0.3, sweep: 0.4 }); }
   musicTheme() { const P = this.p.pos; let boss = false, near = false; for (const e of this.enemies) { if (e.dead || !e.aggro) continue; const d = e.c.root.position.distanceTo(P); if (e.boss && !e.ext && d < 45) boss = true; else if (d < 22) near = true; }
     if (boss) return 'boss'; if (near || (this.events && this.events.cur && ['seaking', 'buster', 'davy'].includes(this.events.cur.kind))) this._battleT = 5; if ((this._battleT = (this._battleT || 0) - 0.5) > 0) return 'battle'; return this.amb && this.amb.isNight() ? 'night' : 'island'; }
   factionMul() { const fr = ST.factionRank(this.save); return fr.marine ? { ber: 1, xp: 1 + fr.tier * 0.05 } : { ber: 1 + fr.tier * 0.05, xp: 1 }; }
@@ -256,21 +275,21 @@ export class Game {
       const st = styleOf(S); const key = 'fs:' + st.id; const kickHit = st.kick && p.combo % 2 === 0; if (kickHit) this.vm.doKick(); const hits = this.enemiesInCone(kickHit ? 3.1 : 2.7, 0.45);
       const dmg = this.baseDmg() * st.pow * ST.mastMul(S, key) * (p.combo === 4 ? 1.8 : 1) * (S.race === 'Mink' ? 1.05 : 1) * (st.needsHaki && S.haki && S.haki.buso ? 1.1 : 1);
       const heavy = ['sumo', 'giant'].includes(st.id) ? 1.8 : 1; const col = st.id === 'brawler' && S.race === 'Mink' ? 0x9fe8ff : st.col;
-      if (st.id !== 'brawler') this.fx.burst(this.eyePos().clone().addScaledVector(this.fwd(tmp), 1.3).add(new B.Vector3(0, kickHit ? -0.7 : -0.2, 0)), 6, col, { speed: 3, size: 0.25, life: 0.3, grav: 0 });
-      for (const e of hits) this.damageEnemy(e, dmg, { kb: (p.combo === 4 ? 7 : 2.5) * heavy, mast: key, mastName: st.name, col, cls: st.id === 'brawler' ? '' : 'fruit' });
-      if (hits.length) { this.fx.shake = Math.min(1, this.fx.shake + 0.08); this.hitstop = 0.04; }
+      audio.sfx('whoosh', { vol: p.combo === 4 ? 1.2 : 0.7 }); if (st.id !== 'brawler') this.fx.burst(this.eyePos().clone().addScaledVector(this.fwd(tmp), 1.3).add(new B.Vector3(0, kickHit ? -0.7 : -0.2, 0)), 6, col, { speed: 3, size: 0.25, life: 0.3, grav: 0 }); if (kickHit) this.slashFx(col, this.vm.side, false);
+      for (const e of hits) this.damageEnemy(e, dmg, { kb: (p.combo === 4 ? 7 : 2.5) * heavy, mast: key, mastName: st.name, col, cls: st.id === 'brawler' ? '' : 'fruit', el: st.el || elementFromColor(col), snd: p.combo === 4 || heavy > 1 ? 'heavy' : 'punch' });
+      if (hits.length) { this.fx.shake = Math.min(1, this.fx.shake + 0.08); this.hitstop = p.combo === 4 ? 0.08 : 0.045; this.camPunch(p.combo === 4 ? 0.035 : 0.015, p.combo === 4 ? 5 : 2, (Math.random() - 0.5) * 0.02); if (p.combo === 4 || heavy > 1) this.speedLines(1); }
     } else if (slot === 'sword') {
       const sw = SWORDS[S.eq.sword]; p.atkCd = 0.42 / sw.spd; this.vm.doSwing(); const key = 'sw:' + S.eq.sword;
       const hits = this.enemiesInCone(3.3, 0.25); const dmg = swordDmg(S, S.eq.sword) * (1 + S.lvl * 0.06) * this.st.dmg * ST.mastMul(S, key) * (sw.santoryu ? 1.15 : 1);
-      this.fwd(tmp); this.fx.burst(this.eyePos().clone().addScaledVector(tmp, 1.6), 10, 0xeef6ff, { speed: 3, size: 0.18, life: 0.2, grav: 0, spread: 1.2 });
-      for (const e of hits) this.damageEnemy(e, dmg, { kb: 3.5, mast: key, mastName: sw.name, col: 0xffffff });
-      if (hits.length) { this.fx.shake += 0.1; this.hitstop = 0.05; }
+      const scol = sw.aura || sw.col || 0xbfe0ff; this.slashFx(scol === 0xb9b9b9 ? 0xbfe0ff : scol, this.vm.side, sw.rar >= 4); audio.sfx('slash');
+      for (const e of hits) this.damageEnemy(e, dmg, { kb: 3.5, mast: key, mastName: sw.name, col: 0xffffff, el: 'slash', snd: 'slashhit' });
+      if (hits.length) { this.fx.shake += 0.1; this.hitstop = 0.06; this.camPunch(0.012, 2.5, this.vm.side * 0.015); }
     } else if (slot === 'gun') {
       const g = GUNS[S.eq.gun]; p.atkCd = g.cd; this.vm.doShoot(); const key = 'gn:' + S.eq.gun;
       const o = this.eyePos().clone(); const d = this.fwd(V()); const r = this.rayEnemy(o, d, g.range);
       const end = o.clone().addScaledVector(d, r ? r.d : g.range); const muzzle = o.clone().addScaledVector(d, 0.6).add(new B.Vector3(0, -0.15, 0));
-      this.fx.beam(muzzle, end, 0xffe6a0, 0.05, 0.12); this.fx.burst(muzzle, 6, 0xffb040, { speed: 3, size: 0.2, life: 0.15, grav: 0 }); this.fx.shake += 0.06;
-      if (r) this.damageEnemy(r.e, g.dmg * (1 + S.lvl * 0.06) * this.st.dmg * ST.mastMul(S, key), { kb: 2, mast: key, mastName: g.name });
+      this.fx.beam(muzzle, end, 0xffe6a0, 0.07, 0.1); this.fx.beam(muzzle, end, 0xffffff, 0.025, 0.06); this.fx.orb(muzzle, 0xffd070, 0.22, 0.06); this.fx.sparks(muzzle, 8, 0xffc060, { speed: 10, dir: d, up: 0, life: 0.12, grav: 0 }); this.fx.burst(muzzle, 5, 0x9a9a9a, { speed: 1.5, up: 1, size: 0.35, life: 0.6, grav: -1 }); this.fx.shake += 0.06; audio.sfx('gun'); this.camPunch(0.03, 1.5, (Math.random() - 0.5) * 0.015);
+      if (r) this.damageEnemy(r.e, g.dmg * (1 + S.lvl * 0.06) * this.st.dmg * ST.mastMul(S, key), { kb: 2, mast: key, mastName: g.name, el: 'phys', snd: 'punch' }); else this.fx.sparks(end, 6, 0xffe0a0, { speed: 5 });
     }
   }
   seaDrain() { return !!(this.p.swim && this.save.eq.fruit); }
@@ -332,7 +351,7 @@ export class Game {
     p.atkCd -= dt; p.comboT -= dt; p.dashCd -= dt; p.iframe -= dt; p.hurtT -= dt;
     for (const k in p.cds) p.cds[k] = Math.max(0, p.cds[k] - dt);
     // movement
-    const mv = ctl ? this.moveVec() : V(); let speed = this.st.spd * (IN.held.block ? 0.45 : 1) * (p.swim ? (S.eq.fruit ? 0.35 : S.race === 'Fish-Man' ? 1.3 : 0.6) : 1);
+    const mv = ctl ? this.moveVec() : V(); let speed = this.st.spd * (IN.held.block ? 0.45 : 1) * (p.gbreakT > 0 ? 0.4 : 1) * (p.swim ? (S.eq.fruit ? 0.35 : S.race === 'Fish-Man' ? 1.3 : 0.6) : 1);
     let vx = mv.x * speed, vz = mv.z * speed;
     if (p.dash > 0) { p.dash -= dt; vx = p.dashDir.x * 24; vz = p.dashDir.z * 24; }
     if (p.kb) { vx += p.kb.x; vz += p.kb.z; p.kb.multiplyScalar(Math.exp(-dt * 8)); if (p.kb.lengthSq() < 0.01) p.kb = null; }
@@ -367,8 +386,9 @@ export class Game {
     if (!this.cut) {
       const bob = p.moving ? Math.sin(p.phase) * 0.05 : 0;
       this.cam.position.set(p.pos.x + (Math.random() - 0.5) * shake, p.pos.y + this.st.eye + bob + (p.swim ? -0.2 : 0) - (this.seat ? 0.55 * (this.st.eye / 1.6) : 0) + (Math.random() - 0.5) * shake, p.pos.z);
-      this.cam.rotation.order = 'YXZ'; this.cam.rotation.set(p.pitch, p.yaw, 0); this.cam.up.set(0, 1, 0);
-      const tf = p.dash > 0 ? 86 : 72; if (Math.abs(this.cam.fov - tf) > 0.1) { this.cam.fov = damp(this.cam.fov, tf, 10, dt); this.cam.updateProjectionMatrix(); }
+      const ck = this.kick || { p: 0, r: 0, f: 0 }; this.cam.rotation.order = 'YXZ'; this.cam.rotation.set(p.pitch + ck.p, p.yaw, ck.r); this.cam.up.set(0, 1, 0);
+      if (this.kick) { const k = this.kick; k.p *= Math.exp(-dt * 14); k.r *= Math.exp(-dt * 10); k.f *= Math.exp(-dt * 9); }
+      const tf = (p.dash > 0 ? 86 : 72) - (this.kick ? this.kick.f : 0); if (Math.abs(this.cam.fov - tf) > 0.1) { this.cam.fov = damp(this.cam.fov, tf, 10, dt); this.cam.updateProjectionMatrix(); }
     } else this.cut.update(dt);
     if (this.preview) { if (this.tpv.body) this.tpv.body.root.visible = false; } else this.tpv.update(dt);
     this.net.update(dt);
@@ -380,7 +400,9 @@ export class Game {
     this.water.userData.mat.uniforms.t.value = this.t; this.water.position.set(Math.round(this.cam.position.x / 10) * 10, -1.0, Math.round(this.cam.position.z / 10) * 10);
     this.sky.position.copy(this.cam.position);
     this.fx.update(dt); this.nums.update(dt, this.cam);
-    this.vm.update(dt, { moving: p.moving, phase: p.phase, block: IN.held.block && ctl });
+    p.gbreakT = Math.max(0, (p.gbreakT || 0) - dt); const blk = IN.held.block && ctl && !(p.gbreakT > 0); if (!blk) p.guard = Math.min(100, (p.guard ?? 100) + dt * 30);
+    { const gb = document.getElementById('guardBar'); if (gb) { const show = blk || p.gbreakT > 0 || (p.guard ?? 100) < 100; gb.style.opacity = show ? 1 : 0; gb.firstChild.style.width = (p.guard ?? 100) + '%'; gb.classList.toggle('broke', p.gbreakT > 0); } }
+    this.vm.update(dt, { moving: p.moving, phase: p.phase, block: blk });
     this.updateBlobs(); this.updateBars();
     this.ui.frame(dt);
     this.saveT = (this.saveT || 0) + dt; if (this.saveT > 8) { this.saveT = 0; ST.save(S); }
@@ -405,7 +427,7 @@ export class Game {
         if (e.deadT > (e.boss ? 60 : 14)) { e.dead = false; e.hp = e.max; R.visible = true; R.rotation.x = 0; R.position.set(e.home.x, this.island.hf(e.home.x, e.home.z), e.home.z); e.state = 'idle'; e.aggro = false; e.phase2 = false; if (e.boss) this.bossIntroDone[e.s.type] = false; } continue; }
       const toP = tmp.copy(p.pos).sub(R.position); toP.y = 0; const dist = toP.length();
       R.visible = dist < far; if (dist > far && !e.aggro) continue;
-      e.flash -= dt; e.hitT -= dt; e.cd -= dt; e.skillCd -= dt;
+      e.flash -= dt; e.hitT -= dt; e.cd -= dt; e.skillCd -= dt; if (e.kbPose > 0 || R.rotation.x) { e.kbPose = Math.max(0, (e.kbPose || 0) - dt * 3.5); const kp = e.kbPose; R.rotation.x = -kp * kp * (e.boss ? 0.12 : 0.45); }
       const def = e.def; let spd = def.spd * (e.phase2 ? 1.3 : 1); let moving = 0;
       if (this.cut || this.dead) { e.anim.move = 0; animChar(e.c, { ...e.anim, taunt: this.cut && this.cut.boss === e }, this.t); this.flashMat(e); continue; }
       // boss intro trigger
@@ -528,6 +550,7 @@ export class Game {
     }
   }
   updateNpcs(dt) {
+    this.folk && this.folk.update(dt);
     const near = this.nearestNpc(); this.ui.prompt(near && !this.cut ? `${near.name}` : null);
     for (const n of this.npcs) { const d = n.c.root.position.distanceTo(this.p.pos); if (d < 6) { const want = Math.atan2(this.p.pos.x - n.c.root.position.x, this.p.pos.z - n.c.root.position.z); n.c.root.rotation.y = damp(n.c.root.rotation.y, n.c.root.rotation.y + angDiff(n.c.root.rotation.y, want), 4, dt); }
       animChar(n.c, { talk: d < 4, move: 0 }, this.t + n.x); if (n.mark) { n.mark.rotation.y += dt * 2; n.mark.position.y = n.c.root.position.y + n.c.height + 0.6 + Math.sin(this.t * 3) * 0.1;

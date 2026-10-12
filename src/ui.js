@@ -120,7 +120,7 @@ export class UI {
   toggle(id) { if (this.modal === id) this.close(); else this.open(id); }
   _rz() { if (this._rzOn) return; this._rzOn = 1; let t; const f = () => { clearTimeout(t); t = setTimeout(() => { this._chartDraw && this._chartDraw(); }, 180); }; addEventListener('resize', f); addEventListener('orientationchange', f); }
   open(id, arg) { window.__audio && window.__audio.sfx('open', { gap: 200 }); this._rz(); this._openT = performance.now(); IN.resetTouch && IN.resetTouch();
-    this.close(true); this.modal = id; const P = $('#panel'); P.style.display = 'flex'; P.className = 'panel p-' + id;
+    const wasOpen = !!this.modal; this.close(true); this.modal = id; const P = $('#panel'); P.style.display = 'flex'; P.className = 'panel p-' + id + (wasOpen ? '' : ' pin');
     if (document.pointerLockElement) document.exitPointerLock();
     const fns = { inv: () => this.invHtml(arg), map: () => this.mapHtml(), pause: () => this.pauseHtml(), shop: () => this.shopHtml(arg), quest: () => this.questHtml(arg), dock: () => this.dockHtml(arg), trader: () => this.traderHtml(arg), player: () => this.playerHtml(arg), ptrade: () => this.ptradeHtml(), style: () => this.styleHtml(arg), dex: () => this.dexHtml(arg), dojo: () => this.dojoHtml(arg) };
     let body; try { const f = fns[id]; if (!f) throw new Error('no panel ' + id); body = f(); if (!body || typeof body !== 'string') throw new Error('empty'); }

@@ -1,11 +1,13 @@
 // Unique procedural Devil Fruit icons (canvas -> dataURL, cached). Each fruit = its own colour pair,
 // swirl pattern (seeded from the id), rarity glow and a power emblem.
 import { FRUITS, RCOL } from './data.js';
+import { fruitIcon2 } from './fruitart.js';
 const EMO = { gomu: '🥊', mera: '🔥', pika: '✨', sube: '💧', bane: '🌀', toge: '📌', kilo: '🏋️', bara: '✂️', bomu: '💣', bari: '🛡️', horo: '👻', mane: '🎭', awa: '🫧', doru: '🕯️', noro: '🐌', hana: '🌸', kage: '🦇', doku: '☠️', mero: '💘', pero: '🍬', moku: '💨', suna: '🏜️', yuki: '☃️', gasu: '☁️', numa: '🟤', mochi: '🍡', hie: '❄️', ito: '🧵', ope: '🔷', nikyu: '🐾', yami: '🌑', goro: '⚡', magu: '🌋', gura: '💥', phoenix: '🐦‍🔥', soru: '💗', buddha: '🙏', kitsune: '🦊', orochi: '🐍', zushi: '🪐', supa: '🔪', ori: '⛓️', baku: '😋', beri: '🪙', doa: '🚪', nagi: '🤫', beta: '🟢', sabi: '🟠', atsu: '♨️', woshu: '🧼', ton: '⚖️', horu: '💉', hobi: '🧸', fuwa: '🎈', jiki: '🧲', sui: '🏊', toki: '⏳', bisu: '🍪', mira: '🪞', shiro: '🏰', mori: '🌳', goru: '🥇', ptera: '🦅', brachio: '🦕', onyudo: '🗿', pegasus: '🦄', kumo: '🕷️', thunderbird: '💀', raijin: '🐆', leviathan: '🦖', nika: '☀️', seiryu: '🐉', sound: '🎵', makami: '🐺' };
 const cache = {};
 const hx = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
 function hash(s) { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; }
-export function fruitIcon(id, size = 96) {
+export function fruitIcon(id, size = 96) { if (FRUITS[id]) return fruitIcon2(id, size, EMO[id] || (FRUITS[id].short || FRUITS[id].name)[0]); return fruitIconOld(id, size); }
+function fruitIconOld(id, size = 96) {
   const k = id + size; if (cache[k]) return cache[k]; const f = FRUITS[id]; if (!f) return '';
   const cv = document.createElement('canvas'); cv.width = cv.height = size; const c = cv.getContext('2d'); const S = size, cx = S / 2, cy = S * 0.55, R = S * 0.33;
   const h = hash(id); const rnd = (i) => ((h >>> (i * 3)) & 1023) / 1023;

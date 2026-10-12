@@ -1,4 +1,6 @@
 import { THREE } from './engine.js';
+import { audio } from './audio.js';
+import { elementOf } from './elements.js';
 import { FRUITS, SWORDS, GUNS, GUN_SKILLS, swordDmg, T2 } from './data.js';
 import * as ST from './state.js';
 import { STYLES, styleOf } from './styles.js';
@@ -44,6 +46,7 @@ const BASIC = {}; { const set = (k, ids) => ids.split(' ').forEach(id => BASIC[i
   set('pulse', 'gura zushi sube kilo ton ori baku doa beta horu sui toki bisu shiro soru buddha thunderbird mane'); }
 export const basicKind = id => BASIC[id] || 'pulse';
 export function fruitBasic(g, id, combo) {
+  audio.elementSfx(elementOf(id), { vol: combo === 4 ? 0.8 : 0.45 });
   const S = g.save; const col = fcol(id); const key = 'fr:' + id; const f = FRUITS[id]; const kind = basicKind(id); const big = combo === 4;
   const tf = S.tf ? (S.tf === 2 ? 1.35 : 1.15) : 1; // Zoan transform boosts claws
   const dmg = g.baseDmg() * (1 + f.rar * 0.18) * 0.95 * ST.mastMul(S, key) * (big ? 1.8 : 1) * (kind === 'claw' ? tf : 1);
@@ -75,6 +78,7 @@ export function fruitBasic(g, id, combo) {
 export function castMove(g, m) {
   const S = g.save, p = g.p; let { dmg, key } = fd(g, m); if (m.src === 'fruit' && S.awake && S.awake[S.eq.fruit]) dmg *= 1.5; const col = m.src === 'fruit' ? fcol(S.eq.fruit) : m.src === 'sword' ? 0xdff0ff : m.src === 'gun' ? 0xffb04a : styleOf(S).col;
   const eye = () => g.eyePos().clone(); const fw = () => g.fwd(V()); const fl = () => g.fwdFlat(V());
+  if (m.src === 'fruit') { const el = elementOf(S.eq.fruit); audio.elementSfx(el); g.camPunch && g.camPunch(0.02, 4); } else if (m.src === 'sword') { audio.sfx('slash', { vol: 1.2 }); g.slashFx && g.slashFx(col, 1, true); setTimeout(() => g.slashFx && g.slashFx(col, -1, true), 90); } else if (m.src === 'gun') audio.sfx('gun'); else audio.sfx('heavy', { vol: 0.6 });
   const O = { mast: key, mastName: m.name, col, cls: m.src === 'fruit' ? 'fruit' : '' };
   title(g, m.name, col);
   if (m.k.startsWith('g:')) return generic(g, m.k.slice(2), dmg, col, O, m);
@@ -119,6 +123,7 @@ export function castMove(g, m) {
   }
 }
 export function castSpecial(g, sp) {
+  audio.sfx('special'); g.speedLines && g.speedLines(1);
   const p = g.p; const S = g.save; let { dmg, key } = fd(g, { src: 'fruit', dmg: sp.dmg }); if (S.awake && S.awake[S.eq.fruit]) dmg *= 1.5; const col = S.eq.fruit === 'pika' ? 0xfff27a : fcol(S.eq.fruit);
   const F = FRUITS[S.eq.fruit] || {}; const ultra = F.rar === 7; const style = sp.style || 'rain';
   const start = g.cam.position.clone(); const startQ = g.cam.quaternion.clone(); const look = new B.PerspectiveCamera(); let t = 0; const D = ultra ? 5.6 : 4.4; let drops = 0;

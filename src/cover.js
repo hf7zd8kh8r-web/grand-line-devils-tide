@@ -1,7 +1,8 @@
 import { THREE, renderer, Builder, mat, WORLD_MAT, setOutlinesVisible } from './engine.js';
 import { makeWater, makeSky } from './world.js';
 import { makeShip, makeFruit, makeChar, makeAvatar } from './models.js';
-import { ULTRA } from './data.js';
+import { makeDevilFruit } from './fruitart.js';
+import { ULTRA, FRUITS } from './data.js';
 import { lookOverrides } from './style.js';
 import { FX } from './fx.js';
 const B = THREE;
@@ -36,7 +37,7 @@ export class Cover {
     // ultra fruit
     this.ultra = ULTRA[Math.floor(Math.random() * ULTRA.length)];
     if (location.search.includes('fruit=')) { const id = new URLSearchParams(location.search).get('fruit'); this.ultra = ULTRA.find(u => u.id === id) || this.ultra; }
-    this.fruit = makeFruit(this.ultra.col[0], this.ultra.col[1], 2, 1.5); this.fruit.position.set(0, 2.6, 4); s.add(this.fruit);
+    this.fruit = FRUITS[this.ultra.id] ? makeDevilFruit(this.ultra.id, 1.6, { glow: false }) : makeFruit(this.ultra.col[0], this.ultra.col[1], 2, 1.5); this.fruit.position.set(0, 2.6, 4); s.add(this.fruit);
     this.aura = new B.Mesh(new B.SphereGeometry(1, 24, 16), new B.MeshBasicMaterial({ color: this.ultra.glow, transparent: true, opacity: 0.18, blending: B.AdditiveBlending, depthWrite: false })); this.aura.scale.setScalar(0.9); this.fruit.add(this.aura);
     this.fruitLight = new B.PointLight(this.ultra.glow, 30, 18, 2); this.fruitLight.position.copy(this.fruit.position); s.add(this.fruitLight);
     this.t = 0; this.state = 'cover'; this.burstT = 0;
