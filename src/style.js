@@ -59,8 +59,27 @@ export function lookOverrides(look, race, faction, cosEq = {}) {
   for (const k of Object.keys(o)) if (o[k] === undefined) delete o[k];
   return o;
 }
+// curated, coordinated outfits so fake players look like stylish real players rather than random noise
+const STYLE_PRESETS = [
+  { outfit: 'kimono', top: 5, pants: 4, hairS: 'short', hairC: 6, cos: { hat: 'none', neck: 'sash', face: 'scar' }, mouth: 'line', brow: 'angry' },
+  { outfit: 'jacket', top: 1, pants: 4, cos: { hat: 'tricorn', back: 'capRed', face: 'mustache' }, mouth: 'grin' },
+  { outfit: 'jacket', top: 3, pants: 3, cos: { hat: 'marinecap', back: 'justice', neck: 'gloves' }, mouth: 'line', marine: true },
+  { outfit: 'suit', top: 4, pants: 4, hairS: 'swept', hairC: 2, cos: { face: 'cigar' }, mouth: 'smile' },
+  { outfit: 'open', top: 7, pants: 4, hairS: 'messy', hairC: 0, cos: { hat: 'cowboy', neck: 'scarf' }, mouth: 'grin' },
+  { outfit: 'vest', top: 9, pants: 1, hairS: 'slick', hairC: 2, cos: { back: 'pinkfur', face: 'redshades' }, mouth: 'grin' },
+  { outfit: 'tank', top: 3, pants: 0, hairS: 'buzz', cos: { extra: 'angelw', neck: 'sash' }, mouth: 'smile' },
+  { outfit: 'kimono', top: 8, pants: 4, hairS: 'long', hairC: 0, cos: { extra: 'horns', back: 'capBlack' }, mouth: 'teeth', brow: 'angry' },
+  { outfit: 'suit', top: 4, pants: 4, cos: { hat: 'tophat', face: 'roundg' }, mouth: 'line' },
+  { outfit: 'jacket', top: 10, pants: 2, hairS: 'ponytail', cos: { hat: 'turban', neck: 'scarf' }, mouth: 'smile' },
+  { outfit: 'open', top: 0, pants: 1, hairS: 'spiky', hairC: 0, cos: { hat: 'straw' }, mouth: 'grin' },
+  { outfit: 'vest', top: 4, pants: 4, hairS: 'mohawk', hairC: 5, cos: { face: 'shades', neck: 'gloves' }, mouth: 'teeth' },
+  { outfit: 'jacket', top: 2, pants: 2, hairS: 'afro', cos: { face: 'shades', back: 'longcoat' }, mouth: 'grin' },
+  { outfit: 'tee', top: 6, pants: 1, hairS: 'bun', hairC: 3, cos: { hat: 'chef' }, mouth: 'smile' },
+];
 export function randomLook(r, faction) {
   const pick = a => a[Math.floor(r() * a.length)];
+  if (r() < 0.8) { const pool = STYLE_PRESETS.filter(p => !p.marine || faction === 'Marine'); const P = pick(pool); const L = { skin: Math.floor(r() * SKINS.length), hairS: P.hairS || pick(HAIRS.filter(h => h !== 'bald')), hairC: P.hairC ?? Math.floor(r() * HAIRC.length), eye: Math.floor(r() * EYEC.length), mouth: P.mouth || pick(MOUTHS), brow: P.brow || pick(BROWS)[0], outfit: P.outfit, top: (P.top + (r() < 0.3 ? Math.floor(r() * 3) : 0)) % CLOTH.length, pants: P.pants, hat: 'none' };
+    const cos = {}; for (const [slot, id] of Object.entries(P.cos)) if (id !== 'none' && COSMETICS[id]) cos[slot] = id; return { look: L, cos }; }
   const L = { skin: Math.floor(r() * SKINS.length), hairS: pick(HAIRS.filter(h => h !== 'bald' || r() < 0.3)), hairC: Math.floor(r() * HAIRC.length), eye: Math.floor(r() * EYEC.length), mouth: pick(MOUTHS), brow: pick(BROWS)[0], outfit: pick(OUTFITS)[0], top: Math.floor(r() * CLOTH.length), pants: Math.floor(r() * CLOTH.length), hat: pick(['none', 'none', 'bandana', 'beanie']) };
   const cos = {}; const ids = Object.keys(COSMETICS); for (let i = 0; i < 2; i++) if (r() < 0.6) { const id = pick(ids); cos[COSMETICS[id].slot] = id; }
   return { look: L, cos };

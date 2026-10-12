@@ -1,6 +1,7 @@
 // v3 characters: one skinned mesh + outline per character, 11 bones, anime-ish proportions,
 // real faces (eyes w/ iris+highlight, brows, nose, mouth), hair styles, hats, coats/capes/vests.
 import { THREE, Builder, mat, toonMat, OUTLINE_MAT } from './engine.js';
+import { buildFace } from './face.js';
 const B = THREE;
 const box = (w, h, d) => new B.BoxGeometry(w, h, d);
 const cyl = (rt, rb, h, s = 10) => new B.CylinderGeometry(rt, rb, h, s);
@@ -78,6 +79,16 @@ export function makeChar(lookId, overrides = {}) {
     for (const s of [-1, 1]) A(box(0.04, 0.5, W * 0.95), L.coat, mat(s * W * 0.98, hipY - 0.2, -W * 0.15, 0, 0, s * 0.08), 0, { grad: 0.25 });
     A(box(W * 2.0, 0.12, 0.04), L.coat, mat(0, shY + 0.04, -W * 0.58, -0.3), 1); // popped collar
   }
+  // ---- v6 boss/iconic detail parts ----
+  if (L.epaulets) for (const sd of [-1, 1]) { A(cyl(0.11 * g, 0.12 * g, 0.05, 10), L.epaulets, mat(sd * (W + 0.03), shY + 0.03, 0, 0, 0, sd * 0.25, 1, 1, 0.8), 1, { ot: 0.008 }); for (let i = 0; i < 6; i++) A(cyl(0.008, 0.008, 0.09, 4), L.epaulets, mat(sd * (W + 0.03) + Math.cos(i / 6 * 6.28) * 0.1 * g, shY - 0.03, Math.sin(i / 6 * 6.28) * 0.08, 0, 0, sd * 0.25), 1, { outline: false }); }
+  if (L.collarUp) { const cc = L.collarUp === true ? (L.coat || L.cape || 0x1a1a1a) : L.collarUp; for (let i = 0; i < 9; i++) { const a2 = Math.PI * 0.3 + i / 8 * Math.PI * 1.4; const rr2 = hr * 1.12; A(box(hr * 0.5, 0.26, 0.025), cc, mat(Math.sin(a2) * rr2, shY + 0.13, Math.cos(a2) * rr2 - 0.02, 0, a2, 0), 1, { ot: 0.006 }); } }
+  if (L.longCoat) { const lc = L.longCoat === true ? (L.coat || 0x1a1a1a) : L.longCoat; for (const sd of [-1, 1]) A(box(W * 0.9, 0.62, 0.04), lc, mat(sd * W * 0.55, hipY - 0.5, -W * 0.62, -0.06, 0, sd * 0.05), 0, { grad: 0.3 }); A(box(W * 1.9, 0.62, 0.04), lc, mat(0, hipY - 0.5, -W * 0.7, -0.08), 0, { grad: 0.3 }); }
+  if (L.rope) { for (let i = 0; i < 10; i++) { const a2 = i / 10 * 6.283; A(sph(0.045, 6, 4), L.rope === true ? 0xe8d8a0 : L.rope, mat(Math.cos(a2) * W * 0.95, hipY + 0.14 + (i % 2) * 0.02, Math.sin(a2) * W * 0.68), 0, { outline: false }); } A(box(0.08, 0.22, 0.03), 0xe8d8a0, mat(-W * 0.4, hipY - 0.02, W * 0.7), 0, { outline: false }); }
+  if (L.gourd) { A(sph(0.11, 10, 8), 0xc89a4a, mat(W * 0.9, hipY - 0.05, -0.08), 0, { ot: 0.008 }); A(sph(0.075, 10, 8), 0xc89a4a, mat(W * 0.9, hipY + 0.1, -0.08), 0, { ot: 0.008 }); A(cyl(0.02, 0.02, 0.05, 6), 0xb02020, mat(W * 0.9, hipY + 0.19, -0.08), 0, { outline: false }); }
+  if (L.spikes) for (const sd of [-1, 1]) for (let i = 0; i < 3; i++) A(cone(0.025, 0.09, 5), 0xd8d8d8, mat(sd * (W + 0.02), shY + 0.04 - i * 0.03, 0.04 - i * 0.05, 0, 0, -sd * 1.1), 1, { outline: false });
+  if (L.necklace) for (let i = 0; i < 9; i++) { const a2 = (i / 8 - 0.5) * 2.2; A(sph(0.025, 6, 4), L.necklace, mat(Math.sin(a2) * W * 0.6, shY - 0.06 - Math.cos(a2) * 0.06, W * 0.62 * Math.cos(a2 * 0.5)), 1, { outline: false }); }
+  if (L.rose) A(sph(0.04, 8, 6), L.rose, mat(-W * 0.5, shY - 0.08, W * 0.7), 1, { outline: false });
+  if (L.earrings) for (const sd of [-1, 1]) A(new B.TorusGeometry(0.025, 0.006, 4, 10), L.earrings, mat(sd * hr * 0.98, hy - 0.08, 0, 0, Math.PI / 2), 2, { outline: false });
   if (L.cape) {
     A(box(W * 2.5, 1.0, 0.04), L.cape, mat(0, shY - 0.45, -W * 0.8, 0.06), 1, { grad: 0.2 });
     for (const s of [-1, 1]) { A(box(0.04, 0.95, W * 0.9), L.cape, mat(s * W * 1.28, shY - 0.43, -W * 0.38, 0, 0, s * 0.06), 1, { grad: 0.2 }); A(sph(0.1 * g, 10, 6), L.cape, mat(s * (W + 0.04), shY + 0.01, -0.01, 0, 0, 0, 1.2, 0.6, 1.1), 1); }
@@ -138,9 +149,9 @@ export function makeChar(lookId, overrides = {}) {
   if (L.earlobes) for (const s of [-1, 1]) A(cyl(0.03, 0.04, 0.22, 6), sk, mat(s * hr * 0.98, hy - 0.15, 0), 2, { outline: false });
   // face — helper places a flat part on the head surface facing outward
   const on = (geo, col, x, y, dz = 0, rz = 0, sx = 1, sy = 1) => { const zz = Math.sqrt(Math.max(0.001, hr * hr - x * x - (y - hy) * (y - hy))) * 0.98 + 0.004 + dz; F(geo, col, mat(x, y, zz, -Math.asin((y - hy) / hr) * 0.9, Math.atan2(x, zz), rz, sx, sy, 1)); };
-  const eyeC = L.eye || 0x2a1a10, ey = hy + 0.005, ex = 0.068;
+  const eyeC = L.eye || 0x2a1a10, ey = hy + 0.005, ex = 0.068; const FACE = !L.bakedFace;
   for (const s of [-1, 1]) {
-    if (L.glasses === 'shades') continue;
+    if (L.glasses === 'shades' || FACE) continue;
     on(disc(0.044, 14), 0xffffff, s * ex, ey, 0, 0, 0.85, 1.15);
     on(disc(0.03, 12), eyeC, s * (ex - 0.004), ey - 0.006, 0.002, 0, 0.9, 1.15);
     on(disc(0.017, 10), 0x0a0a0a, s * (ex - 0.004), ey - 0.008, 0.004);
@@ -152,7 +163,7 @@ export function makeChar(lookId, overrides = {}) {
   if (L.scar) on(box(0.04, 0.008, 0.003), 0x8a3a2a, -0.075, ey - 0.05, 0.003, 0.3);
   if (L.scar === 'x') { on(box(0.16, 0.012, 0.003), 0x8a3a2a, 0, ey - 0.02, 0.006, 0.5); }
   if (!L.saw && !L.clown) A(cone(0.018, 0.045, 5), shade(sk, 0.92), mat(0, hy - 0.035, hr * 0.98 + 0.012, Math.PI / 2), 2, { outline: false });
-  const my = hy - 0.095, mo = L.mouth || 'smile';
+  const my = hy - 0.095, mo = FACE ? 'none' : (L.mouth || 'smile');
   if (mo === 'smile') on(new B.TorusGeometry(0.035, 0.007, 4, 10, Math.PI), 0x5a1e1a, 0, my + 0.012, 0, Math.PI);
   if (mo === 'grin') { on(new B.CircleGeometry(0.05, 12, Math.PI, Math.PI), 0x4a1010, 0, my + 0.012); on(box(0.085, 0.016, 0.002), 0xffffff, 0, my + 0.004, 0.004); }
   if (mo === 'teeth') { on(box(0.11, 0.035, 0.002), 0xffffff, 0, my, 0); for (let i = -2; i <= 2; i++) on(box(0.003, 0.035, 0.002), 0x555555, i * 0.022, my, 0.003); }
@@ -231,7 +242,9 @@ export function makeChar(lookId, overrides = {}) {
   const om = new B.SkinnedMesh(line, OUTLINE_MAT); om.bind(skel, mesh.bindMatrix); om.frustumCulled = false; om.userData.isOutline = true;
   root.add(mesh, om);
   const sc = (L.scale || 1) * sm; root.scale.setScalar(sc);
-  return { root, mesh, bones: { hips, torso, head, armL, armR, legL, legR, foreL, foreR, shinL, shinR }, material, hipY, height: (hy + 0.3) * sc, look: L };
+  const C = { root, mesh, bones: { hips, torso, head, armL, armR, legL, legR, foreL, foreR, shinL, shinR }, material, hipY, height: (hy + 0.3) * sc, look: L };
+  if (FACE) C.face = buildFace(C, L, { hr, hy, headY: shY + 0.02 });
+  return C;
 }
 
 // procedural animation: idle breathing, walk/run with knees+elbows, punch/slam, windup, aim, hit, taunt, talk, sit, wave, death
@@ -257,12 +270,18 @@ export function animChar(c, st, t) {
     B_.legL.rotation.x = -0.3 * k; B_.legR.rotation.x = 0.25 * k;
   }
   if (st.windup) { B_.armR.rotation.x = -2.7; B_.foreR.rotation.x = -0.9; B_.armL.rotation.x = -0.9; B_.foreL.rotation.x = -1.4; B_.torso.rotation.x = -0.22; B_.torso.rotation.y = -0.3; B_.legL.rotation.x = -0.35; B_.shinL.rotation.x = 0.4; }
+  if (st.angry && run < 0.6 && !(st.attack > 0) && !st.windup && !st.aim && !st.taunt) { const bo = Math.sin(t * 7 + id) * 0.04; B_.armR.rotation.set(-1.25 + bo, 0, 0.35); B_.foreR.rotation.x = -1.5; B_.armL.rotation.set(-1.0 - bo, 0, -0.3); B_.foreL.rotation.x = -1.7; B_.torso.rotation.x += 0.12; B_.torso.rotation.y += 0.25; B_.legL.rotation.x += -0.25 * (1 - run); B_.legR.rotation.x += 0.15 * (1 - run); B_.shinL.rotation.x += 0.25 * (1 - run); B_.hips.position.y -= 0.04 * (1 - run) + Math.abs(bo) * 0.3; }
+  else if (st.idleV && run < 0.05 && !st.talk && !(st.attack > 0) && !st.windup) { const cyc = (t * 0.11 + id) % 1;
+    if (cyc > 0.82 && cyc < 0.92) { const k = Math.sin((cyc - 0.82) / 0.1 * Math.PI); B_.armR.rotation.set(-2.6 * k, 0, 0.3 * k); B_.armL.rotation.set(-2.6 * k, 0, -0.3 * k); B_.torso.rotation.x -= 0.15 * k; B_.head.rotation.x -= 0.25 * k; } // stretch
+    else if (cyc > 0.4 && cyc < 0.47) { const k = Math.sin((cyc - 0.4) / 0.07 * Math.PI); B_.armR.rotation.set(-2.3 * k, 0, 0.9 * k); B_.foreR.rotation.x = -1.9 * k; B_.head.rotation.z = 0.15 * k; } // scratch head
+    else if (cyc > 0.15 && cyc < 0.25) { const k = Math.sin((cyc - 0.15) / 0.1 * Math.PI); B_.head.rotation.y += Math.sin(t * 2.5) * 0.7 * k; } } // look around
   if (st.aim) { B_.armR.rotation.x = -1.5; B_.foreR.rotation.x = 0; B_.armL.rotation.x = -1.3; B_.armL.rotation.z = 0.5; B_.foreL.rotation.x = -0.5; }
   if (c._hit > 0.01) { const h = c._hit, sd = c._hs || 1; B_.torso.rotation.x = -0.55 * h; B_.torso.rotation.z = 0.25 * h * sd; B_.torso.rotation.y += 0.3 * h * sd; B_.head.rotation.x = -0.5 * h; B_.head.rotation.z = 0.2 * h * sd; B_.armL.rotation.x = 0.7 * h; B_.armR.rotation.x = 0.7 * h; B_.armL.rotation.z = -0.5 * h; B_.armR.rotation.z = 0.5 * h; B_.hips.position.y -= 0.06 * h; B_.legL.rotation.x += -0.25 * h; B_.shinL.rotation.x += 0.4 * h; }
   if (st.taunt) { B_.armR.rotation.x = -2.9 + Math.sin(t * 9) * 0.15; B_.armL.rotation.x = -2.9 - Math.sin(t * 9) * 0.15; B_.foreR.rotation.x = -0.3; B_.foreL.rotation.x = -0.3; B_.head.rotation.x = -0.25; B_.torso.rotation.x = -0.12; }
   if (st.talk) { B_.armR.rotation.x = -0.7 + Math.sin(t * 3) * 0.2; B_.foreR.rotation.x = -0.9 + Math.sin(t * 2.3) * 0.25; B_.head.rotation.y = Math.sin(t * 0.7) * 0.25; B_.head.rotation.x = Math.sin(t * 4) * 0.04; }
   if (st.wave) { B_.armR.rotation.set(-0.3, 0, 2.5); B_.foreR.rotation.set(0, 0, Math.sin(t * 9) * 0.5); }
   if (st.sit) { B_.hips.position.y = c.hipY - 0.42; B_.legL.rotation.x = B_.legR.rotation.x = -1.45; B_.shinL.rotation.x = B_.shinR.rotation.x = 1.45; B_.armL.rotation.x = B_.armR.rotation.x = -0.75; B_.foreL.rotation.x = B_.foreR.rotation.x = -0.75; B_.armR.rotation.z = 0.05; B_.armL.rotation.z = -0.05; B_.torso.rotation.x = 0.12; if (st.talk) B_.foreR.rotation.x = -0.9 + Math.sin(t * 3) * 0.3; }
+  if (c.face) { c.face.update(dtA, st); if (st.look && st.dead === undefined) { const R = c.root, dx = st.look.x - R.position.x, dz = st.look.z - R.position.z; let yaw = Math.atan2(dx, dz) - R.rotation.y; yaw = Math.atan2(Math.sin(yaw), Math.cos(yaw)); const pit = Math.atan2((st.look.y || 0) - (R.position.y + c.height), Math.hypot(dx, dz)); const ly = Math.max(-0.9, Math.min(0.9, yaw)), lp = Math.max(-0.4, Math.min(0.35, -pit)); c.face.lookYaw += (ly - c.face.lookYaw) * Math.min(1, dtA * 6); c.face.lookPitch += (lp - c.face.lookPitch) * Math.min(1, dtA * 6); } else { c.face.lookYaw *= 1 - Math.min(1, dtA * 3); c.face.lookPitch *= 1 - Math.min(1, dtA * 3); } B_.head.rotation.y += c.face.lookYaw; B_.head.rotation.x += c.face.lookPitch; }
   if (st.dead !== undefined) { // stagger, knees buckle, then topple backwards with a bounce
     const T = st.dead; const s = Math.min(1, T / 0.25); const f = Math.min(1, Math.max(0, (T - 0.15) / 0.45)); const d = f * f * (3 - 2 * f); const bounce = T > 0.6 && T < 0.9 ? Math.sin((T - 0.6) / 0.3 * Math.PI) * 0.12 : 0;
     c.root.rotation.x = -d * 1.5 + bounce; c.root.rotation.z = (c._seed % 1 - 0.5) * 0.5 * d; B_.torso.rotation.x = -0.4 * s * (1 - d) + 0.2 * d; B_.head.rotation.x = -0.5 * s; B_.armL.rotation.z = -1.3 * d - 0.4 * s; B_.armR.rotation.z = 1.3 * d + 0.4 * s; B_.armL.rotation.x = -0.6 * s; B_.armR.rotation.x = -0.6 * s; B_.shinL.rotation.x = 0.8 * s * (1 - d) + 0.4 * d; B_.shinR.rotation.x = 0.8 * s * (1 - d) + 0.3 * d; B_.legL.rotation.x = -0.4 * s * (1 - d); B_.hips.position.y = c.hipY - 0.15 * s * (1 - d); }

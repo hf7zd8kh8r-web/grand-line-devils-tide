@@ -48,7 +48,7 @@ export function buildWindmill() {
   I.hf = hf;
   const b = new Builder();
   b.add(new B.BoxGeometry(1, 1, 1), 0, mat(0, -100, 0), { outline: false }); // seed
-  const terrain = makeTerrain(hf, 170, 85, { paint: (x, z, y) => { const pathD = Math.min(Math.abs(x) < 2.2 && z > -30 && z < 44 ? 0 : 9, Math.abs(z - 6) < 2 && Math.abs(x) < 24 ? 0 : 9); return pathD < 1 && y > 0.9 ? 0xc9a873 : null; } });
+  const terrain = makeTerrain(hf, 170, 85, { paint: I.paint = (x, z, y) => { const pathD = Math.min(Math.abs(x) < 2.2 && z > -30 && z < 44 ? 0 : 9, Math.abs(z - 6) < 2 && Math.abs(x) < 24 ? 0 : 9); return pathD < 1 && y > 0.9 ? 0xc9a873 : null; } });
   I.group.add(terrain);
   const C = I.colliders;
   const H = (x, z, rot, o) => { const c = addHouse(b, x, hf(x, z) - 0.15, z, rot, o); C.push(c); return c; };
@@ -105,7 +105,7 @@ export function buildShells() {
   const hf = islandHF(64, [{ x: 0, z: -24, h: 1.2, s: 22 }, { x: 36, z: 10, h: 3, s: 10 }, { x: -38, z: 6, h: 4, s: 12 }], 1.3, 0.4);
   I.hf = hf; const C = I.colliders;
   const b = new Builder();
-  const terrain = makeTerrain(hf, 170, 85, { grass: 0x7fbf55, paint: (x, z, y) => (Math.abs(x) < 16 && z < -10 && z > -40 && y > 0.9) ? 0xb8b0a0 : (Math.abs(x) < 2.4 && z > -10 && z < 44 && y > 0.9 ? 0xc9b493 : null) });
+  const terrain = makeTerrain(hf, 170, 85, { grass: 0x7fbf55, paint: I.paint = (x, z, y) => (Math.abs(x) < 16 && z < -10 && z > -40 && y > 0.9) ? 0xb8b0a0 : (Math.abs(x) < 2.4 && z > -10 && z < 44 && y > 0.9 ? 0xc9b493 : null) });
   I.group.add(terrain);
   // Marine base walls (gate on south side)
   const by = hf(0, -25), wallC = 0xdfe3ea;
@@ -252,7 +252,7 @@ export function genIsland(id) {
   const bumps = []; for (let i = 0; i < 4; i++) { const a = r() * Math.PI * 2; bumps.push({ x: Math.cos(a) * R * 0.6, z: Math.sin(a) * R * 0.6, h: 2 + r() * 6, s: 8 + r() * 8 }); }
   const hf0 = islandHF(R, bumps, 1.3, d.theme === 'desert' ? 1.2 : 0.5); const hf = HFX[id] ? HFX[id](hf0, R) : hf0; I.hf = hf; const C = I.colliders;
   const b = new Builder();
-  const pal = d.pal; const terrain = makeTerrain(hf, R * 2.6, Math.round(R * 1.3), { grass: pal.grass, grass2: new B.Color(pal.grass).multiplyScalar(0.82).getHex(), sand: pal.sand, rock: pal.rock, paint: (x, z, y) => (Math.abs(x) < 2.4 && z > -20 && z < R * 0.7 && y > 0.9 ? 0xc9b493 : PAINT[id] ? PAINT[id](x, z, y) : null) });
+  const pal = d.pal; const terrain = makeTerrain(hf, R * 2.6, Math.round(R * 1.3), { grass: pal.grass, grass2: new B.Color(pal.grass).multiplyScalar(0.82).getHex(), sand: pal.sand, rock: pal.rock, paint: I.paint = (x, z, y) => (Math.abs(x) < 2.4 && z > -20 && z < R * 0.7 && y > 0.9 ? 0xc9b493 : PAINT[id] ? PAINT[id](x, z, y) : null) });
   I.group.add(terrain);
   landmark(b, hf, C, d.landmark, 0, -R * 0.35, d); decorate(id, b, hf, C, I, R, rng(seedN + 9));
   // houses: two rows along the main road + scattered

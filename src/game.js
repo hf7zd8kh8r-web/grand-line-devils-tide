@@ -7,7 +7,7 @@ import { FX, DmgNums } from './fx.js';
 import { ViewModel } from './viewmodel.js';
 import { IN, consume, pollKeys } from './input.js';
 import * as ST from './state.js';
-import { defaultLook, lookOverrides } from './style.js';
+import { defaultLook, lookOverrides, randomLook } from './style.js';
 import * as FS from './fruitshop.js';
 import { makeDevilFruit } from './fruitart.js';
 import { decorate } from './decor.js';
@@ -28,6 +28,19 @@ const B = THREE;
 const V = () => new B.Vector3();
 const tmp = new B.Vector3(), tmp2 = new B.Vector3();
 
+// per-spawn grunt variety: body type, hair, skin, colour shade, face details, sometimes a different weapon
+function gruntVariant(def, s) { let h = Math.floor((s.x * 73.1 + s.z * 19.7) * 1000) >>> 0; const r = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0) / 4294967296); const L = { ...(LOOKS[def.look] || {}), ...(def.lookO || {}) }; const o = {}; const pick = a => a[Math.floor(r() * a.length)];
+  const build = r(); if (build < 0.2) o.big = (L.big || 1) * 1.18; else if (build < 0.35) o.small = true; else if (build < 0.5) o.big = (L.big || 1) * 0.92;
+  if (!L.hat || r() < 0.3) { o.hairS = pick(['short', 'spiky', 'messy', 'slick', 'mohawk', 'buzz', 'swept', 'long', 'afro']); }
+  o.hair = pick([0x111111, 0x2a1a10, 0x5a3a1a, 0x8a5a2a, 0xd8b060, 0xa03a2a, 0x6a6a6a]);
+  if (typeof L.skin !== 'number' && L.skin !== 'fish') o.skin = pick(['light', 'tan', 'light', 'tan', 'dark']);
+  const jit = c => { if (typeof c !== 'number') return c; const k = 0.82 + r() * 0.3; return (Math.min(255, ((c >> 16) & 255) * k) << 16) | (Math.min(255, ((c >> 8) & 255) * k) << 8) | Math.min(255, (c & 255) * k); };
+  for (const k of ['shirt', 'pants', 'coat', 'vest']) if (typeof L[k] === 'number') o[k] = jit(L[k]);
+  o.mouth = pick(['grin', 'teeth', 'line', 'frown', L.mouth || 'grin']); o.brow = r() < 0.75 ? 'angry' : 'normal';
+  if (r() < 0.25) o.beard = pick(['stubble', true, 'big']); if (r() < 0.2) o.scar = true; if (r() < 0.12) o.glasses = 'shades'; if (r() < 0.15 && !L.hat) o.hat = 'bandana', o.hatC = pick([0xb3262a, 0x2a2a2a, 0x2a5a8a]);
+  if (L.weapon && r() < 0.3) o.weapon = pick(['sabre', 'axe', 'spear', 'knives', 'club']); else if (!L.weapon && !def.ranged && r() < 0.4) o.weapon = pick(['sabre', 'club', 'knives']);
+  return o; }
+if (typeof window !== 'undefined') { window.__mk = (l, o) => makeChar(l, o); window.__EN = ENEMIES; window.__gv = (d, s) => gruntVariant(d, s); window.__rl = randomLook; window.__av = (R) => makeAvatar('Pirate', 'Human', R.look, R.cos); }
 export class Game {
   constructor(ui) {
     this.ui = ui;
@@ -129,7 +142,7 @@ export class Game {
     return h;
   }
   spawnEnemy(s) {
-    const def = ENEMIES[s.type]; const c = makeChar(def.look, { ...(def.lookO || {}), scale: def.scale || (s.type === 'thug' ? 1.12 : 1) });
+    const def = ENEMIES[s.type]; const c = makeChar(def.look, { ...(def.lookO || {}), ...(def.boss ? {} : gruntVariant(def, s)), scale: def.scale || (s.type === 'thug' ? 1.12 : 1) });
     if (s.type === 'rifle') { /* rifle look tweak */ }
     c.root.position.set(s.x, this.island.hf(s.x, s.z), s.z); this.scene.add(c.root); setOutlinesVisible(c.root);
     const hpMul = 1 + (s.lvl - 1) * 0.12;
@@ -157,7 +170,7 @@ export class Game {
     if (e.dead || dmg <= 0) return;
     const S0 = this.save, hon = S0.haki && S0.haki.buso; const crit = Math.random() < (o.remote ? 0.1 : 0.1 + (S0.haki && S0.haki.ken && hk(S0, 'ken', 2) ? 0.1 : 0)); if (!o.remote && this.p.fsight) { dmg *= 2; this.p.fsight = 0; } if (!o.remote && e.boss && hon && hk(S0, 'buso', 2)) dmg *= 1.15; dmg = Math.round(dmg * (crit ? (hk(S0, 'conq', 3) ? 1.9 : 1.6) : 1) * (0.9 + Math.random() * 0.2) * (!o.remote && this.seaDrain() ? 0.5 : 1));
     if (!o.remote) this.net.hit(e, dmg);
-    e.hp -= dmg; e.flash = 0.12; e.hitT = o.stun ?? 0.22; e.aggro = true; if (!e.boss) { e.state = 'hit'; e.atk = 0; }
+    e.hp -= dmg; e.c.face && e.c.face.set(e.hp <= 0 ? 'ko' : 'hurt', e.hp <= 0 ? 99 : 0.35); e.flash = 0.12; e.hitT = o.stun ?? 0.22; e.aggro = true; if (!e.boss) { e.state = 'hit'; e.atk = 0; }
     const kb = o.kb ?? 3; tmp.copy(e.c.root.position).sub(o.from || this.p.pos).setY(0).normalize(); e.vel.addScaledVector(tmp, kb * (e.boss ? 0.3 : 1)); if (o.up) e.vy = o.up * (e.boss ? 0.2 : 1);
     this.nums.spawn(this.chest(e, V()).add(new B.Vector3(0, 0.5, 0)), dmg, crit ? 'crit' : (o.cls || ''));
     { const hp0 = this.chest(e, V()); const el = o.el || (o.mast && o.mast.startsWith('fr:') ? elementOf(o.mast.slice(3), elementFromColor(o.col || 0xffe6a0)) : elementFromColor(o.col || 0xffe6a0)); const pw = (o.kb ?? 3) / 3.5 + (crit ? 0.6 : 0); const dirv = tmp.clone(); dirv.y = 0.3;
@@ -424,7 +437,7 @@ export class Game {
       if (e.ext) { e.ext(dt); continue; }
       if (e.temp && e.dead && e.deadT > 2.2) { this.scene.remove(R); e.gone = true; continue; }
       if (e.dead) { e.deadT += dt; animChar(e.c, { dead: e.deadT }, this.t); if (e.deadT > 1.6) R.visible = false;
-        if (e.deadT > (e.boss ? 60 : 14)) { e.dead = false; e.hp = e.max; R.visible = true; R.rotation.x = 0; R.position.set(e.home.x, this.island.hf(e.home.x, e.home.z), e.home.z); e.state = 'idle'; e.aggro = false; e.phase2 = false; if (e.boss) this.bossIntroDone[e.s.type] = false; } continue; }
+        if (e.deadT > (e.boss ? 60 : 14)) { e.dead = false; e.hp = e.max; e.c.face && e.c.face.set(null); R.visible = true; R.rotation.x = 0; R.position.set(e.home.x, this.island.hf(e.home.x, e.home.z), e.home.z); e.state = 'idle'; e.aggro = false; e.phase2 = false; if (e.boss) this.bossIntroDone[e.s.type] = false; } continue; }
       const toP = tmp.copy(p.pos).sub(R.position); toP.y = 0; const dist = toP.length();
       R.visible = dist < far; if (dist > far && !e.aggro) continue;
       e.flash -= dt; e.hitT -= dt; e.cd -= dt; e.skillCd -= dt; if (e.kbPose > 0 || R.rotation.x) { e.kbPose = Math.max(0, (e.kbPose || 0) - dt * 3.5); const kp = e.kbPose; R.rotation.x = -kp * kp * (e.boss ? 0.12 : 0.45); }
@@ -462,7 +475,7 @@ export class Game {
       R.rotation.y = damp(R.rotation.y, R.rotation.y + angDiff(R.rotation.y, e.yaw), 10, dt);
       e.anim.move = Math.abs(moving) > 0 ? Math.min(1, Math.abs(moving) * 1.2) : 0; e.anim.windup = e.state === 'windup' && !def.ranged; e.anim.aim = e.state === 'windup' && def.ranged; e.anim.hit = e.state === 'hit' ? Math.max(0, e.hitT * 4) : 0;
       e.anim.attack = Math.max(0, (e.anim.attack || 0) - dt * 3);
-      animChar(e.c, e.anim, this.t); this.flashMat(e);
+      e.anim.angry = !!e.aggro && !e.boss; e.anim.angryFace = !!e.aggro; e.anim.idleV = true; e.anim.look = e.aggro || dist < 8 ? (this._eyeV || (this._eyeV = V())).copy(this.eyePos()) : null; animChar(e.c, e.anim, this.t); this.flashMat(e);
     }
     if (bossActive) this.ui.bossBar(bossActive); else if (this.ui.bossShown && !this.enemies.some(e => e.boss && e.aggro && !e.dead)) this.ui.bossBar(null);
   }
@@ -553,7 +566,7 @@ export class Game {
     this.folk && this.folk.update(dt);
     const near = this.nearestNpc(); this.ui.prompt(near && !this.cut ? `${near.name}` : null);
     for (const n of this.npcs) { const d = n.c.root.position.distanceTo(this.p.pos); if (d < 6) { const want = Math.atan2(this.p.pos.x - n.c.root.position.x, this.p.pos.z - n.c.root.position.z); n.c.root.rotation.y = damp(n.c.root.rotation.y, n.c.root.rotation.y + angDiff(n.c.root.rotation.y, want), 4, dt); }
-      animChar(n.c, { talk: d < 4, move: 0 }, this.t + n.x); if (n.mark) { n.mark.rotation.y += dt * 2; n.mark.position.y = n.c.root.position.y + n.c.height + 0.6 + Math.sin(this.t * 3) * 0.1;
+      animChar(n.c, { talk: d < 4 && !!this.ui.modal, happy: d < 7 && !this.ui.modal, move: 0, look: d < 8 ? this.eyePos() : null }, this.t + n.x); if (n.mark) { n.mark.rotation.y += dt * 2; n.mark.position.y = n.c.root.position.y + n.c.height + 0.6 + Math.sin(this.t * 3) * 0.1;
         if (n.role === 'quest') { const q = this.questFor(n); n.mark.visible = !!q && !this.save.quest; } } }
   }
   questFor(n) { const list = QUESTS[this.island.id] || []; const S = this.save; return list.find(q => q.giver === n.name && !S.qdone.includes(q.id) && S.lvl >= (q.lvl || 0)) || list.find(q => q.giver === n.name && !S.qdone.includes(q.id)); }
