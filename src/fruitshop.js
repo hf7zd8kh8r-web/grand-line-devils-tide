@@ -1,6 +1,7 @@
-// Rotating Fruit Dealer stock: rerolls every 12 real minutes, rarity-weighted per slot.
+// Rotating Fruit Dealer stock: rerolls every 5 real minutes, rarity-weighted per slot.
+// Deterministic per (island, window) so all players / reloads see the same stock.
 import { FRUITS, RARITY, RCOL } from './data.js';
-export const PERIOD = 12 * 60 * 1000;
+export const PERIOD = 5 * 60 * 1000;
 export const WEIGHTS = [40, 25, 15, 10, 6, 3, 0.9, 0.1]; // % per slot: Common .. Ultra
 export const PRICE = [350, 1200, 4000, 12000, 45000, 150000, 600000, 3500000];
 const SLOTS = 6;

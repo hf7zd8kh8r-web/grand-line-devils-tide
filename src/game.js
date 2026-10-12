@@ -213,7 +213,7 @@ export class Game {
   stockTick() { const w = FS.windowId(); if (this._stockW === w) return; const first = this._stockW === undefined; this._stockW = w;
     const rare = []; for (const I of ISLANDS) { if (I.secret || !(this.save.unlocked || []).includes(I.id) && I.id !== this.island.id) continue; for (const o of FS.stockFor(I.id, w)) if (o.rar >= 6) rare.push([I, o]); }
     if (rare.length) { const [I, o] = rare.sort((a, b) => b[1].rar - a[1].rar)[0]; setTimeout(() => { this.ui.banner('RARE STOCK!', `${FRUITS[o.id].name} (${RARITY[o.rar]}) at the ${I.name} Fruit Dealer`); this.ui.chat('📢 Fruit Dealer', `RARE STOCK! ${RARITY[o.rar]} ${FRUITS[o.id].name} on ${I.name} for the next ${FS.fmtLeft(FS.msLeft())}!`); }, first ? 9000 : 500); }
-    else if (!first) this.ui.toast('🍇 Fruit Dealers restocked!', 'item'); }
+    else if (!first && !(this.ui.modal === 'shop' && this.ui.shopId === 'rot')) this.ui.toast('🍇 Fruit Dealers restocked!', 'item'); }
   questTick(dt) { const q = this.save.quest; if (!q) { if (this.gather) this.clearGather(); return; }
     if (q.time && q.until) { const left = q.until - this.t; if (left <= 0) { if (q.type === 'talk') { this.save.quest = null; this.ui.toast('⏱ Too slow! Ask again to retry the rush', 'blk'); this.ui.updateQuest(); this.ui.questTimer(null); return; } q.have = 0; q.until = 0; this.ui.toast('⏱ Too slow! The ambush regrouped — try again', 'blk'); } this.ui.questTimer(Math.max(0, left)); } else this.ui.questTimer(null);
     const here = (QUESTS[this.island.id] || []).some(x => x.id === q.id);
