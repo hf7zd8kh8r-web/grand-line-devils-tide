@@ -1,9 +1,10 @@
 import { RACES, SWORDS, GUNS, ACCESSORIES, FRUITS, xpNeed } from './data.js';
+import { migrateQuests } from './quests.js';
 const KEY = 'gldt_save_v1';
 export function newSave(name, faction, race) {
   return { v: 1, name, faction, race, lvl: 1, xp: 0, ber: 0, hp: null, island: 'windmill', unlocked: ['windmill'], boat: false,
     inv: { swords: [], guns: [], fruits: [], wear: [], mats: {}, fish: {} }, fishdex: {}, eq: { sword: null, gun: null, fruit: null, wear: [] }, slot: 'fist',
-    mastery: {}, quest: null, qdone: [], kills: {}, stats: { kills: 0, bosses: 0, dmg: 0, time: 0, deaths: 0, punches: 0, created: Date.now() }, bossSeen: {} };
+    mastery: {}, quest: null, quests: [], qcd: {}, qdone: [], kills: {}, stats: { kills: 0, bosses: 0, dmg: 0, time: 0, deaths: 0, punches: 0, created: Date.now() }, bossSeen: {} };
 }
 // fill any fields missing from older saves with fresh defaults (never crash on an old save)
 export function fixSave(s) { const d = newSave(s.name || 'Pirate', s.faction || 'pirate', s.race || 'Human');
@@ -11,7 +12,7 @@ export function fixSave(s) { const d = newSave(s.name || 'Pirate', s.faction || 
   { const ok = { swords: SWORDS, guns: GUNS, fruits: FRUITS, wear: ACCESSORIES }; for (const k of Object.keys(ok)) s.inv[k] = (s.inv[k] || []).filter(id => ok[k][id]);
     if (s.eq.sword && !SWORDS[s.eq.sword]) s.eq.sword = null; if (s.eq.gun && !GUNS[s.eq.gun]) s.eq.gun = null; if (s.eq.fruit && !FRUITS[s.eq.fruit]) s.eq.fruit = null; s.eq.wear = (s.eq.wear || []).filter(id => ACCESSORIES[id]).slice(0, 3);
     if (!['fist', 'sword', 'gun', 'fruit'].includes(s.slot) || (s.slot !== 'fist' && !s.eq[s.slot])) s.slot = 'fist'; }
-  if (!s.unlocked.includes('windmill')) s.unlocked.unshift('windmill'); if (typeof s.lvl !== 'number' || !isFinite(s.lvl)) s.lvl = 1; if (typeof s.ber !== 'number' || !isFinite(s.ber)) s.ber = 0; return s; }
+  if (!s.unlocked.includes('windmill')) s.unlocked.unshift('windmill'); if (typeof s.lvl !== 'number' || !isFinite(s.lvl)) s.lvl = 1; if (typeof s.ber !== 'number' || !isFinite(s.ber)) s.ber = 0; migrateQuests(s); return s; }
 export function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) return fixSave(s); } catch (_) {} return null; }
 export const saveHooks = [];
 export const lock = { on: false };

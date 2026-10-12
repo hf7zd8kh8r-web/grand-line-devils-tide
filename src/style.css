@@ -419,3 +419,13 @@ html,body{font-family:"Nunito","Trebuchet MS","Segoe UI",sans-serif}
 .mv{border:none;border-radius:14px;background:linear-gradient(180deg,rgba(36,58,88,.82),rgba(8,16,30,.82));box-shadow:0 3px 10px rgba(0,0,0,.35),0 0 0 1.5px rgba(255,255,255,.22);font-family:"Nunito",sans-serif}
 .toast{font-family:"Nunito",sans-serif;font-weight:800;border-radius:999px!important;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 #banner b,#banner .t,.banner b{font-family:"Bangers",Impact,sans-serif!important;letter-spacing:2px}
+
+/* Quest board */
+.qboard{display:flex;flex-direction:column;gap:8px;max-height:48vh;overflow:auto;-webkit-overflow-scrolling:touch}
+.qcard{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:14px;background:#2a2210;border:2px solid #ffd04a;touch-action:manipulation}
+.qcard.on{border-color:#7dffb0;background:#1a2a20}
+.qcard.done{border-color:#c0a060}
+.qcard button{min-height:40px;margin-top:4px;font-size:14px}
+.qcard .gold{color:#ffd04a}
+@media (orientation:portrait){.qboard{max-height:56vh}.qcard{padding:14px}}
+@media (orientation:landscape){.qboard{max-height:42vh;display:grid;grid-template-columns:1fr 1fr;gap:8px}.qboard .qcard{min-width:0}}

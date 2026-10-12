@@ -2,6 +2,7 @@ import { isTouch, Q, qset } from './engine.js';
 import { FRUITS, SWORDS, GUNS, ACCESSORIES, RARITY, RCOL, ISLANDS, SEAS, QUESTS, islandById, RACES, T2, ENEMIES } from './data.js';
 import { fruitIcon } from './icons.js';
 import * as FS from './fruitshop.js';
+import * as QH from './quests.js';
 import { MAX_CREW , STABLE_URL, validCode } from './net.js';
 import { achHtml, drawStatCharts, exportStats } from './achievements.js';
 import { crewTabHtml, hire, dismiss } from './crew.js';
@@ -79,7 +80,10 @@ export class UI {
     else if (next && (S.stats.sails || 0) < 2) { html = S.lvl >= next.lvl ? `🗺 Tap <b>Map</b> to sail to <b>${next.name}</b>!` : `🗺 Next island: <b>${next.name}</b> (reach Lv.${next.lvl})`; pulse = S.lvl >= next.lvl; }
     el.innerHTML = html; el.style.display = html ? '' : 'none'; const mb = document.querySelector('[data-ui=map]'); if (mb) mb.classList.toggle('pulse', pulse && this.modal !== 'map');
     for (const n of g.npcs || []) if (n.beam) n.beam.visible = n.role === 'dock' && !S.ships.length; }
-  updateQuest() { if (!this.g.save) return; const q = this.g.save.quest; $('#quest').innerHTML = q ? `<b>QUEST</b><span>${q.text}</span><em>${q.have}/${q.n}</em>` : `<b>QUEST</b><span class="dim">Talk to a <i class="qm">!</i> villager for a quest</span>`; this.mapDirty = true; }
+  updateQuest() { if (!this.g.save) return; const S = this.g.save; QH.migrateQuests(S); const qs = S.quests; const el = $('#quest');
+    if (!qs.length) el.innerHTML = `<b>QUEST</b><span class="dim">Open <i class="qm">!</i> Quest Board · track up to ${QH.MAX_ACTIVE}</span>`;
+    else el.innerHTML = qs.map((q, i) => `${i ? '<i>·</i>' : '<b>QUEST</b>'}<span>${q.text}</span><em>${q.have}/${q.n}</em>`).join('');
+    this.mapDirty = true; }
   currentMoves() { return movesFor(this.g.save); }
   updateMoves() {
     const S = this.g.save; if (!S) return; const ms = this.currentMoves(); const box = $('#moves');
@@ -123,7 +127,7 @@ export class UI {
   open(id, arg) { window.__audio && window.__audio.sfx('open', { gap: 200 }); this._rz(); this._openT = performance.now(); IN.resetTouch && IN.resetTouch();
     const wasOpen = !!this.modal; this.close(true); this.modal = id; const P = $('#panel'); P.style.display = 'flex'; P.className = 'panel p-' + id + (wasOpen ? '' : ' pin');
     if (document.pointerLockElement) document.exitPointerLock();
-    const fns = { inv: () => this.invHtml(arg), map: () => this.mapHtml(), pause: () => this.pauseHtml(), shop: () => this.shopHtml(arg), quest: () => this.questHtml(arg), dock: () => this.dockHtml(arg), trader: () => this.traderHtml(arg), roller: () => this.g.roller.html(), player: () => this.playerHtml(arg), ptrade: () => this.ptradeHtml(), style: () => this.styleHtml(arg), dex: () => this.dexHtml(arg), dojo: () => this.dojoHtml(arg) };
+    const fns = { inv: () => this.invHtml(arg), map: () => this.mapHtml(), pause: () => this.pauseHtml(), shop: () => this.shopHtml(arg), quest: () => this.questHtml(arg), board: () => this.boardHtml(arg), dock: () => this.dockHtml(arg), trader: () => this.traderHtml(arg), roller: () => this.g.roller.html(), player: () => this.playerHtml(arg), ptrade: () => this.ptradeHtml(), style: () => this.styleHtml(arg), dex: () => this.dexHtml(arg), dojo: () => this.dojoHtml(arg) };
     let body; try { const f = fns[id]; if (!f) throw new Error('no panel ' + id); body = f(); if (!body || typeof body !== 'string') throw new Error('empty'); }
     catch (err) { console.warn('panel', id, err); body = id === 'quest' && arg ? `<h2>${(arg.name || 'Villager')}</h2><p class="say">“Ahoy there, pirate! Fine weather for sailing, isn't it?”</p>` : `<h2>Oops</h2><p>Couldn't open this panel (${String(err && err.message || err).replace(/[<>]/g, '').slice(0, 80)}). Try again — your save is safe.</p>`; }
     P.innerHTML = `<div class="pbox"><button class="x" data-close>✕</button>${body}</div>`;
@@ -137,7 +141,7 @@ export class UI {
     if (id === 'style') { this.g.showPreview(true); this._stab = arg || 'look'; const R = P.querySelector('#sRows'); if (R) R.onclick = e => { const b = e.target.closest('button[data-lk]'); if (!b) return; e.stopPropagation(); stepLook(this.g.save.look, b.dataset.lk, +b.dataset.ld); R.innerHTML = rowsHtml(this.g.save.look); this.styleChanged(); }; }
   }
   close(silent) { if (this.modal === 'ptrade' && this.g.net.trade && !silent) this.g.net.tradeEnd('cancel'); if (!silent && this.g && this.g.seat) this.g.standUp(); if (this.g && this.g.preview && !silent) this.g.showPreview(false); this.modal = null; $('#panel').style.display = 'none'; $('#panel').innerHTML = ''; }
-  talk(n) { this.trNpc = n; if (this.g.questEvent('talk', n.name)) return; if (n.role === 'shop') this.open('shop', n.shop); else if (n.role === 'quest') this.open('quest', n); else if (n.role === 'dock') this.open('dock', n); else if (n.role === 'trader') this.open('trader', n); else if (n.role === 'roller') this.g.roller.open(); else if (n.role === 'trainer') this.open('dojo', 'here'); else if (n.role === 'player') { if (n.sit) this.g.sitAt(); this.open('player', n); } else this.open('quest', n); }
+  talk(n) { this.trNpc = n; if (this.g.questEvent('talk', n.name)) return; if (n.role === 'shop') this.open('shop', n.shop); else if (n.role === 'board') this.open('board'); else if (n.role === 'quest') this.open('quest', n); else if (n.role === 'dock') this.open('dock', n); else if (n.role === 'trader') this.open('trader', n); else if (n.role === 'roller') this.g.roller.open(); else if (n.role === 'trainer') this.open('dojo', 'here'); else if (n.role === 'player') { if (n.sit) this.g.sitAt(); this.open('player', n); } else this.open('quest', n); }
   itemCard(kind, id, extra = '') { const d = DEF[kind][id]; const r = d.rar ?? 0;
     const stat = kind === 'sword' ? `DMG ${d.dmg} · SPD ${d.spd}` : kind === 'gun' ? `DMG ${d.dmg} · Range ${d.range}m` : kind === 'fruit' ? `${d.moves.length} moves${d.special ? ' + Special' : ''}` : Object.entries(d.stat).map(([k, v]) => `+${v < 1 ? Math.round(v * 100) + '%' : v} ${k.toUpperCase()}`).join(' ');
     return `<div class="item r${r}"><div class="ic ic-${kind}" style="--rc:${RCOL[r]}${kind === 'fruit' ? `;background:url(${fruitIcon(id)}) center/cover` : ''}"></div><div class="nm"><b>${d.name}</b><small style="color:${RCOL[r]}">${RARITY[r]} ${kind}</small><small>${stat}</small>${['fruit', 'sword', 'gun'].includes(kind) && this.g.save ? moveListHtml(this.g.save, kind, id) : ''}</div>${extra}</div>`; }
@@ -182,17 +186,33 @@ export class UI {
     return `<h2>${tab === 'shop' ? 'Cosmetics Shop' : 'My Cosmetics'}</h2>${tabs}<p class="dim">Cosmetics are looks only (no stats). One per slot: hat · back · face · neck · extra. You have ฿${fmt(S.ber)}.</p><div class="cosgrid">${ids.length ? ids.map(card).join('') : '<p class="dim">Nothing yet — check the shop!</p>'}</div>`; }
   styleChanged() { const g = this.g; ST.save(g.save); g.rebuildArms(); if (g.preview) g.showPreview(true); g.net && g.net.lookChanged && g.net.lookChanged(); }
   questTimer(t) { const el = $('#quest'); if (!el) return; let tm = el.querySelector('.qt'); if (t == null) { if (tm) tm.remove(); return; } if (!tm) { tm = document.createElement('i'); tm.className = 'qt'; el.appendChild(tm); } tm.textContent = '⏱ ' + Math.ceil(t) + 's'; tm.classList.toggle('red', t < 10); }
-  giverHint() { const g = this.g, S = g.save; if (!S || S.quest || !g.island) return; const isl = g.island.id;
-    const q = (QUESTS[isl] || []).find(q => !S.qdone.includes(q.id) && S.lvl >= (q.lvl || 0) && q.giver !== 'Mysterious Swordsman' && (g.npcs || []).some(n => n.name === q.giver));
-    if (q) this.toast(`Talk to ${q.giver} (yellow !) for a quest`, 'quest'); }
-  questHtml(n) { const S = this.g.save; const list = QUESTS[S.island] || []; const mine = list.filter(q => q.giver === n.name); const avail = mine.find(q => !S.qdone.includes(q.id) && S.lvl >= (q.lvl || 0)) || mine.find(q => !S.qdone.includes(q.id));
-    const bossN = Object.values(QUESTS[S.island] || []).find(q => (q.target || '').endsWith('_boss')); const line = (n.name === 'Mysterious Swordsman' ? ['...You want a legendary blade? Prove yourself. Only the strongest finish my trials.', 'Hmph. Not bad.'] : LINES[n.name] || [bossN ? `Please help us! ${bossN.text.replace('Defeat ', '')} has taken over this island!` : 'Hello there!', 'Thank you, hero! You saved us.'])[avail ? 0 : 1]; this.qNpc = n;
-    let act = '';
-    if (S.quest) act = `<p>Current quest: <b>${S.quest.text}</b> (${S.quest.have}/${S.quest.n})</p><button data-do="qdrop">Abandon quest</button>`;
-    else if (!avail) act = `<p class="dim">No more quests from ${n.name} right now.</p>`;
-    else if (S.lvl < avail.lvl) act = `<div class="qcard lock"><b>${avail.text}</b><span>Requires level ${avail.lvl}</span></div>`;
-    else act = `<div class="qcard"><b>${avail.text}</b><span>Reward: ${avail.xp} XP · ฿${fmt(avail.ber)}</span></div><button class="go" data-do="qtake:${avail.id}">Accept Quest</button>`;
-    return `<h2>${n.name}</h2><p class="say">“${line}”</p>${act}<h3>All quests here</h3><div class="qlist">${list.map(q => `<div class="${S.qdone.includes(q.id) ? 'done' : S.lvl < q.lvl ? 'lock' : ''}">Lv.${q.lvl} · ${q.text} <small>(${q.giver})</small> ${S.qdone.includes(q.id) ? '✔' : ''}</div>`).join('')}</div>`; }
+  giverHint() { const g = this.g, S = g.save; if (!S || !g.island) return; QH.migrateQuests(S); if (S.quests.length >= QH.MAX_ACTIVE) return;
+    if (g.boardHasOpen && g.boardHasOpen()) this.toast('📋 Quest Board has jobs (yellow !) — pick what to do', 'quest'); }
+  boardHtml() { const S = this.g.save; QH.migrateQuests(S); const isl = S.island; const I = islandById(isl); const list = QH.islandQuests(isl);
+    const active = S.quests.map(q => `<div class="qcard on"><b>${q.text}</b><span>${q.have}/${q.n} · ${q.giver}</span><button data-do="qdrop:${q.id}" class="danger">Abandon</button></div>`).join('') || '<p class="dim">No active quests — pick up to ' + QH.MAX_ACTIVE + ' below.</p>';
+    const cards = list.map(q => {
+      const lock = S.lvl < (q.lvl || 0); const act = QH.isActive(S, q.id); const done = QH.hasDone(S, q.id); const cd = QH.cdLeft(S, q.id); const rw = QH.rewardOf(S, q);
+      const uniq = QH.isUnique(q) ? (done ? '<small class="dim">Unique reward claimed</small>' : '<small class="gold">★ Unique reward on first clear</small>') : '';
+      let btn = '';
+      if (lock) btn = `<button disabled>Lv.${q.lvl}</button>`;
+      else if (act) btn = `<button disabled>Tracking</button>`;
+      else if (S.quests.length >= QH.MAX_ACTIVE) btn = `<button disabled>Slots full</button>`;
+      else if (done && cd > 0) btn = `<button disabled>Ready in ${QH.fmtCd(cd)}</button>`;
+      else if (done) btn = `<button class="go" data-do="qtake:${q.id}">Repeat · ฿${fmt(rw.ber)} · ${rw.xp} XP</button>`;
+      else btn = `<button class="go" data-do="qtake:${q.id}">Accept · ฿${fmt(rw.ber)} · ${rw.xp} XP</button>`;
+      return `<div class="qcard ${lock ? 'lock' : ''} ${done ? 'done' : ''} ${act ? 'on' : ''}"><b>Lv.${q.lvl} · ${q.text}</b><span>${q.giver} · ${q.type}${q.time ? ' · timed' : ''}</span><span>Reward: ${rw.xp} XP · ฿${fmt(rw.ber)}${done ? ' <i>(repeatable)</i>' : ''}</span>${uniq}${btn}</div>`;
+    }).join('') || '<p class="dim">No quests posted on this island yet.</p>';
+    return `<h2>📋 Quest Board · ${I.name}</h2><p class="dim">Pick any quest · track up to <b>${QH.MAX_ACTIVE}</b> · clear again after <b>1:30</b> for full Berries/XP. Unique swords/fruits only once.</p><h3>Active (${S.quests.length}/${QH.MAX_ACTIVE})</h3><div class="qboard">${active}</div><h3>Available</h3><div class="qboard">${cards}</div>`; }
+  questHtml(n) { const S = this.g.save; QH.migrateQuests(S); this.qNpc = n;
+    const list = QH.islandQuests(S.island); const mine = list.filter(q => q.giver === n.name);
+    const open = mine.find(q => !QH.isActive(S, q.id) && S.lvl >= (q.lvl || 0) && (!QH.hasDone(S, q.id) || QH.cdLeft(S, q.id) <= 0));
+    const bossN = list.find(q => (q.target || '').endsWith('_boss') || /Defeat /.test(q.text));
+    const line = (n.name === 'Mysterious Swordsman' ? ['...You want a legendary blade? Prove yourself. Only the strongest finish my trials.', 'Hmph. Not bad.'] : LINES[n.name] || [bossN ? `Please help us! ${bossN.text.replace('Defeat ', '')} has taken over this island!` : 'Hello there!', 'Thank you, hero! You saved us.'])[open ? 0 : 1];
+    return `<h2>${n.name}</h2><p class="say">“${line}”</p><button class="go big2" data-do="openboard">📋 Open Quest Board</button><h3>${n.name}'s jobs</h3><div class="qboard">` + mine.map(q => {
+      const lock = S.lvl < (q.lvl || 0); const act = QH.isActive(S, q.id); const done = QH.hasDone(S, q.id); const cd = QH.cdLeft(S, q.id); const rw = QH.rewardOf(S, q);
+      let btn = lock ? `<button disabled>Lv.${q.lvl}</button>` : act ? `<button data-do="qdrop:${q.id}">Abandon</button>` : (done && cd > 0) ? `<button disabled>${QH.fmtCd(cd)}</button>` : S.quests.length >= QH.MAX_ACTIVE ? `<button disabled>Full</button>` : `<button class="go" data-do="qtake:${q.id}">${done ? 'Repeat' : 'Accept'}</button>`;
+      return `<div class="qcard ${lock ? 'lock' : ''} ${done ? 'done' : ''} ${act ? 'on' : ''}"><b>Lv.${q.lvl} · ${q.text}</b><span>${rw.xp} XP · ฿${fmt(rw.ber)}${done ? ' · repeatable' : ''}</span>${btn}</div>`;
+    }).join('') + `</div>`; }
   dockHtml(n) { const S = this.g.save; migrateShips(S); const cur = shipOf(S);
     const row = id => { const D = SHIPS[id]; const own = S.ships.includes(id); const lock = S.lvl < D.lvl; const seas = D.tier >= 5 ? 'All 3 seas' : D.tier >= 3 ? 'First + Second Sea' : 'First Sea';
       const btn = own ? (S.ship === id ? '<button class="on" disabled>Sailing</button>' : `<button data-do="useship:${id}">Use</button>`) : lock ? `<small class="red">Lv.${D.lvl}</small>` : `<button data-do="buyship:${id}" class="${S.ber < D.price ? 'poor' : ''}">฿${fmt(D.price)}</button>`;
@@ -336,8 +356,17 @@ export class UI {
     if (a === 'tdec') { this.offer = null; this.close(); }
     if (a === 'forge') { if (!['wado', 'sandai', 'shusui'].every(n => S.inv.swords.includes(n))) return; S.inv.swords.push('sanbon'); S.eq.sword = 'sanbon'; S.slot = 'sword'; g.refreshEquip(); ST.save(S); this.close(); this.banner('THREE SWORD STYLE!', 'Forged from Wado Ichimonji, Sandai Kitetsu and Shusui'); }
     if (a === 'awaken') { const f = FRUITS[S.eq.fruit]; const cost = this.awakenCost(f); if (S.ber < cost) { this.toast('Not enough Berries', 'blk'); return; } S.ber -= cost; S.awake = S.awake || {}; S.awake[S.eq.fruit] = true; ST.save(S); this.close(); this.banner('AWAKENED!', `${f.name}: all moves +50% damage`); g.fx.burst(g.p.pos.clone().setY(g.p.pos.y + 1), 80, f.col[0], { speed: 9, life: 1.2 }); g.fx.ring(g.p.pos.clone().setY(g.p.pos.y + 0.2), f.col[0], 10, 1); g.updateMovesSoon = true; this.updateMoves(); }
-    if (a === 'qtake') { const q = (QUESTS[S.island] || []).find(q => q.id === b); S.quest = { ...q, have: q.type === 'mat' ? Math.min(q.n - 1, S.inv.mats[q.target] || 0) : 0 }; if (q.time && q.type === 'talk') S.quest.until = this.g.t + q.time; if (q.type === 'gather') this.toast('Look for the glowing beams of light!', 'quest'); if (q.time) this.toast(`⏱ The timer starts on your first defeat!`, 'quest'); this.updateQuest(); this.toast('Quest accepted: ' + q.text, 'quest'); ST.save(S); this.close(); }
-    if (a === 'qdrop') { S.quest = null; this.updateQuest(); this.close(); }
+    if (a === 'openboard') { this.open('board'); return; }
+    if (a === 'qtake') { const def = (QUESTS[S.island] || []).find(q => q.id === b); if (!def) return; const r = QH.takeQuest(S, def);
+      if (r === 'full') { this.toast(`Already tracking ${QH.MAX_ACTIVE} quests — abandon one first`, 'blk'); return; }
+      if (r === 'lvl') { this.toast(`Need level ${def.lvl}`, 'blk'); return; }
+      if (r === 'cd') { this.toast(`Repeat ready in ${QH.fmtCd(QH.cdLeft(S, def.id))}`, 'blk'); return; }
+      if (r.time && r.type === 'talk') r.until = this.g.t + r.time;
+      if (r.type === 'gather') this.toast('Look for the glowing beams of light!', 'quest');
+      if (r.time && r.type !== 'talk') this.toast('⏱ The timer starts on your first defeat!', 'quest');
+      this.updateQuest(); this.toast((r.repeat ? 'Repeat accepted: ' : 'Quest accepted: ') + r.text, 'quest'); ST.save(S);
+      if (this.modal === 'board' || this.modal === 'quest') this.open(this.modal, this.modal === 'quest' ? this.qNpc : undefined); else this.close(); return; }
+    if (a === 'qdrop') { const id = b || (S.quest && S.quest.id); if (!id) return; QH.dropQuest(S, id); this.updateQuest(); ST.save(S); this.toast('Quest abandoned', 'blk'); if (this.modal === 'board' || this.modal === 'quest') this.open(this.modal, this.modal === 'quest' ? this.qNpc : undefined); else this.close(); return; }
     if (a === 'hbuy') { S.hakiT = S.hakiT || {}; const t = S.hakiT[b] || 0; if (t < 1 || t >= 4 || hakiPoints(S) < 1 || S.lvl < hakiTierLvl(b, t)) return; S.hakiT[b] = t + 1; ST.save(S); this.g.st = ST.stats(S); this.banner('HAKI AWAKENS', HAKI_TREE[b][t][0]); this.open('inv', 'haki'); return; }
     if (a === 'buyship') { const D = SHIPS[b]; migrateShips(S); if (S.lvl < D.lvl) { this.toast(`Reach level ${D.lvl}`, 'blk'); return; } if (S.ber < D.price) { this.toast('Not enough Berries!', 'blk'); return; } S.ber -= D.price; S.ships.push(b); S.ship = b; S.boat = true; if (g.island.boat) g.island.boat.visible = true; ST.save(S); this.updateHud(); this.banner('NEW SHIP!', D.name); this.open('dock', this.g.nearestNpc() || { name: 'Shipwright' }); return; }
     if (a === 'useship') { S.ship = b; ST.save(S); this.toast(`Now sailing the ${SHIPS[b].name}`, 'item'); this.open('dock', this.g.nearestNpc() || { name: 'Shipwright' }); return; }

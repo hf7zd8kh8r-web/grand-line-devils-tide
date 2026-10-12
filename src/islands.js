@@ -95,6 +95,7 @@ export function buildWindmill() {
   I.npcs.push({ id: 'ship', look: 'villager', name: 'Shipwright Dan', role: 'dock', x: 2.2, z: 46, ry: Math.PI, over: { shirt: 0x8a5a2b } });
   I.npcs.push({ id: 'roller', look: 'villager', name: 'Gacha Gus', role: 'roller', x: 10.5, z: 4, ry: -Math.PI / 2, over: { shirt: 0xc0283a, hair: 0xffd04a } });
   I.npcs.push({ id: 'trader', look: 'villager', name: 'Collector Pip', role: 'trader', x: -12, z: 8, ry: 1, over: { shirt: 0x6a3a8a, hair: 0xaa3333 } });
+  I.npcs.push({ id: 'qboard', name: 'Quest Board', role: 'board', x: 0.5, z: 6.5, ry: 0 });
   I.landmarks = [{ n: "Party's Bar", x: -9, z: 2 }, { n: 'Windmill', x: -24, z: 22 }, { n: 'Smithy', x: 9, z: -1 }, { n: 'Bandit Camp', x: -30, z: -24 }, { n: 'Bandit Camp', x: 35, z: -21 }, { n: 'Mountain Hill', x: 0, z: -42 }, { n: 'Dock', x: 0, z: 54 }];
   I.palette = { skyTop: 0x3f9be8, skyBot: 0xcfeeff, fog: 0xcfeeff };
   addHorizon(I, 11);
@@ -145,6 +146,7 @@ export function buildShells() {
   I.npcs.push({ id: 'ship2', look: 'villager', name: 'Harbor Master', role: 'dock', x: 2.2, z: 44, ry: Math.PI });
   I.npcs.push({ id: 'roller2', look: 'villager', name: 'Gacha Gus', role: 'roller', x: -5.6, z: 27, ry: Math.PI / 2, over: { shirt: 0xc0283a, hair: 0xffd04a } });
   I.npcs.push({ id: 'trader2', look: 'villager', name: 'Collector Pip', role: 'trader', x: -5.6, z: 20, ry: Math.PI / 2, over: { shirt: 0x6a3a8a, hair: 0xaa3333 } });
+  I.npcs.push({ id: 'qboard2', name: 'Quest Board', role: 'board', x: 0, z: 10, ry: 0 });
   I.landmarks = [{ n: 'Marine Base 153', x: 0, z: -30 }, { n: 'Town', x: 0, z: 14 }, { n: 'Dock', x: 0, z: 52 }];
   I.palette = { skyTop: 0x4aa0e0, skyBot: 0xdcefff, fog: 0xdcefff };
   addHorizon(I, 23);
@@ -280,6 +282,7 @@ export function genIsland(id) {
   I.npcs.push({ id: 'dk', look: 'villager', name: 'Harbor Master', role: 'dock', x: 2.2, z: R * 0.78 - 2, ry: Math.PI });
   I.npcs.push({ id: 'rl', look: 'villager', name: 'Gacha Gus', role: 'roller', x: 4.5, z: R * 0.4 + 9, ry: -Math.PI / 2, over: { shirt: 0xc0283a, hair: 0xffd04a } });
   I.npcs.push({ id: 'tr', look: 'villager', name: 'Collector Pip', role: 'trader', x: -4.5, z: R * 0.4 + 4, ry: Math.PI / 2, over: { shirt: 0x6a3a8a, hair: 0xaa3333 } });
+  I.npcs.push({ id: 'qboard', name: 'Quest Board', role: 'board', x: 0, z: R * 0.4 + 1, ry: 0 });
   I.landmarks = [{ n: d.boss.name + "'s lair", x: 0, z: bz }, { n: 'Town', x: 0, z: R * 0.4 }, { n: 'Dock', x: 0, z: R * 0.78 }];
   I.palette = { skyTop: pal.sky[0], skyBot: pal.sky[1], fog: pal.fog, sea: SEA[id], light: LIGHT[id] };
   I.dark = d.theme === 'spooky' || d.theme === 'prison';

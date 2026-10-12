@@ -108,7 +108,7 @@ export const QUESTS = {
     { id: 's4', giver: 'Rika', lvl: 8, text: 'Find Rika\'s 4 dropped rice balls', type: 'gather', item: 'Rice Ball', col: 0xffffff, n: 4, xp: 500, ber: 700 },
     { id: 's5', giver: 'Coby', lvl: 9, text: 'Ambush! Defeat 4 Marines in 60s', type: 'kill', target: 'marine', n: 4, time: 60, xp: 700, ber: 1000 },
     { id: 's6', giver: 'Coby', lvl: 11, text: 'Collect 3 Marine Badges from Marines', type: 'mat', target: 'Marine Badge', n: 3, xp: 900, ber: 1300 },
-    { id: 's3', giver: 'Coby', lvl: 12, text: 'Defeat Axe-Hand Morgan', type: 'kill', target: 'morgan', n: 1, xp: 2500, ber: 4000, reward: 'wado_hint' },
+    { id: 's3', giver: 'Coby', lvl: 12, text: 'Defeat Axe-Hand Morgan', type: 'kill', target: 'morgan', n: 1, xp: 2500, ber: 4000, reward: 'wado_hint', once: true },
   ],
 };
 

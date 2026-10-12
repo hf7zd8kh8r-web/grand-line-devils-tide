@@ -9,6 +9,7 @@ import { IN, consume, pollKeys } from './input.js';
 import * as ST from './state.js';
 import { defaultLook, lookOverrides, randomLook } from './style.js';
 import * as FS from './fruitshop.js';
+import * as QH from './quests.js';
 import { makeDevilFruit } from './fruitart.js';
 import { decorate } from './decor.js';
 import { Folk } from './folk.js';
@@ -153,6 +154,15 @@ export class Game {
     this.enemies.push(e); return e;
   }
   spawnNpc(n) {
+    if (n.role === 'board') {
+      const g = new B.Group(); const post = new B.Mesh(new B.BoxGeometry(0.18, 2.2, 0.18), new B.MeshToonMaterial({ color: 0x6a4420 })); post.position.y = 1.1; g.add(post);
+      const plank = new B.Mesh(new B.BoxGeometry(1.6, 1.1, 0.12), new B.MeshToonMaterial({ color: 0x8a5a2b })); plank.position.set(0, 1.7, 0.08); g.add(plank);
+      const paper = new B.Mesh(new B.PlaneGeometry(1.3, 0.85), new B.MeshBasicMaterial({ color: 0xf0e0b0, side: B.DoubleSide })); paper.position.set(0, 1.7, 0.15); g.add(paper);
+      const y = this.island.hf(n.x, n.z); g.position.set(n.x, y, n.z); g.rotation.y = n.ry || 0; this.scene.add(g); setOutlinesVisible(g);
+      const o = { ...n, c: { root: g, height: 2.2 }, anim: { phase: 0 }, board: g };
+      const b = new Builder(); b.add(new B.BoxGeometry(0.16, 0.5, 0.16), 0xffd23a, mat(0, 0.3, 0)); b.add(new B.BoxGeometry(0.17, 0.17, 0.17), 0xffd23a, mat(0, -0.12, 0));
+      o.mark = b.build(); o.mark.position.set(n.x, y + 2.8, n.z); this.scene.add(o.mark); this.npcs.push(o); return;
+    }
     const c = makeChar(n.look, n.over || {}); const y = this.island.hf(n.x, n.z); c.root.position.set(n.x, y, n.z); c.root.rotation.y = n.ry || 0; this.scene.add(c.root); setOutlinesVisible(c.root);
     const o = { ...n, c, anim: { phase: 0 } };
     if (n.role === 'roller') { const m = this.roller.model(); const ry = n.ry || 0, mx = n.x + Math.cos(ry) * 1.6, mz = n.z - Math.sin(ry) * 1.6; m.position.set(mx, this.island.hf(mx, mz), mz); m.rotation.y = ry; this.scene.add(m); o.machine = m; }
@@ -197,7 +207,7 @@ export class Game {
     if (e.s.type === 'morgan' && !S.inv.swords.includes('marine')) { S.inv.swords.push('marine'); this.ui.toast('Got Marine Saber from Morgan\'s armory!', 'rare'); }
     if (['zou_boss', 'wci_boss', 'wano_boss', 'egghead_boss'].includes(e.s.type) && Math.random() < 0.3) { const k = 'Road Poneglyph: ' + islandById(e.s.type.split('_')[0]).name; if (!S.inv.mats[k]) { S.inv.mats[k] = 1; this.ui.toast(`📜 Found a ${k} rubbing!`, 'rare'); const n = Object.keys(S.inv.mats).filter(x => x.startsWith('Road Poneglyph')).length; if (n >= 4 && !(S.secrets || {}).laughtale) { S.secrets = S.secrets || {}; S.secrets.laughtale = 1; setTimeout(() => this.ui.banner('LAUGH TALE REVEALED', 'All four Road Poneglyphs point to the final island…'), 2600); } } }
     if (e.boss && e.lvl >= 200 && Math.random() < 0.04) { const ul = ['nika', 'seiryu', 'sound', 'makami']; const u = ul[Math.floor(Math.random() * 4)]; S.inv.fruits.push(u); this.ui.banner('ULTRA FRUIT!!', `${FRUITS[u].name} dropped!`); }
-    const q = S.quest; if (q && q.type === 'kill' && (q.target === e.s.type || q.target === '*')) { if (q.time && !q.until) q.until = this.t + q.time; q.have++; if (q.have >= q.n) this.completeQuest(); else this.ui.toast(`${q.text}: ${q.have}/${q.n}`, 'quest'); this.ui.updateQuest(); }
+    QH.migrateQuests(S); for (const q of S.quests) { if (q.type === 'kill' && (q.target === e.s.type || q.target === '*')) { if (q.time && !q.until) q.until = this.t + q.time; q.have++; if (q.have >= q.n) this.completeQuest(q); else this.ui.toast(`${q.text}: ${q.have}/${q.n}`, 'quest'); this.ui.updateQuest(); } }
     if (e.boss && !e.ext) { this.ui.bossBar(null); this.ui.banner(`${d.name} DEFEATED!`, 'Victory'); this.fx.shake = 0.6;
       migrateShips(S); if (!S.ships.length && S.island === 'windmill') { S.ships.push('dinghy'); S.ship = 'dinghy'; S.boat = true; if (this.island.boat) this.island.boat.visible = true; setTimeout(() => { this.ui.banner('FREE BOAT!', 'Makino gifted you a Small Sailboat — open 🗺 Map to set sail!'); this.ui.updateHud(); }, 2600); } }
     ST.save(S);
@@ -210,18 +220,22 @@ export class Game {
       for (const [k, l] of Object.entries(HAKI)) if (S.lvl >= l && !(S.hakiU || {})[k]) { S.hakiU = S.hakiU || {}; S.hakiU[k] = 1; setTimeout(() => this.ui.banner({ buso: 'ARMAMENT HAKI', ken: 'OBSERVATION HAKI', conq: "CONQUEROR'S HAKI" }[k], k === 'conq' ? 'Press J / CONQ to unleash it' : 'Press H / HAKI to toggle'), 2800); } }
     this.ui.updateHud();
   }
-  questEvent(type, key) { const q = this.save.quest; if (!q || q.type !== type || (q.target && key !== q.target)) return false;
-    q.have++; this.fx.burst(this.p.pos.clone().setY(this.p.pos.y + 1.2), 14, 0xffd04a, { speed: 3, up: 3, size: 0.2, life: 0.6 }); if (q.have >= q.n) this.completeQuest(); else this.ui.toast(`${q.text}: ${q.have}/${q.n}`, 'quest'); this.ui.updateQuest(); return true; }
+  questEvent(type, key) { const S = this.save; QH.migrateQuests(S); let hit = false;
+    for (const q of S.quests) { if (q.type !== type || (q.target && key !== q.target)) continue; hit = true; q.have++; this.fx.burst(this.p.pos.clone().setY(this.p.pos.y + 1.2), 14, 0xffd04a, { speed: 3, up: 3, size: 0.2, life: 0.6 }); if (q.have >= q.n) this.completeQuest(q); else this.ui.toast(`${q.text}: ${q.have}/${q.n}`, 'quest'); }
+    if (hit) this.ui.updateQuest(); return hit; }
   stockTick() { const w = FS.windowId(); if (this._stockW === w) return; const first = this._stockW === undefined; this._stockW = w;
     const rare = []; for (const I of ISLANDS) { if (I.secret || !(this.save.unlocked || []).includes(I.id) && I.id !== this.island.id) continue; for (const o of FS.stockFor(I.id, w)) if (o.rar >= 6) rare.push([I, o]); }
     if (rare.length) { const [I, o] = rare.sort((a, b) => b[1].rar - a[1].rar)[0]; setTimeout(() => { this.ui.banner('RARE STOCK!', `${FRUITS[o.id].name} (${RARITY[o.rar]}) at the ${I.name} Fruit Dealer`); this.ui.chat('📢 Fruit Dealer', `RARE STOCK! ${RARITY[o.rar]} ${FRUITS[o.id].name} on ${I.name} for the next ${FS.fmtLeft(FS.msLeft())}!`); }, first ? 9000 : 500); }
     else if (!first && !(this.ui.modal === 'shop' && this.ui.shopId === 'rot')) this.ui.toast('🍇 Fruit Dealers restocked!', 'item'); }
-  questTick(dt) { const q = this.save.quest; if (!q) { if (this.gather) this.clearGather(); return; }
-    if (q.time && q.until) { const left = q.until - this.t; if (left <= 0) { if (q.type === 'talk') { this.save.quest = null; this.ui.toast('⏱ Too slow! Ask again to retry the rush', 'blk'); this.ui.updateQuest(); this.ui.questTimer(null); return; } q.have = 0; q.until = 0; this.ui.toast('⏱ Too slow! The ambush regrouped — try again', 'blk'); } this.ui.questTimer(Math.max(0, left)); } else this.ui.questTimer(null);
-    const here = (QUESTS[this.island.id] || []).some(x => x.id === q.id);
-    if (q.type === 'gather' && here && !this.gather) this.spawnGather(q);
+  questTick(dt) { const S = this.save; QH.migrateQuests(S); const list = S.quests; if (!list.length) { if (this.gather) this.clearGather(); this.ui.questTimer(null); return; }
+    let timerLeft = null;
+    for (const q of list) { if (q.time && q.until) { const left = q.until - this.t; if (left <= 0) { if (q.type === 'talk') { QH.dropQuest(S, q.id); this.ui.toast('⏱ Too slow! Ask again to retry the rush', 'blk'); this.ui.updateQuest(); continue; } q.have = 0; q.until = 0; this.ui.toast('⏱ Too slow! The ambush regrouped — try again', 'blk'); } else timerLeft = timerLeft == null ? left : Math.min(timerLeft, left); } }
+    this.ui.questTimer(timerLeft);
+    const gath = list.find(q => q.type === 'gather' && (QUESTS[this.island.id] || []).some(x => x.id === q.id));
+    if (gath && !this.gather) this.spawnGather(gath);
+    if (!gath && this.gather) this.clearGather();
     if (this.gather) for (const it of this.gather) { if (it.got) continue; it.m.rotation.y += dt * 2; it.m.position.y = it.y + 0.9 + Math.sin(this.t * 3 + it.x) * 0.15;
-      if (Math.hypot(it.x - this.p.pos.x, it.z - this.p.pos.z) < 1.7 && Math.abs(this.p.pos.y - it.y) < 2.5) { it.got = true; it.m.visible = false; this.questEvent('gather'); if (!this.save.quest) { this.clearGather(); break; } } } }
+      if (Math.hypot(it.x - this.p.pos.x, it.z - this.p.pos.z) < 1.7 && Math.abs(this.p.pos.y - it.y) < 2.5) { it.got = true; it.m.visible = false; this.questEvent('gather'); if (!S.quests.some(q => q.type === 'gather')) { this.clearGather(); break; } } } }
   spawnGather(q) { const I = this.island; const r = rng(q.id.length * 977 + (this.save.stats.created % 1000)); this.gather = []; const left = q.n - q.have; let tries = 0;
     while (this.gather.length < left && tries++ < 400) { const a = r() * Math.PI * 2, d = 6 + r() * I.R * 0.7; const x = Math.cos(a) * d, z = Math.sin(a) * d; const y = I.hf(x, z); if (y < 0.4) continue;
       if (I.colliders.some(c => Math.hypot(c.x - x, c.z - z) < (c.r || Math.max(c.hw || 1, c.hd || 1)) + 1)) continue; if (this.gather.some(o => Math.hypot(o.x - x, o.z - z) < 8)) continue;
@@ -229,10 +243,13 @@ export class Game {
       const beam = new B.Mesh(new B.CylinderGeometry(0.12, 0.3, 14, 8, 1, true), new B.MeshBasicMaterial({ color: q.col || 0xffd04a, transparent: true, opacity: 0.22, blending: B.AdditiveBlending, depthWrite: false, side: B.DoubleSide })); beam.position.y = 6; g.add(beam);
       g.position.set(x, y + 0.9, z); this.scene.add(g); this.gather.push({ m: g, x, z, y }); } }
   clearGather() { if (!this.gather) return; for (const it of this.gather) { this.scene.remove(it.m); it.m.traverse(o => { o.geometry && o.geometry.dispose(); o.material && o.material.dispose(); }); } this.gather = null; }
-  completeQuest() {
-    const S = this.save, q = S.quest; S.quest = null; S.qdone.push(q.id); this.clearGather(); this.ui.questTimer(null);
-    this.ui.banner('QUEST COMPLETE', `${q.text} · +${q.xp} XP · +฿${q.ber}`);
-    const sw = q.sword || (q.reward === 'wado_hint' ? 'wado' : null); if (sw && !S.inv.swords.includes(sw)) { S.inv.swords.push(sw); setTimeout(() => this.ui.banner(SWORDS[sw].name.toUpperCase(), 'Legendary blade obtained!'), 2700); } this.addBerries(q.ber); this.addXp(q.xp); this.ui.updateQuest();
+  completeQuest(q) {
+    const S = this.save; QH.migrateQuests(S); q = q || S.quest; if (!q) return;
+    const r = QH.completeOne(S, q); this.clearGather(); this.ui.questTimer(null);
+    this.ui.banner(r.first ? 'QUEST COMPLETE' : 'QUEST REPEAT!', `${q.text} · +${r.xp} XP · +฿${r.ber}${r.first ? '' : ' · again in 1:30'}`);
+    const sw = q.sword || (q.reward === 'wado_hint' ? 'wado' : null);
+    if (r.giveUnique && sw && !S.inv.swords.includes(sw)) { S.inv.swords.push(sw); setTimeout(() => this.ui.banner(SWORDS[sw].name.toUpperCase(), 'Legendary blade obtained!'), 2700); }
+    this.addBerries(r.ber); this.addXp(r.xp); this.ui.updateQuest(); ST.save(S);
   }
   hurtPlayer(dmg, from, o = {}) {
     const p = this.p; if (p.iframe > 0 || this.cut || this.dead) return;
@@ -574,11 +591,14 @@ export class Game {
   updateNpcs(dt) {
     this.folk && this.folk.update(dt);
     const near = this.nearestNpc(); if (!near && this.hunt.near && !this.cut) this.ui.promptFruit(this.hunt.obj && this.hunt.obj.fruit); else this.ui.prompt(near && !this.cut ? `${near.name}` : null);
-    for (const n of this.npcs) { const d = n.c.root.position.distanceTo(this.p.pos); if (d < 6) { const want = Math.atan2(this.p.pos.x - n.c.root.position.x, this.p.pos.z - n.c.root.position.z); n.c.root.rotation.y = damp(n.c.root.rotation.y, n.c.root.rotation.y + angDiff(n.c.root.rotation.y, want), 4, dt); }
+    for (const n of this.npcs) { const d = n.c.root.position.distanceTo(this.p.pos);
+      if (n.role === 'board') { if (n.mark) { n.mark.rotation.y += dt * 2; n.mark.position.y = n.c.root.position.y + n.c.height + 0.6 + Math.sin(this.t * 3) * 0.1; n.mark.visible = this.boardHasOpen(); } continue; }
+      if (d < 6) { const want = Math.atan2(this.p.pos.x - n.c.root.position.x, this.p.pos.z - n.c.root.position.z); n.c.root.rotation.y = damp(n.c.root.rotation.y, n.c.root.rotation.y + angDiff(n.c.root.rotation.y, want), 4, dt); }
       animChar(n.c, { talk: d < 4 && !!this.ui.modal, happy: d < 7 && !this.ui.modal, move: 0, look: d < 8 ? this.eyePos() : null }, this.t + n.x); if (n.mark) { n.mark.rotation.y += dt * 2; n.mark.position.y = n.c.root.position.y + n.c.height + 0.6 + Math.sin(this.t * 3) * 0.1;
-        if (n.role === 'quest') { const q = this.questFor(n); n.mark.visible = !!q && !this.save.quest; } } }
+        if (n.role === 'quest') { n.mark.visible = this.boardHasOpen(); } } }
   }
-  questFor(n) { const list = QUESTS[this.island.id] || []; const S = this.save; return list.find(q => q.giver === n.name && !S.qdone.includes(q.id) && S.lvl >= (q.lvl || 0)) || list.find(q => q.giver === n.name && !S.qdone.includes(q.id)); }
+  questFor(n) { const list = QUESTS[this.island.id] || []; const S = this.save; QH.migrateQuests(S); return list.find(q => q.giver === n.name && !QH.isActive(S, q.id) && S.lvl >= (q.lvl || 0) && (!QH.hasDone(S, q.id) || QH.cdLeft(S, q.id) <= 0)) || list.find(q => q.giver === n.name && !QH.isActive(S, q.id)); }
+  boardHasOpen() { const S = this.save; QH.migrateQuests(S); return (QUESTS[this.island.id] || []).some(q => S.lvl >= (q.lvl || 0) && !QH.isActive(S, q.id) && (!QH.hasDone(S, q.id) || QH.cdLeft(S, q.id) <= 0) && S.quests.length < QH.MAX_ACTIVE); }
   updateBlobs() {
     const m = new B.Matrix4(); let k = 0; const q = new B.Quaternion().setFromEuler(new B.Euler(-Math.PI / 2, 0, 0));
     for (const e of this.enemies) { if (!e.c.root.visible || k >= 63) continue; const P = e.c.root.position; const s = (e.boss ? 2.2 : 1.3); m.compose(new B.Vector3(P.x, this.island.hf(P.x, P.z) + 0.05, P.z), q, new B.Vector3(s, s, s)); this.blobs.setMatrixAt(k++, m); }
