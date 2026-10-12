@@ -13,7 +13,7 @@ const SH = __dirname + '/../shots/';
   const cnt = await s.evaluate(() => { const ids = Object.keys(window.__TRAVEL || {}); return ids.length; });
   ok('20+ fruits have travel', cnt >= 20, cnt);
   // speed / drain / no sea weakness for several fruits
-  for (const f of ['mera', 'seiryu', 'hie', 'pika', 'gomu', 'moku', 'phoenix', 'makami']) {
+  for (const f of ['mera', 'seiryu', 'hie', 'pika', 'gomu', 'moku', 'phoenix', 'makami', 'soru']) {
     await eq(s, f);
     await s.evaluate(() => { const g = __g.game, p = g.p, R = g.island.R; p.pos.set(R + 4, 0, 0); p.yaw = 0; p.pitch = 0; p.vy = 0; p.swim = false; g.trv.start(); });
     const a = await s.evaluate(() => { const p = __g.game.p; return [p.pos.x, p.pos.z, __g.game.save.hp, __g.game.trv.on]; });
@@ -35,6 +35,7 @@ const SH = __dirname + '/../shots/';
   await shot('mera', 'travel_flame.png', [2.0, 11, 0.6, -0.2, 3]);
   await shot('hie', 'travel_icepath.png', [0, 10, 0.4, -0.25, 0]);
   await shot('phoenix', 'travel_phoenix.png', [1.2, 12, 0.6, -0.3, 4]);
+  await shot('soru', 'travel_zeus.png', [0.6, 11, 0.5, -0.3, 3]);
   await shot('moku', 'travel_smoke.png', [-0.8, 11, 0.4, -0.2, 0]);
   await s.evaluate(() => { __g.game.trv.picked = false; });
   // picker at island edge
@@ -57,7 +58,7 @@ const SH = __dirname + '/../shots/';
   await s.evaluate(() => { __g.game.save.lvl = 1; }); const gl = await s.evaluate(() => __g.game.trv.flyTo('shells')); ok('flyTo refused under level', gl === false);
   await s.evaluate(() => { __g.game.save.lvl = 12; __g.game.trv.E = 100; }); await s.evaluate(() => __g.game.trv.flyTo('shells')); await s.waitForTimeout(400); await s.screenshot({ path: SH + 'travel_flying.png' }); await s.waitForTimeout(5500);
   ok('arrived at Shells Town by flight', await s.evaluate(() => __g.game.island.id === 'shells'));
-  const dex = await s.evaluate(() => __g.ui.dexHtml(4)); ok('encyclopedia shows Travel', /Travel: Flame Jet/.test(dex));
+  const dex = await s.evaluate(() => __g.ui.dexHtml(4)); ok('encyclopedia shows Travel', /Travel: Flame Jet/.test(dex)); ok('dex shows Zeus Ride', /Travel: Zeus Ride/.test(await s.evaluate(() => __g.ui.dexHtml(5))));
   // mobile portrait button
   const m = await mk('Phone', '', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   await eq(m, 'nika'); await m.waitForTimeout(400);
@@ -69,6 +70,7 @@ const SH = __dirname + '/../shots/';
   const A = await mk('Adam', '&room=TRV' + Date.now() % 10000), room = await A.evaluate(() => __g.game.net.room); const C = await mk('Friend', '&room=' + room);
   await A.waitForTimeout(1500); await eq(A, 'phoenix'); await A.evaluate(() => __g.game.trv.start()); await C.waitForTimeout(1500);
   ok('peer sees travel mount', await C.evaluate(() => [...__g.game.net.peers.values()].some(p => p.tv === 'phoenix' && p.mount)));
+  await eq(A, 'soru'); await A.evaluate(() => __g.game.trv.start()); await C.waitForTimeout(1500); ok('peer sees Zeus mount', await C.evaluate(() => [...__g.game.net.peers.values()].some(p => p.tv === 'soru' && p.mount)));
   ok('zero console errors', errs.length === 0, JSON.stringify(errs));
   await b.close(); process.exit(fails ? 1 : 0);
 })();

@@ -33,6 +33,7 @@ export const TRAVEL = {
   fuwa: ['Float-Float Flight', 'fly', 0xbfe8ff, 0xffffff, 31, 34, 'none'],
   awa: ['Bubble Ride', 'hover', 0xc8f0ff, 0xffffff, 27, 28, 'bubble'],
   mochi: ['Mochi Bounce', 'bounce', 0xfff0d8, 0xe8d0a8, 29, 26, 'none'],
+  soru: ['Zeus Ride', 'fly', 0x5a6a8a, 0xffe23a, 36, 36, 'zeus'],
   zushi: ['Meteor Ride', 'fly', 0x8a3aff, 0x2a1a4a, 35, 30, 'rock'],
 };
 export const travelOf = id => TRAVEL[id] ? { name: TRAVEL[id][0], kind: TRAVEL[id][1], col: TRAVEL[id][2], col2: TRAVEL[id][3], spd: TRAVEL[id][4], dur: TRAVEL[id][5], mount: TRAVEL[id][6] } : null;
@@ -45,13 +46,18 @@ export function makeMount(id) { const t = travelOf(id), g = new B.Group(); if (!
   if (t.mount === 'cloud' || t.mount === 'gas' || t.mount === 'sand') { for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; add(new B.SphereGeometry(0.45 + (i % 3) * 0.12, 10, 8), i % 2 ? t.col : t.col2, Math.cos(a) * 0.7, -0.15, Math.sin(a) * 0.55, 0.8); } add(new B.SphereGeometry(0.6, 10, 8), t.col, 0, -0.1, 0, 0.85); }
   else if (t.mount === 'wings') { for (const s of [-1, 1]) { const sh = new B.Shape(); sh.moveTo(0, 0.2); sh.lineTo(s * 1.6, 1.0); sh.lineTo(s * 3.4, 0.9); sh.lineTo(s * 2.8, 0.2); sh.lineTo(s * 3.0, -0.3); sh.lineTo(s * 2.0, -0.4); sh.lineTo(s * 2.2, -0.9); sh.lineTo(s * 1.0, -0.6); sh.lineTo(0, -0.4); const w = add(new B.ShapeGeometry(sh), t.col, 0, 1.1, 0.3, 0.9); const w2 = new B.Mesh(new B.ShapeGeometry(sh), M(t.col2, { op: 0.55 })); w2.scale.setScalar(0.6); w2.position.z = 0.01; w.add(w2); w.userData.wing = s; } }
   else if (t.mount === 'jet') { const c = add(new B.ConeGeometry(0.45, 1.6, 10, 1, true), t.col, 0, -0.5, 0, 0.8); c.rotation.x = Math.PI; add(new B.ConeGeometry(0.25, 1.0, 8, 1, true), t.col2, 0, -0.45, 0, 0.9).rotation.x = Math.PI; }
+  else if (t.mount === 'zeus') { const cm = c => new B.MeshToonMaterial({ color: c }); const ad = (geo, c, x, y, z) => { const m = new B.Mesh(geo, cm(c)); m.position.set(x, y, z); g.add(m); return m; };
+    [[0, 0, 0, 0.9], [0.8, 0.05, -0.1, 0.65], [-0.8, 0.05, -0.1, 0.65], [0.4, 0.35, -0.3, 0.6], [-0.4, 0.35, -0.3, 0.6], [0, -0.1, -0.8, 0.7], [1.3, -0.1, -0.5, 0.45], [-1.3, -0.1, -0.5, 0.45]].forEach(([x, y, z, r]) => ad(new B.SphereGeometry(r, 12, 10), 0x6a7a9a, x, y - 0.75, z));
+    for (const sx of [-1, 1]) { ad(new B.SphereGeometry(0.2, 10, 8), 0xffffff, sx * 0.32, -0.55, 0.78); ad(new B.SphereGeometry(0.1, 8, 6), 0x111111, sx * 0.3, -0.56, 0.95); const br = ad(new B.BoxGeometry(0.34, 0.07, 0.06), 0x1a1a2a, sx * 0.32, -0.3, 0.88); br.rotation.z = sx * 0.45; }
+    const mo = ad(new B.TorusGeometry(0.2, 0.05, 6, 12, Math.PI), 0x1a1a2a, 0, -1.05, 0.86); mo.rotation.z = 0; // frown
+    for (let i = 0; i < 4; i++) { const sh = new B.Shape(); sh.moveTo(0, 0); sh.lineTo(0.15, -0.3); sh.lineTo(0.02, -0.3); sh.lineTo(0.18, -0.65); sh.lineTo(-0.08, -0.25); sh.lineTo(0.05, -0.25); sh.lineTo(-0.05, 0); const b = add(new B.ShapeGeometry(sh), 0xffe23a, Math.cos(i * 1.57) * 0.9, -1.4, Math.sin(i * 1.57) * 0.7, 1); b.userData.bolt = i; } }
   else if (t.mount === 'bubble') add(new B.SphereGeometry(1.25, 16, 12), t.col, 0, 0.75, 0, 0.28);
   else if (t.mount === 'rings') { for (let i = 0; i < 3; i++) { const r = add(new B.TorusGeometry(0.7 + i * 0.35, 0.05, 6, 24), i % 2 ? t.col2 : t.col, 0, -0.1, 0, 0.8); r.rotation.x = Math.PI / 2; r.userData.ring = i; } }
   else if (t.mount === 'rock') { add(new B.DodecahedronGeometry(0.9, 0), 0x4a3a5a, 0, -0.75, 0, 1); add(new B.TorusGeometry(1.3, 0.06, 6, 28), t.col, 0, -0.6, 0, 0.8).rotation.x = Math.PI / 2; }
   else if (t.mount === 'wolf') { const b = add(new B.BoxGeometry(0.7, 0.6, 1.7), t.col, 0, -0.35, 0, 0.9); add(new B.ConeGeometry(0.3, 0.7, 6), t.col2, 0, -0.15, 1.1, 0.9).rotation.x = Math.PI / 2; b.userData.wolf = 1; }
   else if (t.mount === 'dragon') { const segs = []; for (let i = 0; i < 18; i++) { const s = add(new B.SphereGeometry(0.95 - i * 0.04, 12, 10), i % 2 ? t.col : 0x2a5ad8, 0, -0.9, 1.2 - i * 1.0, 0.97); segs.push(s); } const hd = add(new B.ConeGeometry(0.75, 2.0, 8), t.col2, 0, -0.7, 2.6, 0.97); hd.rotation.x = Math.PI / 2; for (const sx of [-1, 1]) { const h = add(new B.ConeGeometry(0.12, 1.1, 5), 0xffe6a0, sx * 0.45, 0.0, 2.1, 1); h.rotation.x = -0.9; const wsk = add(new B.CylinderGeometry(0.04, 0.02, 2.2, 4), 0xbfe6ff, sx * 0.8, -0.8, 2.8, 0.9); wsk.rotation.z = sx * 1.2; } g.userData.segs = segs; }
   return g; }
-export function animMount(m, t, dt, moving) { if (!m) return; for (const c of m.children) { if (c.userData.wing) c.rotation.z = c.userData.wing * Math.sin(t * (moving ? 9 : 4)) * 0.45; if (c.userData.ring != null) c.scale.setScalar(1 + ((t * 2 + c.userData.ring * 0.33) % 1) * 0.6); if (c.userData.wolf) c.position.y = -0.35 + Math.abs(Math.sin(t * 12)) * 0.15; }
+export function animMount(m, t, dt, moving) { if (!m) return; for (const c of m.children) { if (c.userData.wing) c.rotation.z = c.userData.wing * Math.sin(t * (moving ? 9 : 4)) * 0.45; if (c.userData.ring != null) c.scale.setScalar(1 + ((t * 2 + c.userData.ring * 0.33) % 1) * 0.6); if (c.userData.bolt != null) { c.visible = Math.sin(t * 13 + c.userData.bolt * 2.1) > 0.3; c.rotation.y = t * 3; } if (c.userData.wolf) c.position.y = -0.35 + Math.abs(Math.sin(t * 12)) * 0.15; }
   if (m.userData.kind === 'cloud' || m.userData.kind === 'gas' || m.userData.kind === 'sand') m.rotation.y += dt * 1.5; if (m.userData.segs) m.userData.segs.forEach((s, i) => { s.position.x = Math.sin(t * 5 - i * 0.6) * 0.8 * Math.min(1, i / 3); s.position.y = -0.9 + Math.cos(t * 4 - i * 0.5) * 0.35 * Math.min(1, i / 3); }); }
 // shared trail particles (local + remote players)
 export function emitTrail(g, pos, id, dt, rate = 1) { const t = travelOf(id); if (!t || !g.fx) return; const n = Math.random() < dt * 30 * rate ? 1 : 0; if (!n) return;
@@ -59,6 +65,7 @@ export function emitTrail(g, pos, id, dt, rate = 1) { const t = travelOf(id); if
   if (mo === 'jet') g.fx.burst(p.add(new B.Vector3(j() * 0.3, -0.6, j() * 0.3)), 3, Math.random() < 0.5 ? t.col : t.col2, { speed: 2, up: -3, size: 0.38, life: 0.5, grav: -2 });
   else if (k === 'blink') g.fx.burst(p.add(new B.Vector3(j(), 0.6 + j(), j())), 3, Math.random() < 0.6 ? t.col : t.col2, { speed: 3.5, up: 0.5, size: 0.22, life: 0.35, grav: 0 });
   else if (mo === 'cloud' || mo === 'gas' || mo === 'sand') g.fx.burst(p.add(new B.Vector3(j(), -0.3, j())), 2, Math.random() < 0.5 ? t.col : t.col2, { speed: 0.8, up: 0.3, size: 0.6, life: 1.1, grav: 0 });
+  else if (mo === 'zeus') g.fx.burst(p.add(new B.Vector3(j() * 1.6, -0.9, j() * 1.6)), 2, Math.random() < 0.7 ? 0x8a9aba : t.col2, { speed: 1.5, up: 0.2, size: 0.4, life: 0.7, grav: 0 });
   else if (mo === 'dragon' || mo === 'wings') g.fx.burst(p.add(new B.Vector3(j() * 2, 0.8, j() * 2)), 2, Math.random() < 0.6 ? t.col : t.col2, { speed: 1.2, up: 0.4, size: 0.34, life: 0.8, grav: -1 });
   else g.fx.burst(p.add(new B.Vector3(j() * 0.6, 0.1, j() * 0.6)), 2, Math.random() < 0.6 ? t.col : t.col2, { speed: 1.4, up: 1, size: 0.28, life: 0.6, grav: 2 }); }
 export const builtIslands = () => ISLANDS.filter(i => i.built && BUILDERS[i.id]);
