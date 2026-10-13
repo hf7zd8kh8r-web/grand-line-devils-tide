@@ -36,7 +36,7 @@ export { xpNeed };
 // ---- faction progression: Pirates climb by bounty, Marines by merit; each tier gives a perk ----
 export const PIRATE_TITLES = [[0, 'Rookie Pirate'], [1e6, 'Wanted Pirate'], [3e7, 'Notorious Pirate'], [1.2e8, 'Supernova'], [5e8, 'Warlord of the Sea'], [1.5e9, 'Yonko Commander'], [4e9, 'Emperor of the Sea']];
 export const MARINE_RANKS = [[0, 'Seaman Recruit'], [3e3, 'Petty Officer'], [2e4, 'Lieutenant'], [8e4, 'Commander'], [2.5e5, 'Captain'], [6e5, 'Commodore'], [1.5e6, 'Vice Admiral'], [4e6, 'Admiral'], [1e7, 'Fleet Admiral']];
-export const bountyOf = S => (S.stats.kills || 0) * 1500 + (S.stats.bosses || 0) * 400000 + S.lvl * S.lvl * 900 + (S.stats.events || 0) * 250000;
+export const bountyOf = S => (S.stats.kills || 0) * 1500 + (S.stats.bosses || 0) * 400000 + S.lvl * S.lvl * 900 + (S.stats.events || 0) * 250000 + (S.stats.duelBounty || 0) + (S.stats.duels || 0) * 15000;
 export const meritOf = S => (S.stats.kills || 0) * 12 + (S.stats.bosses || 0) * 2500 + S.lvl * S.lvl * 12 + (S.stats.events || 0) * 1500 + (S.qdone || []).length * 300;
 export function factionRank(S) { const marine = S.faction === 'Marine'; const L = marine ? MARINE_RANKS : PIRATE_TITLES; const v = marine ? meritOf(S) : bountyOf(S); let t = 0; for (let i = 0; i < L.length; i++) if (v >= L[i][0]) t = i;
   const next = L[t + 1]; return { tier: t, title: L[t][1], value: v, next: next ? next[0] : null, nextTitle: next ? next[1] : null, marine, unit: marine ? 'Merit' : 'Bounty',
