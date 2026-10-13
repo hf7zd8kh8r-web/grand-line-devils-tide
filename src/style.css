@@ -486,3 +486,10 @@ small.awk{color:#ffd860!important}
 #hud.touch #topbtns .hudbtn{width:40px;height:40px;font-size:16px}
 #hud.touch #topbtns .hudbtn[data-ui="map"]{width:36px;height:36px;font-size:15px}
 @media (orientation:portrait){#hud.touch #topbtns{gap:4px}#hud.touch #topbtns .hudbtn{width:38px;height:38px}#hud.touch #topbtns .hudbtn small{font-size:7px}#hud.touch #topbtns .hudbtn[data-ui="map"]{width:36px;height:36px}}
+/* Ultra rarity: animated rainbow everywhere (RCOL[7] = #ff3df7 sentinel) */
+@keyframes ultraTxt{to{background-position:200% 0}}
+@keyframes ultraGlow{0%{border-color:#ff4d4d;box-shadow:0 0 12px #ff4d4d,inset 0 0 14px #ff4d4d55}17%{border-color:#ffb02e;box-shadow:0 0 12px #ffb02e,inset 0 0 14px #ffb02e55}33%{border-color:#ffe85a;box-shadow:0 0 12px #ffe85a,inset 0 0 14px #ffe85a55}50%{border-color:#5fd16a;box-shadow:0 0 12px #5fd16a,inset 0 0 14px #5fd16a55}67%{border-color:#4aa8ff;box-shadow:0 0 12px #4aa8ff,inset 0 0 14px #4aa8ff55}83%{border-color:#b46bff;box-shadow:0 0 12px #b46bff,inset 0 0 14px #b46bff55}100%{border-color:#ff4d4d;box-shadow:0 0 12px #ff4d4d,inset 0 0 14px #ff4d4d55}}
+b[style*="#ff3df7"],small[style*="#ff3df7"],span[style*="#ff3df7"],button[style*="#ff3df7"],.rar7txt{background:linear-gradient(90deg,#ff4d4d,#ffb02e,#ffe85a,#5fd16a,#4aa8ff,#b46bff,#ff4d4d,#ffb02e,#ffe85a,#5fd16a,#4aa8ff,#b46bff,#ff4d4d);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;animation:ultraTxt 2.2s linear infinite;text-shadow:none!important}
+span[style*="--c:#ff3df7"]{background:none;-webkit-text-fill-color:initial;color:inherit!important;animation:none}
+.item.r7,.fslot.r7,.dexc[style*="#ff3df7"],.rl-cell[style*="#ff3df7"],.ic[style*="#ff3df7"],.tfi.r7,.rl-win[style*="#ff3df7"]{border-color:#ff4d4d;animation:ultraGlow 2.4s linear infinite!important}
+.rl-win[style*="#ff3df7"].flour:after{background:repeating-conic-gradient(#ff4d4d 0 6deg,#ffb02e 6deg 12deg,#ffe85a 12deg 18deg,#5fd16a 18deg 24deg,#4aa8ff 24deg 30deg,#b46bff 30deg 36deg,transparent 36deg 44deg)}

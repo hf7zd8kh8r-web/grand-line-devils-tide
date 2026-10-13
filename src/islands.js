@@ -1,6 +1,7 @@
 import { THREE, Builder, mat, WORLD_MAT, noise2, rng } from './engine.js';
 import { makeTerrain, addClouds } from './world.js';
 import { addTree, addPine, addRock, addHouse, addWindmill, makeWindmillBlades, addDock, addFence, makeBoatSmall } from './models.js';
+import { pathPaint, nearPath, signpost, farm, forest, beach, cliffs, camp } from './zones.js';
 const GATHER = { orange: ['Buggy Map Scraps', 5, 0xd03030], syrup: ['Kaya\'s Lost Letters', 5, 0xffffff], baratie: ['Sea-King Fillets', 4, 0xff9a8a], arlong: ['Nami\'s Tangerines', 6, 0xff8a1a], loguetown: ['Torn Wanted Posters', 5, 0xf0e0b0],
   whisky: ['Baroque Works Orders', 5, 0x6a3a8a], alabasta: ['Water Barrels', 4, 0x3a8ae0], skypiea: ['Golden Bell Fragments', 5, 0xffd04a], water7: ['Blueprint Pages', 5, 0x6ab0ff], enies: ['Seastone Handcuff Keys', 5, 0xc0c0c0],
   thriller: ['Stolen Shadows', 6, 0x3a1a5a], sabaody: ['Bubble Coating Resin', 5, 0x9ae0ff], amazon: ['Kuja Snake Eggs', 5, 0xd0ff9a], impel: ['Cell Keys', 5, 0xe0c040], marineford: ['Fallen Marine Badges', 6, 0x2a5bb8],
@@ -42,112 +43,126 @@ function addHorizon(I, seed) { const sm = new B.MeshBasicMaterial({ color: 0x7d9
     const h = 18 + sr() * 26, w = 40 + sr() * 40; const m1 = new B.Mesh(new B.ConeGeometry(w * 0.5, h, 7), sm); m1.position.y = h / 2; m1.scale.z = 0.5; gS.add(m1);
     const m2 = new B.Mesh(new B.ConeGeometry(w * 0.32, h * 0.65, 6), tm); m2.position.set(w * 0.35, h * 0.32, 0); m2.scale.z = 0.5; gS.add(m2);
     gS.lookAt(0, -2, 0); gS.renderOrder = -1; I.group.add(gS); } }
+export const ISL_K = 1.4; // map expansion factor (radius); ~1.95x area vs the original layouts
 export function buildWindmill() {
-  const I = base({ id: 'windmill', R: 66, spawn: [2, 18] });
-  const hf = islandHF(66, [{ x: 0, z: -42, h: 9, s: 16 }, { x: -30, z: -30, h: 4, s: 12 }, { x: 34, z: -20, h: 3.5, s: 12 }, { x: 40, z: 22, h: 2, s: 10 }], 1.3, 0.6);
+  const K = ISL_K, R = Math.round(66 * K); const I = base({ id: 'windmill', R, spawn: [3, 25] });
+  const T = [0, 4], DZ = R - 16, CW = [-42, -34], CE = [49, -29], HILL = [0, -60], FARM = [46, 2], FOR = [-58, 2], CLF = [58, -54], MILL = [-34, 31];
+  const hf = islandHF(R, [{ x: HILL[0], z: HILL[1], h: 9, s: 20 }, { x: CW[0], z: CW[1], h: 3, s: 14 }, { x: CE[0], z: CE[1], h: 3, s: 14 }, { x: CLF[0], z: CLF[1], h: 7, s: 13 }, { x: 56, z: 31, h: 2, s: 12 }, { x: FOR[0], z: FOR[1], h: 2.5, s: 16 }], 1.3, 0.6);
   I.hf = hf;
+  const P = [[T, [0, DZ]], [T, [0, HILL[1] + 12]], [T, [-14, -14]], [[-14, -14], CW], [T, [16, -12]], [[16, -12], CE], [T, FARM], [T, MILL], [[-14, 6], FOR], [[-16, 4], [-14, -14]]]; I.paths = P;
   const b = new Builder();
   b.add(new B.BoxGeometry(1, 1, 1), 0, mat(0, -100, 0), { outline: false }); // seed
-  const terrain = makeTerrain(hf, 170, 85, { paint: I.paint = (x, z, y) => { const pathD = Math.min(Math.abs(x) < 2.2 && z > -30 && z < 44 ? 0 : 9, Math.abs(z - 6) < 2 && Math.abs(x) < 24 ? 0 : 9); return pathD < 1 && y > 0.9 ? 0xc9a873 : null; } });
+  const pp = pathPaint(P, 1.9); const plaza = (x, z) => Math.hypot(x - T[0], z - T[1]) < 9;
+  const terrain = makeTerrain(hf, R * 2.6, Math.round(R * 1.3), { paint: I.paint = (x, z, y) => (y > 0.9 && plaza(x, z)) ? 0xd2b384 : pp(x, z, y) });
   I.group.add(terrain);
   const C = I.colliders;
   const H = (x, z, rot, o) => { const c = addHouse(b, x, hf(x, z) - 0.15, z, rot, o); C.push(c); return c; };
-  H(-9, 2, Math.PI / 2, { w: 7, d: 5.5, h: 3.4, wall: 0xf3dfb0, roof: 0x3d7a4a, sign: 0xf3c34a, chimney: true }); // Party's Bar
-  H(9, -1, -Math.PI / 2, { wall: 0xe8d3b0, roof: 0x9a3a2a, sign: 0xb0b8c4 }); // smithy
-  H(-8, -12, 0.2, { roof: 0xc06a3a }); H(10, -14, -0.3, { roof: 0x4a6aa8 }); H(-16, 14, 1.2, { roof: 0xb0503a });
-  H(16, 14, -1.4, { roof: 0x6a8a3a, w: 4.5 }); H(-20, -2, 1.5, { roof: 0x8a4a8a, w: 4.5 }); H(20, 4, -1.6, { roof: 0xc0503a });
-  C.push(addWindmill(b, -24, hf(-24, 22), 22, 0.5));
-  const blades = makeWindmillBlades(); blades.position.set(-24 + Math.sin(0.5) * 2.0, hf(-24, 22) + 6.6, 22 + Math.cos(0.5) * 2.0); blades.rotation.y = 0.5; I.group.add(blades);
+  H(-12.6, 2.8, Math.PI / 2, { w: 7, d: 5.5, h: 3.4, wall: 0xf3dfb0, roof: 0x3d7a4a, sign: 0xf3c34a, chimney: true }); // Party's Bar
+  H(12.6, -1.4, -Math.PI / 2, { wall: 0xe8d3b0, roof: 0x9a3a2a, sign: 0xb0b8c4 }); // smithy
+  H(-11, -17, 0.2, { roof: 0xc06a3a }); H(14, -19.6, -0.3, { roof: 0x4a6aa8 }); H(-22.4, 19.6, 1.2, { roof: 0xb0503a });
+  H(22.4, 19.6, -1.4, { roof: 0x6a8a3a, w: 4.5 }); H(-28, -2.8, 1.5, { roof: 0x8a4a8a, w: 4.5 }); H(28, 5.6, -1.6, { roof: 0xc0503a });
+  H(-8, 36, 0.1, { roof: 0x3a6a9a }); H(9, 44, -0.2, { roof: 0xd08a3a, w: 4.5 }); H(-30, 44, 0.9, { roof: 0x6a8a3a }); // outskirts
+  C.push(addWindmill(b, MILL[0], hf(MILL[0], MILL[1]), MILL[1], 0.5));
+  const blades = makeWindmillBlades(); blades.position.set(MILL[0] + Math.sin(0.5) * 2.0, hf(MILL[0], MILL[1]) + 6.6, MILL[1] + Math.cos(0.5) * 2.0); blades.rotation.y = 0.5; I.group.add(blades);
   I.updaters.push((dt) => { blades.rotation.z += dt * 0.6; });
-  C.push(addStall(b, hf, 5, 10, Math.PI, 0xd04a8a)); // fruit stand
-  C.push(addStall(b, hf, -5, 11, Math.PI, 0x4a9ad0)); // tailor
+  C.push(addStall(b, hf, 12, 20, Math.PI, 0xd04a8a)); // fruit stand
+  C.push(addStall(b, hf, -12, 20, Math.PI, 0x4a9ad0)); // tailor
+  C.push(addStall(b, hf, 20, 9, -Math.PI / 2, 0xc0283a)); // gacha
+  C.push(addStall(b, hf, -22, 13, Math.PI / 2, 0x6a3a8a)); // collector
   // well in plaza
-  b.add(new B.CylinderGeometry(1, 1.1, 0.9, 10), 0x9a9a9a, mat(0, hf(0, 0) + 0.45, 0)); b.add(new B.BoxGeometry(2.4, 0.15, 0.3), 0x6a4528, mat(0, hf(0, 0) + 2.1, 0)); for (const s of [-1, 1]) b.add(box(0.12, 2, 0.12), 0x6a4528, mat(s * 1.05, hf(0, 0) + 1.1, 0), { outline: false });
-  C.push({ x: 0, z: 0, r: 1.2 });
+  const wy = hf(T[0], T[1]); b.add(new B.CylinderGeometry(1, 1.1, 0.9, 10), 0x9a9a9a, mat(T[0], wy + 0.45, T[1])); b.add(new B.BoxGeometry(2.4, 0.15, 0.3), 0x6a4528, mat(T[0], wy + 2.1, T[1])); for (const s of [-1, 1]) b.add(box(0.12, 2, 0.12), 0x6a4528, mat(T[0] + s * 1.05, wy + 1.1, T[1]), { outline: false });
+  C.push({ x: T[0], z: T[1], r: 1.2 });
   // dock to the south
-  addDock(b, 0, 0, 50, 0, 16); I.dock = { x: 0, z: 58, y: 0.85, z0: 50, z1: 66.2 };
-  const boat = makeBoatSmall(); boat.position.set(3.2, -0.1, 60); I.group.add(boat); I.boat = boat;
-  // fences + fields
-  addFence(b, 24, -6, 34, -6, hf); addFence(b, 34, -6, 34, 6, hf); addFence(b, -26, -10, -34, -10, hf);
-  for (let i = 0; i < 6; i++) for (let j = 0; j < 4; j++) b.add(new B.SphereGeometry(0.35, 6, 4), 0x8fd14a, mat(26 + i * 1.3, hf(26 + i * 1.3, -4 + j * 2.6) + 0.3, -4 + j * 2.6), { outline: false });
-  // bandit camps
-  for (const [x, z] of [[-30, -28], [-36, -22], [-26, -20], [32, -24], [38, -18]]) { addTent(b, hf, x, z, 0x8a6a4a); C.push({ x, z, r: 1.8 }); }
-  for (const [x, z] of [[-31, -23], [34, -20]]) { const y = hf(x, z); b.add(new B.CylinderGeometry(0.8, 0.9, 0.3, 8), 0x555555, mat(x, y + 0.15, z)); b.add(new B.ConeGeometry(0.5, 1, 6), 0xff7a1a, mat(x, y + 0.7, z), { outline: false }); }
+  addDock(b, 0, 0, DZ, 0, 16); I.dock = { x: 0, z: DZ + 8, y: 0.85, z0: DZ, z1: DZ + 16.2 };
+  const boat = makeBoatSmall(); boat.position.set(3.2, -0.1, DZ + 10); I.group.add(boat); I.boat = boat;
+  // zones
+  const zr = rng(77); farm(b, hf, C, FARM[0], FARM[1], 16, 12); forest(b, hf, C, FOR[0], FOR[1], 15, 34, zr, 0.45); cliffs(b, hf, C, CLF[0], CLF[1], zr);
+  beach(b, hf, C, R, 0.25, 1.15, zr); beach(b, hf, C, R, 2.0, 2.85, zr);
+  camp(b, hf, C, CW[0], CW[1], 0x8a6a4a, 0x2a2a2a, zr); camp(b, hf, C, CE[0], CE[1], 0x7a5a4a, 0x8a2a2a, zr);
+  for (const [x, z, r] of [[0, 12, 0], [-14, -14, 0.6], [16, -12, -0.6], [-16, 4, 1.4], [0, -30, 0]]) signpost(b, hf, x, z + 2.2, r);
   // boss hill arena markers (rocks ring)
-  for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; const x = Math.cos(a) * 11, z = -42 + Math.sin(a) * 11; if (Math.sin(a) > 0.6) continue; addRock(b, x, hf(x, z), z, 1.3, Math.random); C.push({ x, z, r: 1.3 }); }
-  // trees, rocks
-  const avoid = [[0, 4, 26], [0, 50, 6], [-24, 22, 5], [0, -42, 12], [-31, -24, 8], [35, -21, 7], [29, 0, 7]];
-  scatter(b, hf, 60, 70, 7, avoid, (x, y, z, r) => { if (r() < 0.25) addPine(b, x, y, z, 0.9 + r() * 0.6); else addTree(b, x, y, z, 0.8 + r() * 0.6, 0, r); C.push({ x, z, r: 0.5 }); });
-  scatter(b, hf, 62, 25, 9, avoid, (x, y, z, r) => { addRock(b, x, y, z, 0.4 + r() * 0.8, r); });
-  addClouds(b, 16, 3);
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; const x = HILL[0] + Math.cos(a) * 12, z = HILL[1] + Math.sin(a) * 12; if (Math.sin(a) > 0.6) continue; addRock(b, x, hf(x, z), z, 1.3, Math.random); C.push({ x, z, r: 1.3 }); }
+  // trees, rocks (kept off paths, town, camps and zones)
+  const avoid = [[T[0], T[1] + 8, 32], [0, DZ, 7], [MILL[0], MILL[1], 6], [HILL[0], HILL[1], 14], [CW[0], CW[1], 11], [CE[0], CE[1], 11], [FARM[0] - 3, FARM[1], 14], [FOR[0], FOR[1], 16], [CLF[0], CLF[1], 9]]; avoid.fn = (x, z) => nearPath(P, x, z, 3);
+  scatter(b, hf, R - 8, 90, 7, avoid, (x, y, z, r) => { if (r() < 0.25) addPine(b, x, y, z, 0.9 + r() * 0.6); else addTree(b, x, y, z, 0.8 + r() * 0.6, 0, r); C.push({ x, z, r: 0.5 }); });
+  scatter(b, hf, R - 6, 36, 9, avoid, (x, y, z, r) => { addRock(b, x, y, z, 0.4 + r() * 0.8, r); });
+  addClouds(b, 18, 3, 260);
   I.group.add(b.build());
-  // spawns
+  // spawns: bandits live in their own camps, away from town
   const S = I.spawns; const rr = rng(42);
-  for (let i = 0; i < 9; i++) { const a = rr() * Math.PI * 2, d = 5 + rr() * 9; const cx = i % 2 ? -26 : 28, cz = -14; S.push({ type: 'bandit', x: cx + Math.cos(a) * d, z: cz + Math.sin(a) * d, lvl: 1 + (i % 3) }); }
-  for (let i = 0; i < 4; i++) S.push({ type: 'thug', x: i % 2 ? -32 : 34, z: -26 + i * 2, lvl: 3 + (i % 2) });
-  S.push({ type: 'higuma', x: 0, z: -44, lvl: 6, boss: true, arena: { x: 0, z: -40, r: 13 } });
-  // npcs
-  I.npcs.push({ id: 'makino', look: 'makino', name: 'Makino', role: 'quest', x: -4.6, z: 3, ry: Math.PI / 2 });
-  I.npcs.push({ id: 'woop', look: 'mayor', name: 'Mayor Woop', role: 'quest', x: 2.5, z: -2.5, ry: 0.4 });
-  I.npcs.push({ id: 'smith', look: 'smith', name: 'Blacksmith Gol', role: 'shop', shop: 'weapons1', x: 5.4, z: -1, ry: -Math.PI / 2 });
-  I.npcs.push({ id: 'fruit', look: 'villager', name: 'Fruit Seller', role: 'shop', shop: 'rot', x: 5, z: 8.6, ry: 0 });
-  I.npcs.push({ id: 'tailor', look: 'rika', name: 'Tailor Nana', role: 'shop', shop: 'wear1', x: -5, z: 9.6, ry: 0 });
-  I.npcs.push({ id: 'ship', look: 'villager', name: 'Shipwright Dan', role: 'dock', x: 2.2, z: 46, ry: Math.PI, over: { shirt: 0x8a5a2b } });
-  I.npcs.push({ id: 'roller', look: 'villager', name: 'Gacha Gus', role: 'roller', x: 10.5, z: 4, ry: -Math.PI / 2, over: { shirt: 0xc0283a, hair: 0xffd04a } });
-  I.npcs.push({ id: 'trader', look: 'villager', name: 'Collector Pip', role: 'trader', x: -12, z: 8, ry: 1, over: { shirt: 0x6a3a8a, hair: 0xaa3333 } });
-  I.npcs.push({ id: 'qboard', name: 'Quest Board', role: 'board', x: 0.5, z: 6.5, ry: 0 });
-  I.landmarks = [{ n: "Party's Bar", x: -9, z: 2 }, { n: 'Windmill', x: -24, z: 22 }, { n: 'Smithy', x: 9, z: -1 }, { n: 'Bandit Camp', x: -30, z: -24 }, { n: 'Bandit Camp', x: 35, z: -21 }, { n: 'Mountain Hill', x: 0, z: -42 }, { n: 'Dock', x: 0, z: 54 }];
+  for (let i = 0; i < 9; i++) { const a = rr() * Math.PI * 2, d = 2 + rr() * 7; const c = i % 2 ? CW : CE; S.push({ type: 'bandit', x: c[0] + Math.cos(a) * d, z: c[1] + Math.sin(a) * d, lvl: 1 + (i % 3) }); }
+  for (let i = 0; i < 4; i++) { const c = i % 2 ? CW : CE; S.push({ type: 'thug', x: c[0] + (i - 1.5) * 1.5, z: c[1] - 4, lvl: 3 + (i % 2) }); }
+  S.push({ type: 'higuma', x: HILL[0], z: HILL[1] - 2, lvl: 6, boss: true, arena: { x: HILL[0], z: HILL[1] + 2, r: 13 } });
+  // npcs: spread around the plaza / in front of their buildings
+  I.npcs.push({ id: 'makino', look: 'makino', name: 'Makino', role: 'quest', x: -7.6, z: 4.2, ry: Math.PI / 2 });
+  I.npcs.push({ id: 'woop', look: 'mayor', name: 'Mayor Woop', role: 'quest', x: 4, z: -3.5, ry: 0.4 });
+  I.npcs.push({ id: 'smith', look: 'smith', name: 'Blacksmith Gol', role: 'shop', shop: 'weapons1', x: 8, z: -0.4, ry: -Math.PI / 2 });
+  I.npcs.push({ id: 'fruit', look: 'villager', name: 'Fruit Seller', role: 'shop', shop: 'rot', x: 12, z: 18.6, ry: 0 });
+  I.npcs.push({ id: 'tailor', look: 'rika', name: 'Tailor Nana', role: 'shop', shop: 'wear1', x: -12, z: 18.6, ry: 0 });
+  I.npcs.push({ id: 'ship', look: 'villager', name: 'Shipwright Dan', role: 'dock', x: 2.2, z: DZ - 4, ry: Math.PI, over: { shirt: 0x8a5a2b } });
+  I.npcs.push({ id: 'roller', look: 'villager', name: 'Gacha Gus', role: 'roller', x: 18.6, z: 9, ry: -Math.PI / 2, over: { shirt: 0xc0283a, hair: 0xffd04a } });
+  I.npcs.push({ id: 'trader', look: 'villager', name: 'Collector Pip', role: 'trader', x: -20.6, z: 13, ry: Math.PI / 2, over: { shirt: 0x6a3a8a, hair: 0xaa3333 } });
+  I.npcs.push({ id: 'qboard', name: 'Quest Board', role: 'board', x: 0.5, z: 10, ry: 0 });
+  I.landmarks = [{ n: "Party's Bar", x: -12.6, z: 2.8 }, { n: 'Windmill', x: MILL[0], z: MILL[1] }, { n: 'Smithy', x: 12.6, z: -1.4 }, { n: 'Bandit Camp', x: CW[0], z: CW[1] }, { n: 'Bandit Camp', x: CE[0], z: CE[1] }, { n: 'Mountain Hill', x: HILL[0], z: HILL[1] },
+    { n: 'Farms', x: FARM[0], z: FARM[1] }, { n: 'Fuschia Woods', x: FOR[0], z: FOR[1] }, { n: 'Lighthouse Cliffs', x: CLF[0], z: CLF[1] }, { n: 'Dock', x: 0, z: DZ + 4 }];
   I.palette = { skyTop: 0x3f9be8, skyBot: 0xcfeeff, fog: 0xcfeeff };
   addHorizon(I, 11);
   return I;
 }
 
 export function buildShells() {
-  const I = base({ id: 'shells', R: 64, spawn: [0, 40] });
-  const hf = islandHF(64, [{ x: 0, z: -24, h: 1.2, s: 22 }, { x: 36, z: 10, h: 3, s: 10 }, { x: -38, z: 6, h: 4, s: 12 }], 1.3, 0.4);
+  const K = ISL_K, R = Math.round(64 * K); const I = base({ id: 'shells', R, spawn: [0, 56] });
+  const OZ = -14, T = [0, 18], DZ = R - 16, CW = [-52, -6], CE = [54, 16], FARM = [-44, 38], FOR = [50, -36], CLF = [-50, -52];
+  const hf = islandHF(R, [{ x: 0, z: -25 + OZ, h: 1.2, s: 26 }, { x: CE[0], z: CE[1], h: 3, s: 12 }, { x: CW[0], z: CW[1], h: 4, s: 13 }, { x: CLF[0], z: CLF[1], h: 7, s: 13 }, { x: FOR[0], z: FOR[1], h: 2.5, s: 15 }], 1.3, 0.4);
   I.hf = hf; const C = I.colliders;
-  const b = new Builder();
-  const terrain = makeTerrain(hf, 170, 85, { grass: 0x7fbf55, paint: I.paint = (x, z, y) => (Math.abs(x) < 16 && z < -10 && z > -40 && y > 0.9) ? 0xb8b0a0 : (Math.abs(x) < 2.4 && z > -10 && z < 44 && y > 0.9 ? 0xc9b493 : null) });
+  const P = [[[0, -8 + OZ], [0, DZ]], [T, [-20, 10]], [[-20, 10], CW], [T, [22, 18]], [[22, 18], CE], [[0, 34], FARM], [[0, 0], [24, -14]], [[24, -14], FOR], [[-20, 10], [-30, -30]], [[-30, -30], CLF]]; I.paths = P;
+  const b = new Builder(); const pp = pathPaint(P, 2.2, 0xc9b493);
+  const terrain = makeTerrain(hf, R * 2.6, Math.round(R * 1.3), { grass: 0x7fbf55, paint: I.paint = (x, z, y) => (Math.abs(x) < 16 && z < -10 + OZ && z > -40 + OZ && y > 0.9) ? 0xb8b0a0 : pp(x, z, y) });
   I.group.add(terrain);
   // Marine base walls (gate on south side)
-  const by = hf(0, -25), wallC = 0xdfe3ea;
-  const W = (x, z, w, d) => { b.add(box(w, 4.2, d), wallC, mat(x, by + 2.1, z), { grad: 0.25 }); b.add(box(w + 0.1, 0.4, d + 0.1), 0x2a5bb8, mat(x, by + 4.2, z)); C.push({ x, z, hw: w / 2, hd: d / 2, rot: 0 }); };
+  const by = hf(0, -25 + OZ), wallC = 0xdfe3ea;
+  const W = (x, z, w, d) => { z += OZ; b.add(box(w, 4.2, d), wallC, mat(x, by + 2.1, z), { grad: 0.25 }); b.add(box(w + 0.1, 0.4, d + 0.1), 0x2a5bb8, mat(x, by + 4.2, z)); C.push({ x, z, hw: w / 2, hd: d / 2, rot: 0 }); };
   W(0, -42, 34, 1); W(-17, -25, 1, 34); W(17, -25, 1, 34); W(-10.5, -8, 13, 1); W(10.5, -8, 13, 1);
-  b.add(box(9, 7, 7), 0xeef1f5, mat(0, by + 3.5, -36), { grad: 0.3 }); C.push({ x: 0, z: -36, hw: 4.5, hd: 3.5, rot: 0 });
-  b.add(box(5, 6, 5), 0xeef1f5, mat(0, by + 10, -36), { grad: 0.3 }); b.add(new B.ConeGeometry(4, 3, 4), 0x2a5bb8, mat(0, by + 14.5, -36, 0, Math.PI / 4));
-  b.add(box(3.2, 1.5, 0.2), 0x2a5bb8, mat(0, by + 6, -32.4), { outline: false }); b.add(box(2.6, 0.9, 0.05), 0xffffff, mat(0, by + 6, -32.25), { outline: false });
-  // Morgan statue (ruin-able) in courtyard
-  b.add(box(2.4, 1.2, 2.4), 0xb0b0b0, mat(0, by + 0.6, -28)); b.add(new B.CylinderGeometry(0.6, 0.8, 3.6, 8), 0xc0c4ca, mat(0, by + 3, -28)); b.add(new B.SphereGeometry(0.7, 8, 6), 0xc0c4ca, mat(0, by + 5.3, -28));
-  C.push({ x: 0, z: -28, r: 1.6 });
-  // flagpole + gate posts
-  b.add(new B.CylinderGeometry(0.1, 0.1, 9, 6), 0xdddddd, mat(-12, by + 4.5, -14)); b.add(box(2.4, 1.4, 0.06), 0x2a5bb8, mat(-10.8, by + 8.2, -14), { outline: false });
-  // town
+  b.add(box(9, 7, 7), 0xeef1f5, mat(0, by + 3.5, -36 + OZ), { grad: 0.3 }); C.push({ x: 0, z: -36 + OZ, hw: 4.5, hd: 3.5, rot: 0 });
+  b.add(box(5, 6, 5), 0xeef1f5, mat(0, by + 10, -36 + OZ), { grad: 0.3 }); b.add(new B.ConeGeometry(4, 3, 4), 0x2a5bb8, mat(0, by + 14.5, -36 + OZ, 0, Math.PI / 4));
+  b.add(box(3.2, 1.5, 0.2), 0x2a5bb8, mat(0, by + 6, -32.4 + OZ), { outline: false }); b.add(box(2.6, 0.9, 0.05), 0xffffff, mat(0, by + 6, -32.25 + OZ), { outline: false });
+  // Morgan statue in courtyard
+  b.add(box(2.4, 1.2, 2.4), 0xb0b0b0, mat(0, by + 0.6, -28 + OZ)); b.add(new B.CylinderGeometry(0.6, 0.8, 3.6, 8), 0xc0c4ca, mat(0, by + 3, -28 + OZ)); b.add(new B.SphereGeometry(0.7, 8, 6), 0xc0c4ca, mat(0, by + 5.3, -28 + OZ));
+  C.push({ x: 0, z: -28 + OZ, r: 1.6 });
+  b.add(new B.CylinderGeometry(0.1, 0.1, 9, 6), 0xdddddd, mat(-12, by + 4.5, -14 + OZ)); b.add(box(2.4, 1.4, 0.06), 0x2a5bb8, mat(-10.8, by + 8.2, -14 + OZ), { outline: false });
+  // town (spread out along the main street)
   const H = (x, z, rot, o) => { C.push(addHouse(b, x, hf(x, z) - 0.15, z, rot, o)); };
-  H(-9, 4, Math.PI / 2, { roof: 0x2a6aa8, sign: 0xffffff, w: 6 }); H(9, 4, -Math.PI / 2, { roof: 0xc0503a, sign: 0xb0b8c4, w: 6 });
-  H(-10, 16, Math.PI / 2, { roof: 0xd08a3a }); H(10, 16, -Math.PI / 2, { roof: 0x7a4a9a, sign: 0xd04a8a });
-  H(-10, 27, Math.PI / 2, { roof: 0x4a8a4a }); H(10, 27, -Math.PI / 2, { roof: 0xc06a3a }); H(-22, 12, 1.2, {}); H(22, 20, -1.1, { roof: 0x3a6a9a });
-  addDock(b, 0, 0, 48, 0, 14); I.dock = { x: 0, z: 56, y: 0.85, z0: 48, z1: 62.2 };
-  const boat = makeBoatSmall(); boat.position.set(3.2, -0.1, 58); I.group.add(boat); I.boat = boat;
-  const avoid = [[0, 10, 22], [0, -25, 22], [0, 48, 6]];
-  scatter(b, hf, 58, 55, 11, avoid, (x, y, z, r) => { addTree(b, x, y, z, 0.8 + r() * 0.5, r() < 0.3 ? 1 : 0, r); C.push({ x, z, r: 0.5 }); });
-  scatter(b, hf, 60, 20, 12, avoid, (x, y, z, r) => addRock(b, x, y, z, 0.4 + r() * 0.8, r));
-  addClouds(b, 16, 5);
+  H(-12, 8, Math.PI / 2, { roof: 0x2a6aa8, sign: 0xffffff, w: 6 }); H(12, 8, -Math.PI / 2, { roof: 0xc0503a, sign: 0xb0b8c4, w: 6 });
+  H(-13, 24, Math.PI / 2, { roof: 0xd08a3a }); H(13, 24, -Math.PI / 2, { roof: 0x7a4a9a, sign: 0xd04a8a });
+  H(-13, 40, Math.PI / 2, { roof: 0x4a8a4a }); H(13, 40, -Math.PI / 2, { roof: 0xc06a3a }); H(-30, 18, 1.2, {}); H(30, 28, -1.1, { roof: 0x3a6a9a }); H(-24, 52, 0.6, { roof: 0x8a4a8a }); H(26, 50, -0.6, { roof: 0x6a8a3a, w: 4.5 });
+  C.push(addStall(b, hf, 8, 22, -Math.PI / 2, 0x2a2a2a)); C.push(addStall(b, hf, -8, 36, Math.PI / 2, 0xc0283a)); C.push(addStall(b, hf, -8, 28, Math.PI / 2, 0x6a3a8a));
+  addDock(b, 0, 0, DZ, 0, 14); I.dock = { x: 0, z: DZ + 8, y: 0.85, z0: DZ, z1: DZ + 14.2 };
+  const boat = makeBoatSmall(); boat.position.set(3.2, -0.1, DZ + 10); I.group.add(boat); I.boat = boat;
+  const zr = rng(91); farm(b, hf, C, FARM[0], FARM[1], 14, 10, 0xd0c040); forest(b, hf, C, FOR[0], FOR[1], 14, 30, zr, 0.3); cliffs(b, hf, C, CLF[0], CLF[1], zr);
+  beach(b, hf, C, R, 0.3, 1.2, zr); beach(b, hf, C, R, 1.95, 2.8, zr);
+  camp(b, hf, C, CW[0], CW[1], 0xdfe3ea, 0x2a5bb8, zr); camp(b, hf, C, CE[0], CE[1], 0x6a5a4a, 0x111111, zr);
+  for (const [x, z, r] of [[-20, 10, 0.8], [22, 18, -0.8], [0, 34, 0.4], [24, -14, -0.3]]) signpost(b, hf, x + 1.5, z + 1.5, r);
+  const avoid = [[0, 24, 26], [0, -25 + OZ, 24], [0, DZ, 7], [CW[0], CW[1], 11], [CE[0], CE[1], 11], [FARM[0] - 3, FARM[1], 13], [FOR[0], FOR[1], 15], [CLF[0], CLF[1], 9]]; avoid.fn = (x, z) => nearPath(P, x, z, 3);
+  scatter(b, hf, R - 8, 80, 11, avoid, (x, y, z, r) => { addTree(b, x, y, z, 0.8 + r() * 0.5, r() < 0.3 ? 1 : 0, r); C.push({ x, z, r: 0.5 }); });
+  scatter(b, hf, R - 6, 32, 12, avoid, (x, y, z, r) => addRock(b, x, y, z, 0.4 + r() * 0.8, r));
+  addClouds(b, 18, 5, 260);
   I.group.add(b.build());
+  // spawns: marines garrison the base + a field outpost; Captain Kuro-style rifles hold the east hideout
   const S = I.spawns;
-  for (let i = 0; i < 8; i++) S.push({ type: 'marine', x: -12 + (i % 4) * 8, z: i < 4 ? -2 : 8 + (i % 2) * 22 - 12, lvl: 8 + (i % 4) });
-  for (let i = 0; i < 6; i++) S.push({ type: i < 2 ? 'rifle' : 'marine', x: -10 + (i % 3) * 10, z: -16 - Math.floor(i / 3) * 4, lvl: 9 + (i % 3) });
-  for (let i = 0; i < 3; i++) S.push({ type: 'rifle', x: 30 + i * 3, z: 4 + i * 3, lvl: 10 });
-  S.push({ type: 'morgan', x: 0, z: -24, lvl: 14, boss: true, arena: { x: 0, z: -24, r: 12 } });
-  I.npcs.push({ id: 'rika', look: 'rika', name: 'Rika', role: 'quest', x: -4, z: 12, ry: Math.PI / 2 });
-  I.npcs.push({ id: 'coby', look: 'coby', name: 'Coby', role: 'quest', x: 4, z: -4, ry: 0 });
-  I.npcs.push({ id: 'surplus', look: 'smith', name: 'Surplus Dealer', role: 'shop', shop: 'weapons2', x: 5.6, z: 4, ry: -Math.PI / 2 });
-  I.npcs.push({ id: 'fruit2', look: 'villager', name: 'Shady Fruit Dealer', role: 'shop', shop: 'rot', x: 5.6, z: 16, ry: -Math.PI / 2, over: { shirt: 0x2a2a2a, hair: 0x6a2a8a } });
-  I.npcs.push({ id: 'tailor2', look: 'makino', name: 'Tailor Ume', role: 'shop', shop: 'wear2', x: -5.6, z: 4, ry: Math.PI / 2 });
-  I.npcs.push({ id: 'ship2', look: 'villager', name: 'Harbor Master', role: 'dock', x: 2.2, z: 44, ry: Math.PI });
-  I.npcs.push({ id: 'roller2', look: 'villager', name: 'Gacha Gus', role: 'roller', x: -5.6, z: 27, ry: Math.PI / 2, over: { shirt: 0xc0283a, hair: 0xffd04a } });
-  I.npcs.push({ id: 'trader2', look: 'villager', name: 'Collector Pip', role: 'trader', x: -5.6, z: 20, ry: Math.PI / 2, over: { shirt: 0x6a3a8a, hair: 0xaa3333 } });
-  I.npcs.push({ id: 'qboard2', name: 'Quest Board', role: 'board', x: 0, z: 10, ry: 0 });
-  I.landmarks = [{ n: 'Marine Base 153', x: 0, z: -30 }, { n: 'Town', x: 0, z: 14 }, { n: 'Dock', x: 0, z: 52 }];
+  for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; S.push(i < 4 ? { type: 'marine', x: -8 + (i % 4) * 5.3, z: -18 + OZ + (i % 2) * 4, lvl: 8 + (i % 4) } : { type: 'marine', x: CW[0] + Math.cos(a) * 5, z: CW[1] + Math.sin(a) * 5, lvl: 8 + (i % 4) }); }
+  for (let i = 0; i < 6; i++) S.push({ type: i < 2 ? 'rifle' : 'marine', x: -10 + (i % 3) * 10, z: -24 + OZ - Math.floor(i / 3) * 4, lvl: 9 + (i % 3) });
+  for (let i = 0; i < 3; i++) S.push({ type: 'rifle', x: CE[0] - 3 + i * 3, z: CE[1] + i * 2 - 2, lvl: 10 });
+  S.push({ type: 'morgan', x: 0, z: -24 + OZ, lvl: 14, boss: true, arena: { x: 0, z: -24 + OZ, r: 12 } });
+  I.npcs.push({ id: 'rika', look: 'rika', name: 'Rika', role: 'quest', x: -5, z: 18, ry: Math.PI / 2 });
+  I.npcs.push({ id: 'coby', look: 'coby', name: 'Coby', role: 'quest', x: 4, z: -4 + OZ + 2, ry: 0 });
+  I.npcs.push({ id: 'surplus', look: 'smith', name: 'Surplus Dealer', role: 'shop', shop: 'weapons2', x: 8.4, z: 8, ry: -Math.PI / 2 });
+  I.npcs.push({ id: 'fruit2', look: 'villager', name: 'Shady Fruit Dealer', role: 'shop', shop: 'rot', x: 6.6, z: 22, ry: -Math.PI / 2, over: { shirt: 0x2a2a2a, hair: 0x6a2a8a } });
+  I.npcs.push({ id: 'tailor2', look: 'makino', name: 'Tailor Ume', role: 'shop', shop: 'wear2', x: -8.4, z: 8, ry: Math.PI / 2 });
+  I.npcs.push({ id: 'ship2', look: 'villager', name: 'Harbor Master', role: 'dock', x: 2.2, z: DZ - 4, ry: Math.PI });
+  I.npcs.push({ id: 'roller2', look: 'villager', name: 'Gacha Gus', role: 'roller', x: -6.6, z: 36, ry: Math.PI / 2, over: { shirt: 0xc0283a, hair: 0xffd04a } });
+  I.npcs.push({ id: 'trader2', look: 'villager', name: 'Collector Pip', role: 'trader', x: -6.6, z: 28, ry: Math.PI / 2, over: { shirt: 0x6a3a8a, hair: 0xaa3333 } });
+  I.npcs.push({ id: 'qboard2', name: 'Quest Board', role: 'board', x: 0, z: 14, ry: 0 });
+  I.landmarks = [{ n: 'Marine Base 153', x: 0, z: -30 + OZ }, { n: 'Town', x: T[0], z: T[1] }, { n: 'Marine Outpost', x: CW[0], z: CW[1] }, { n: 'Pirate Hideout', x: CE[0], z: CE[1] }, { n: 'Farms', x: FARM[0], z: FARM[1] }, { n: 'East Woods', x: FOR[0], z: FOR[1] }, { n: 'Lighthouse Cliffs', x: CLF[0], z: CLF[1] }, { n: 'Dock', x: 0, z: DZ + 4 }];
   I.palette = { skyTop: 0x4aa0e0, skyBot: 0xdcefff, fog: 0xdcefff };
   addHorizon(I, 23);
   return I;
@@ -250,40 +265,46 @@ function landmark(b, hf, C, kind, x, z, d) {
   }
 }
 export function genIsland(id) {
-  const d = IDEFS[id]; const meta = ISLANDS.find(i => i.id === id); const R = d.small ? 48 : 64;
+  const d = IDEFS[id]; const meta = ISLANDS.find(i => i.id === id); const R = d.small ? 66 : 88;
   const I = base({ id, R, spawn: [0, R * 0.55] });
+  const T = [0, R * 0.4], CW = [-R * 0.46, -2], CE = [R * 0.46, -6], FARM = [-R * 0.42, R * 0.42], FOR = [R * 0.45, R * 0.36], CLF = [-R * 0.48, -R * 0.42], bz = -R * 0.35 + 8;
+  const lush = !['desert', 'cloud', 'fortress', 'prison', 'spooky', 'sea'].includes(d.theme);
+  const P = [[T, CW], [T, CE], [[0, 0], [0, bz + 10]], [T, lush ? FARM : [-R * 0.3, R * 0.5]], [T, FOR], [[-R * 0.2, 0], CLF]]; I.paths = P; const pp = pathPaint(P, 2, 0xc9b493);
   const seedN = [...id].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0; const r = rng(seedN);
-  const bumps = []; for (let i = 0; i < 4; i++) { const a = r() * Math.PI * 2; bumps.push({ x: Math.cos(a) * R * 0.6, z: Math.sin(a) * R * 0.6, h: 2 + r() * 6, s: 8 + r() * 8 }); }
+  const bumps = []; for (let i = 0; i < 4; i++) { const a = r() * Math.PI * 2; bumps.push({ x: Math.cos(a) * R * 0.6, z: Math.sin(a) * R * 0.6, h: 2 + r() * 6, s: 8 + r() * 8 }); } bumps.push({ x: CLF[0], z: CLF[1], h: 6, s: 12 });
   const hf0 = islandHF(R, bumps, 1.3, d.theme === 'desert' ? 1.2 : 0.5); const hf = HFX[id] ? HFX[id](hf0, R) : hf0; I.hf = hf; const C = I.colliders;
   const b = new Builder();
-  const pal = d.pal; const terrain = makeTerrain(hf, R * 2.6, Math.round(R * 1.3), { grass: pal.grass, grass2: new B.Color(pal.grass).multiplyScalar(0.82).getHex(), sand: pal.sand, rock: pal.rock, paint: I.paint = (x, z, y) => (Math.abs(x) < 2.4 && z > -20 && z < R * 0.7 && y > 0.9 ? 0xc9b493 : PAINT[id] ? PAINT[id](x, z, y) : null) });
+  const pal = d.pal; const terrain = makeTerrain(hf, R * 2.6, Math.round(R * 1.3), { grass: pal.grass, grass2: new B.Color(pal.grass).multiplyScalar(0.82).getHex(), sand: pal.sand, rock: pal.rock, paint: I.paint = (x, z, y) => (Math.abs(x) < 2.4 && z > -20 && z < R * 0.7 && y > 0.9 ? 0xc9b493 : PAINT[id] ? PAINT[id](x, z, y) : pp(x, z, y)) });
   I.group.add(terrain);
   landmark(b, hf, C, d.landmark, 0, -R * 0.35, d); decorate(id, b, hf, C, I, R, rng(seedN + 9));
   // houses: two rows along the main road + scattered
-  const nH = d.small ? 4 : 8; for (let i = 0; i < nH; i++) { const side = i % 2 ? 1 : -1; const zz = R * 0.45 - Math.floor(i / 2) * 9; C.push(addHouseStyled(b, hf, side * (9 + r() * 3), zz, side > 0 ? -Math.PI / 2 : Math.PI / 2, d, r)); }
+  const nH = d.small ? 6 : 10; for (let i = 0; i < nH; i++) { const side = i % 2 ? 1 : -1; const zz = R * 0.56 - Math.floor(i / 2) * 11; C.push(addHouseStyled(b, hf, side * (15 + r() * 5), zz, side > 0 ? -Math.PI / 2 : Math.PI / 2, d, r)); }
+  for (const [sx, sz, sr, sc] of [[9, T[1] - 6, -Math.PI / 2, 0x8a5a2b], [-9, T[1] - 10, Math.PI / 2, 0x2a2a2a], [9, T[1] + 2, -Math.PI / 2, d.roofs[0]], [10.5, T[1] + 13, -Math.PI / 2, 0xc0283a], [-10.5, T[1] + 6, Math.PI / 2, 0x6a3a8a]]) C.push(addStall(b, hf, sx, sz, sr, sc));
+  { const zr = rng(seedN + 33); if (lush) farm(b, hf, C, FARM[0], FARM[1], 14, 10); if (lush || d.theme === 'spooky') forest(b, hf, C, FOR[0], FOR[1], 13, 26, zr, d.theme === 'spooky' ? 0.8 : 0.4); cliffs(b, hf, C, CLF[0], CLF[1], zr); beach(b, hf, C, R, 0.3, 1.1, zr); beach(b, hf, C, R, 2.05, 2.8, zr);
+    camp(b, hf, C, CW[0], CW[1], d.roofs[0], 0x222222, zr); camp(b, hf, C, CE[0], CE[1], d.roofs[d.roofs.length - 1], 0x6a1a1a, zr); for (const [x, z] of [[-R * 0.2, 0], [R * 0.2, -1], [0, R * 0.3 - 4]]) signpost(b, hf, x + 2, z + 2, 0.5); }
   addDock(b, 0, 0, R * 0.78, 0, 14); I.dock = { x: 0, z: R * 0.78 + 8, y: 0.85, z0: R * 0.78, z1: R * 0.78 + 14.2 };
   const boat = makeBoatSmall(); boat.position.set(3.2, -0.1, R * 0.78 + 10); I.group.add(boat); I.boat = boat;
-  const avoid = [[0, R * 0.25, 16], [0, -R * 0.35, 20], [0, R * 0.78, 6]];
-  if (NOTREE[id]) avoid.fn = (x, z) => NOTREE[id](x, z, R);
-  const tk = d.trees ?? 0; scatter(b, hf, R - 6, TREEN[id] ?? (d.small ? 25 : 55), seedN + 1, avoid, (x, y, z, rr) => { addTreeKind(b, x, y, z, tk === 0 && rr() < 0.3 ? 0 : tk, rr); C.push({ x, z, r: 0.5 }); });
-  scatter(b, hf, R - 4, 20, seedN + 2, avoid, (x, y, z, rr) => addRock(b, x, y, z, 0.4 + rr() * 0.8, rr));
+  const avoid = [[0, R * 0.42, 24], [0, -R * 0.35, 22], [0, R * 0.78, 6], [CW[0], CW[1], 11], [CE[0], CE[1], 11], [FARM[0] - 3, FARM[1], 13], [FOR[0], FOR[1], 14], [CLF[0], CLF[1], 9]];
+  avoid.fn = (x, z) => nearPath(P, x, z, 3) || (NOTREE[id] ? NOTREE[id](x, z, R) : false);
+  const tk = d.trees ?? 0; scatter(b, hf, R - 6, Math.round((TREEN[id] ?? (d.small ? 25 : 55)) * 1.4), seedN + 1, avoid, (x, y, z, rr) => { addTreeKind(b, x, y, z, tk === 0 && rr() < 0.3 ? 0 : tk, rr); C.push({ x, z, r: 0.5 }); });
+  scatter(b, hf, R - 4, 32, seedN + 2, avoid, (x, y, z, rr) => addRock(b, x, y, z, 0.4 + rr() * 0.8, rr));
   addClouds(b, 14, seedN % 97);
   addHorizon(I, seedN);
   I.group.add(b.build());
   const S = I.spawns; const L = meta.lvl;
-  for (let i = 0; i < 8; i++) { const a = r() * Math.PI * 2, dd = 4 + r() * 8; S.push({ type: id + '_e1', x: -R * 0.42 + Math.cos(a) * dd, z: -2 + Math.sin(a) * dd, lvl: L + (i % 3) }); }
-  for (let i = 0; i < 6; i++) { const a = r() * Math.PI * 2, dd = 4 + r() * 7; S.push({ type: id + '_e2', x: R * 0.42 + Math.cos(a) * dd, z: -6 + Math.sin(a) * dd, lvl: L + 3 + (i % 3) }); }
-  const bz = -R * 0.35 + 8; S.push({ type: id + '_boss', x: 0, z: bz, lvl: L + 8, boss: true, arena: { x: 0, z: bz, r: 12 } });
+  for (let i = 0; i < 8; i++) { const a = r() * Math.PI * 2, dd = 4 + r() * 8; S.push({ type: id + '_e1', x: CW[0] + Math.cos(a) * dd * 0.8, z: CW[1] + Math.sin(a) * dd * 0.8, lvl: L + (i % 3) }); }
+  for (let i = 0; i < 6; i++) { const a = r() * Math.PI * 2, dd = 4 + r() * 7; S.push({ type: id + '_e2', x: CE[0] + Math.cos(a) * dd * 0.8, z: CE[1] + Math.sin(a) * dd * 0.8, lvl: L + 3 + (i % 3) }); }
+  S.push({ type: id + '_boss', x: 0, z: bz, lvl: L + 8, boss: true, arena: { x: 0, z: bz, r: 12 } });
   const sea = meta.sea;
-  I.npcs.push({ id: 'giver', look: 'villager', name: d.giver, role: 'quest', x: -4.5, z: R * 0.4, ry: Math.PI / 2, over: { shirt: d.roofs[0], hair: 0x3a2a1a } });
-  I.npcs.push({ id: 'sw', look: 'smith', name: 'Weapon Dealer', role: 'shop', shop: 'auto:weapons:' + L, x: 4.5, z: R * 0.4 - 6, ry: -Math.PI / 2 });
-  I.npcs.push({ id: 'fr', look: 'villager', name: 'Fruit Dealer', role: 'shop', shop: 'rot', x: -4.5, z: R * 0.4 - 10, ry: Math.PI / 2, over: { shirt: 0x2a2a2a, hair: 0x6a2a8a } });
-  I.npcs.push({ id: 'wr', look: 'makino', name: 'Outfitter', role: 'shop', shop: 'auto:wear:' + L, x: 4.5, z: R * 0.4 + 2, ry: -Math.PI / 2 });
+  I.npcs.push({ id: 'giver', look: 'villager', name: d.giver, role: 'quest', x: -5, z: R * 0.4 - 1, ry: Math.PI / 2, over: { shirt: d.roofs[0], hair: 0x3a2a1a } });
+  I.npcs.push({ id: 'sw', look: 'smith', name: 'Weapon Dealer', role: 'shop', shop: 'auto:weapons:' + L, x: 7.6, z: R * 0.4 - 6, ry: -Math.PI / 2 });
+  I.npcs.push({ id: 'fr', look: 'villager', name: 'Fruit Dealer', role: 'shop', shop: 'rot', x: -7.6, z: R * 0.4 - 10, ry: Math.PI / 2, over: { shirt: 0x2a2a2a, hair: 0x6a2a8a } });
+  I.npcs.push({ id: 'wr', look: 'makino', name: 'Outfitter', role: 'shop', shop: 'auto:wear:' + L, x: 7.6, z: R * 0.4 + 2, ry: -Math.PI / 2 });
   I.npcs.push({ id: 'dk', look: 'villager', name: 'Harbor Master', role: 'dock', x: 2.2, z: R * 0.78 - 2, ry: Math.PI });
-  I.npcs.push({ id: 'rl', look: 'villager', name: 'Gacha Gus', role: 'roller', x: 4.5, z: R * 0.4 + 9, ry: -Math.PI / 2, over: { shirt: 0xc0283a, hair: 0xffd04a } });
-  I.npcs.push({ id: 'tr', look: 'villager', name: 'Collector Pip', role: 'trader', x: -4.5, z: R * 0.4 + 4, ry: Math.PI / 2, over: { shirt: 0x6a3a8a, hair: 0xaa3333 } });
+  I.npcs.push({ id: 'rl', look: 'villager', name: 'Gacha Gus', role: 'roller', x: 9.1, z: R * 0.4 + 13, ry: -Math.PI / 2, over: { shirt: 0xc0283a, hair: 0xffd04a } });
+  I.npcs.push({ id: 'tr', look: 'villager', name: 'Collector Pip', role: 'trader', x: -9.1, z: R * 0.4 + 6, ry: Math.PI / 2, over: { shirt: 0x6a3a8a, hair: 0xaa3333 } });
   I.npcs.push({ id: 'qboard', name: 'Quest Board', role: 'board', x: 0, z: R * 0.4 + 1, ry: 0 });
-  I.landmarks = [{ n: d.boss.name + "'s lair", x: 0, z: bz }, { n: 'Town', x: 0, z: R * 0.4 }, { n: 'Dock', x: 0, z: R * 0.78 }];
+  I.landmarks = [{ n: d.boss.name + "'s lair", x: 0, z: bz }, { n: 'Town', x: 0, z: R * 0.4 }, { n: d.e1.name + ' Camp', x: CW[0], z: CW[1] }, { n: d.e2.name + ' Camp', x: CE[0], z: CE[1] }, ...(lush ? [{ n: 'Farms', x: FARM[0], z: FARM[1] }] : []), { n: 'Cliffs', x: CLF[0], z: CLF[1] }, { n: 'Dock', x: 0, z: R * 0.78 }];
   I.palette = { skyTop: pal.sky[0], skyBot: pal.sky[1], fog: pal.fog, sea: SEA[id], light: LIGHT[id] };
   I.dark = d.theme === 'spooky' || d.theme === 'prison';
   return I;

@@ -3,7 +3,7 @@
 // material with rim light + crisp anime shine, extruded-hull outline, curly stem + leaves (pineapple crown), rarity glow.
 // Geometries/materials are shared per shape / per fruit; 2D icons are rendered from the same 3D model and cached.
 import { THREE as B } from './engine.js';
-import { FRUITS, RCOL } from './data.js';
+import { FRUITS, RCOL, rainbowHex } from './data.js';
 const hx = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
 const rgb = c => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
 const mixc = (c, k) => { const f = v => Math.max(0, Math.min(255, Math.round(k > 1 ? v + (255 - v) * (k - 1) : v * k))); const [r, g, b] = rgb(c); return (f(r) << 16) | (f(g) << 8) | f(b); };
@@ -104,7 +104,9 @@ export function makeDevilFruit(id, scale = 1, o = {}) { const f = FRUITS[id] || 
   if (shape === 'pineapple') { const cr = new B.Mesh(crownGeo(), leafM()); cr.position.set(topX, top, 0); g.add(cr); }
   else { const st = new B.Mesh(stemGeo(), stemM()); st.position.set(topX, top, 0); g.add(st);
     for (const [ry, rz, sc] of [[0.3, 0.45, 1], [2.9, 0.35, 0.8]]) { const l = new B.Mesh(leafGeo(), leafM()); l.position.set(topX, top + 0.04, 0); l.rotation.set(0, ry, rz); l.scale.setScalar(sc); g.add(l); } }
-  if (o.glow !== false) { const rc = new B.Color(RCOL[f.rar ?? 0] || '#ffffff'); const base = 0.18 + (f.rar ?? 0) * 0.05; const sp = new B.Sprite(new B.SpriteMaterial({ map: glowTex(), color: rc, transparent: true, depthWrite: false, blending: B.AdditiveBlending, opacity: base })); sp.scale.setScalar(1.5 + (f.rar ?? 0) * 0.1); g.add(sp); g.userData.glow = sp; g.userData.glowBase = base; }
+  const ultra = f.rar === 7 && !o.icon;
+  if (o.glow !== false || ultra) { const rc = new B.Color(RCOL[f.rar ?? 0] || '#ffffff'); const base = (0.18 + (f.rar ?? 0) * 0.05) * (o.glow === false ? 0.6 : 1); const sp = new B.Sprite(new B.SpriteMaterial({ map: glowTex(), color: rc, transparent: true, depthWrite: false, blending: B.AdditiveBlending, opacity: base })); sp.scale.setScalar(1.5 + (f.rar ?? 0) * 0.1); g.add(sp); g.userData.glow = sp; g.userData.glowBase = base;
+    if (ultra) sp.onBeforeRender = () => sp.material.color.setHex(rainbowHex()); }
   // cover screen drives a glow pulse through mat.uniforms; give it its own material so shared copies are untouched
   let umat = mat; if (o.glow === false && !o.icon) { umat = mat.clone(); umat.onBeforeCompile = mat.onBeforeCompile; umat.customProgramCacheKey = mat.customProgramCacheKey; g.traverse(m => { if (m.material === mat) m.material = umat; }); }
   let gv = 0; umat.uniforms = { t: { value: 0 }, glow: { get value() { return gv; }, set value(v) { gv = v; umat.emissiveIntensity = 1 + v * 2.5; } } };
@@ -120,8 +122,8 @@ function render3d(id, S) { const R = iconRenderer(); if (!R) return null; const 
   R.cam.position.set(ctr.x, ctr.y + h * 0.12, h / (2 * Math.tan(15 * Math.PI / 180)) + 0.6); R.cam.lookAt(ctr.x, ctr.y, ctr.z); R.r.setSize(S, S, false); R.sc.add(m); R.r.render(R.sc, R.cam); R.sc.remove(m); return R.r.domElement; }
 export function fruitIcon2(id, size = 96, emblem = '') { const k = id + size + emblem; if (iconCache[k]) return iconCache[k]; const f = FRUITS[id]; if (!f) return '';
   const S = size, cv = document.createElement('canvas'); cv.width = cv.height = S; const c = cv.getContext('2d'); const rc = RCOL[f.rar ?? 0] || '#fff';
-  const g0 = c.createRadialGradient(S / 2, S * 0.55, S * 0.08, S / 2, S * 0.55, S * 0.5); g0.addColorStop(0, rc + 'aa'); g0.addColorStop(1, rc + '00'); c.fillStyle = g0; c.fillRect(0, 0, S, S);
-  if (f.rar >= 5) { c.save(); c.translate(S / 2, S * 0.55); c.globalAlpha = 0.3; c.fillStyle = rc; for (let i = 0; i < 12; i++) { c.rotate(Math.PI / 6); c.beginPath(); c.moveTo(0, 0); c.lineTo(S * 0.05, -S * 0.5); c.lineTo(-S * 0.05, -S * 0.5); c.fill(); } c.restore(); }
+  const g0 = c.createRadialGradient(S / 2, S * 0.55, S * 0.08, S / 2, S * 0.55, S * 0.5); g0.addColorStop(0, (f.rar === 7 ? '#ffffff' : rc) + 'aa'); g0.addColorStop(1, rc + '00'); c.fillStyle = g0; c.fillRect(0, 0, S, S);
+  if (f.rar >= 5) { c.save(); c.translate(S / 2, S * 0.55); c.globalAlpha = f.rar === 7 ? 0.55 : 0.3; c.fillStyle = rc; for (let i = 0; i < 12; i++) { if (f.rar === 7) c.fillStyle = `hsl(${i * 30},100%,62%)`; c.rotate(Math.PI / 6); c.beginPath(); c.moveTo(0, 0); c.lineTo(S * 0.05, -S * 0.5); c.lineTo(-S * 0.05, -S * 0.5); c.fill(); } c.restore(); }
   let ok = false; try { const R = render3d(id, S * 2); if (R) { c.drawImage(R, 0, 0, S * 2, S * 2, 0, 0, S, S); ok = true; } } catch (e) { ok = false; }
   if (!ok) { // 2D fallback: swirl-textured disc with outline + shine
     const cx = S / 2, cy = S * 0.56, R = S * 0.32; c.save(); c.beginPath(); c.arc(cx, cy, R, 0, 6.283); c.clip(); const T = swirlTex(id).canvas; c.drawImage(T, 0, 0, T.width, T.height, cx - R * 1.6, cy - R * 1.3, R * 3.6, R * 2.6);

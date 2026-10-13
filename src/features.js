@@ -148,7 +148,7 @@ export function fakeUpdate(g, dt) {
     if (o.sit) { const near = R.position.distanceTo(g.p.pos) < 4; o.anim.sit = 1; o.anim.move = 0; o.anim.talk = near || (Math.sin(g.t * 0.4 + 1) > 0.6); o.anim.wave = !near && R.position.distanceTo(g.p.pos) < 9 && Math.sin(g.t * 0.7) > 0.8;
       if (o.chatT <= 0) { o.chatT = 14 + Math.random() * 20; if (R.position.distanceTo(g.p.pos) < 25) g.ui.chat(o.f.name, ['trading table open! come sit', 'got fruits to trade, sit down', 'fair trades only (mostly)', 'anyone wanna trade??'][Math.floor(Math.random() * 4)]); }
       g.anim(o.c, o.anim); continue; }
-    if (o.t <= 0) { o.t = 3 + Math.random() * 4; const a = Math.random() * 6.28; o.tgt.set(Math.cos(a) * 12, 0, g.island.R * 0.3 + Math.sin(a) * 12); }
+    if (o.t <= 0) { o.t = 3 + Math.random() * 4; const a = Math.random() * 6.28; const hub = (g.island.npcs.length ? g.island.npcs[(Math.random() * g.island.npcs.length) | 0] : { x: 0, z: g.island.R * 0.3 }); o.tgt.set(hub.x + Math.cos(a) * 6, 0, hub.z + Math.sin(a) * 6); }
     const d = o.tgt.clone().sub(R.position).setY(0); const near = R.position.distanceTo(g.p.pos) < 4; let mv = 0;
     if (near && R.position.distanceTo(g.p.pos) < 2.4) { const aw = R.position.clone().sub(g.p.pos).setY(0).normalize(); R.position.addScaledVector(aw, 2 * dt); }
     if (d.length() > 0.8 && !near) { d.normalize(); R.position.addScaledVector(d, 3 * dt); R.rotation.y = Math.atan2(d.x, d.z); mv = 1; o.anim.phase += dt * 7; } else if (near) R.rotation.y = Math.atan2(g.p.pos.x - R.position.x, g.p.pos.z - R.position.z);

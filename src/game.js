@@ -127,7 +127,7 @@ export class Game {
       I.group.add(st); setOutlinesVisible(st); I.updaters.push(dt => { for (const m of fr) m.userData.spin(dt, this.t); }); } }
     fakeSpawn(this); this.crew.spawn();
     const sp = arrive && I.dock ? [I.dock.x, I.dock.z - 2] : I.spawn;
-    this.p.pos.set(sp[0], this.groundAt(sp[0], sp[1]), sp[1]); this.p.yaw = arrive ? 0 : Math.PI * 0.95; this.p.pitch = -0.05; this.p.vy = 0;
+    this.p.pos.set(sp[0], this.groundAt(sp[0], sp[1]), sp[1]); this.collide(this.p.pos, 0.4); if (this.groundAt(this.p.pos.x, this.p.pos.z) < 0.3 && I.dock) this.p.pos.set(I.dock.x, this.groundAt(I.dock.x, I.dock.z0 - 3), I.dock.z0 - 3); this.p.yaw = arrive ? 0 : Math.PI * 0.95; this.p.pitch = -0.05; this.p.vy = 0;
     migrateShips(this.save); if (I.boat && this.save.ship) { const sh = makeShipModel(this.save.ship, this.save.faction); sh.position.copy(I.boat.position); sh.position.x += sh.userData.wid * 0.5 - 0.6; sh.position.y = -0.25; sh.rotation.y = Math.PI; I.group.add(sh); setOutlinesVisible(sh); I.boat.visible = false; I.shipModel = sh; I.colliders.push({ x: sh.position.x, z: sh.position.z, r: sh.userData.wid * 0.55 }); }
     else if (I.boat) I.boat.visible = !!this.save.boat;
     this.bossIntroDone = {};

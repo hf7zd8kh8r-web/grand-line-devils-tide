@@ -1,6 +1,8 @@
 // ---------- Game data ----------
 export const RARITY = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Godly', 'Mythical', 'Ultra'];
-export const RCOL = ['#d8d8d8', '#5fd16a', '#4aa8ff', '#b46bff', '#ffb02e', '#ffe85a', '#ff4d6d', '#ffffff'];
+export const RCOL = ['#d8d8d8', '#5fd16a', '#4aa8ff', '#b46bff', '#ffb02e', '#ffe85a', '#ff4d6d', '#ff3df7']; // Ultra (#ff3df7) is a sentinel: CSS/3D render it as an animated rainbow
+export const ULTRA_HEX = '#ff3df7';
+export const rainbowHex = (t = performance.now() / 1000, sp = 0.25) => { const c = { r: 0, g: 0, b: 0 }; const h = (t * sp) % 1; const f = n => { const k = (n + h * 12) % 12; return 0.62 - 0.38 * Math.max(-1, Math.min(k - 3, 9 - k, 1)); }; return (Math.round(f(0) * 255) << 16) | (Math.round(f(8) * 255) << 8) | Math.round(f(4) * 255); };
 
 export const SEAS = [
   { id: 1, name: 'First Sea', sub: 'East Blue · Paradise · Pre-Timeskip', lvl: 1, col: '#2f8fd6' },
