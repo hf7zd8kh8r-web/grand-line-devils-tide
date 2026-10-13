@@ -477,3 +477,12 @@ small.awk{color:#ffd860!important}
 @keyframes duelPop{from{transform:translate(-50%,-50%) scale(1.6);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
 @media (orientation:portrait){#duelhud{top:calc(max(10px,env(safe-area-inset-top)) + 88px);width:94vw}#duelForfeit{position:absolute;right:8px;top:100%;margin-top:6px}}
 @media (orientation:landscape){#duelhud{width:min(50vw,520px)}}
+/* compact top-right HUD (Map less intrusive): 40px buttons, Map tucked to a 36px icon-only chip */
+#topbtns{gap:5px;align-items:flex-start}
+#topbtns .hudbtn{width:42px;height:42px;font-size:17px;border-radius:12px}
+#topbtns .hudbtn small{font-size:8px;margin-top:1px}
+#topbtns .hudbtn[data-ui="map"]{position:absolute;right:2px;top:calc(100% + 6px);width:36px;height:36px;font-size:16px;border-radius:50%;opacity:.78}
+#topbtns .hudbtn[data-ui="map"] small{display:none}
+#hud.touch #topbtns .hudbtn{width:40px;height:40px;font-size:16px}
+#hud.touch #topbtns .hudbtn[data-ui="map"]{width:36px;height:36px;font-size:15px}
+@media (orientation:portrait){#hud.touch #topbtns{gap:4px}#hud.touch #topbtns .hudbtn{width:38px;height:38px}#hud.touch #topbtns .hudbtn small{font-size:7px}#hud.touch #topbtns .hudbtn[data-ui="map"]{width:36px;height:36px}}
