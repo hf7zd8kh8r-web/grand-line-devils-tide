@@ -515,7 +515,7 @@ export class Game {
     }
     if (bossActive) this.ui.bossBar(bossActive); else if (this.ui.bossShown && !this.enemies.some(e => e.boss && e.aggro && !e.dead)) this.ui.bossBar(null);
   }
-  flashMat(e) { const m = e.c.material; if (e.flash > 0) { m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.25 + 0.5 * Math.min(1, e.flash / 0.09); } else if (e.state === 'windup' || e.state === 'skill') { m.emissive.setHex(0xff2010); m.emissiveIntensity = 0.35 + Math.sin(this.t * 30) * 0.25; } else { m.emissiveIntensity = 0; } }
+  flashMat(e) { const m = e.c.material; if (e.flash > 0) { m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.12 * Math.min(1, e.flash / 0.09); } else if (e.state === 'windup' || e.state === 'skill') { m.emissive.setHex(0xff2010); m.emissiveIntensity = 0.35 + Math.sin(this.t * 30) * 0.25; } else { m.emissiveIntensity = 0; } }
   enemyStrike(e, dist) {
     const def = e.def; e.state = 'chase'; e.cd = def.cd * (0.8 + Math.random() * 0.5) / (e.phase2 ? 1.3 : 1); e.anim.attack = 1;
     const lvlMul = 1 + (e.lvl - 1) * 0.1; const dmg = def.dmg * lvlMul;

@@ -81,8 +81,8 @@ export class FX {
     this.add(m, dur, t => { mat.uniforms.head.value = Math.min(1.75, t / sweep * 1.75); mat.uniforms.fade.value = t < sweep ? 1 : 1 - (t - sweep) / (1 - sweep); m.scale.setScalar(1 + t * 0.15); });
     const ob = this.objs[this.objs.length - 1]; const f0 = ob.fn; ob.fn = (t, dt) => { f0(t, dt); if (t >= 1) g.dispose(); }; return m; }
   // element-flavoured hit impact
-  impact(p, el, power = 1, dir) { const P = palette(el); const pw = Math.min(2.5, power);
-    this.orb(p, P.core, 0.1 + 0.06 * pw, 0.08); this.shock(p, P.glow, 0.35 + 0.2 * pw, 0.14 + 0.04 * pw, 0.55); this.sparks(p, 6 + 6 * pw, P.spark, { speed: 9 + 5 * pw, dir });
+  impact(p, el, power = 1, dir) { const P = palette(el); const nk = this.camera ? Math.max(0.35, Math.min(1, p.distanceTo(this.camera.position) / 3.5)) : 1; const pw = Math.min(2.5, power) * (0.4 + 0.6 * nk);
+    if (nk > 0.7) this.orb(p, P.core, 0.1 + 0.06 * pw, 0.08); this.shock(p, P.glow, (0.35 + 0.2 * pw) * nk, 0.14 + 0.04 * pw, 0.55 * nk); this.sparks(p, 6 + 6 * pw, P.spark, { speed: 9 + 5 * pw, dir });
     if (pw > 1.3 && el !== 'slash') { this.shock(p, P.core, 0.7 * pw, 0.32, 0.5); this.ring(p.clone().setY(p.y - 0.8), P.glow, 1.4 * pw, 0.35); }
     if (P.rise) this.burst(p, 8 * pw, P.glow, { speed: 2.5, up: 3, size: 0.32, life: 0.6, grav: -3 });
     if (P.heavy) this.burst(p, 8 * pw, P.spark, { speed: 4, up: 3, size: 0.3, life: 0.6, grav: 14 });

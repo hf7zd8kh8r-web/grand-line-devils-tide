@@ -126,9 +126,9 @@ export class ViewModel {
     // apply: pivots, arms gripping the hilt (two-hand on one sword; one per sword for Three Sword Style)
     const sh = this._v; const shR = sh[0].set(0.6 * xk, -1.08, 0.12), shL = sh[1].set(-0.6 * xk, -1.08, 0.12);
     const zk = this.zk || 1; const put = (P, h) => { P.position.copy(h.p); P.position.x *= xk; P.position.z *= zk; P.quaternion.copy(h.q); };
-    put(this.swP, this.hp[0]); const dR = sh[3].set(0, 1, 0).applyQuaternion(this.hp[0].q); const hR = this.swP.position.clone(); placeArm(this.armR, hR, shR, dR, 1);
-    if (three) { put(this.swPL, this.hp[1]); const dL = new B.Vector3(0, 1, 0).applyQuaternion(this.hp[1].q); placeArm(this.armL, this.swPL.position.clone(), shL, dL, -1); }
-    else { const hL = hR.clone().addScaledVector(dR, -0.15); placeArm(this.armL, hL, shL, dR, -1); }
+    put(this.swP, this.hp[0]); const dR = sh[3].set(0, 1, 0).applyQuaternion(this.hp[0].q); const hR = this.swP.position.clone(); placeArm(this.armR, hR, shR, dR, 1, this.armK || 1);
+    if (three) { put(this.swPL, this.hp[1]); const dL = new B.Vector3(0, 1, 0).applyQuaternion(this.hp[1].q); placeArm(this.armL, this.swPL.position.clone(), shL, dL, -1, this.armK || 1); }
+    else { const hL = hR.clone().addScaledVector(dR, -0.15); placeArm(this.armL, hL, shL, dR, -1, this.armK || 1); }
     if (this.mouth) { this.swPM.visible = three; const k = this.swing; this.swPM.position.set(-0.05 * xk, -0.6 + bob * 0.6 - drop, -0.48); this.swPM.quaternion.copy(bladeQuat(sh[2].set(1, 0.06 + Math.sin(t * 1.3) * 0.02 + k * 0.05, -0.28), new B.Vector3(0, -0.2, -1), this._q)); }
     this.fxG.scale.x = 1; }
   // ---- fruit / style cast poses ----
@@ -152,7 +152,7 @@ export class ViewModel {
   _castPose(dt, bob) { const c = this.cp; if (!c) return; c.t += dt; const end = c.kind === 'charge' ? c.Tc + 0.35 : c.Tc + c.Ts + c.Th + c.Tr; if (c.t > end) { if (c.kind === 'charge') { this.cp = null; this.doPose('push', { Tc: 0.0001 }); } else this.cp = null; return; }
     const out = [this._v[0], this._v[1]]; const r = this._poseTargets(c, out); const xk = this.xk || 1; this._ik = true;
     const sh = [new B.Vector3(0.6 * xk, -1.08, 0.12), new B.Vector3(-0.6 * xk, -1.08, 0.12)]; const P = c.P || {}; const up = c.kind === 'push' || c.kind === 'raise' || c.kind === 'palm';
-    [this.armR, this.armL].forEach((A, i) => { const h = out[i].clone(); h.y += bob; h.x *= xk; h.z *= this.zk || 1; const s = i ? -1 : 1; placeArm(A, h, sh[i], up ? new B.Vector3(0, 1, 0) : new B.Vector3(-s, 0.35, 0), s); A.scale.set(1, 1, 1); });
+    [this.armR, this.armL].forEach((A, i) => { const h = out[i].clone(); h.y += bob; h.x *= xk; h.z *= this.zk || 1; const s = i ? -1 : 1; placeArm(A, h, sh[i], up ? new B.Vector3(0, 1, 0) : new B.Vector3(-s, 0.35, 0), s, this.armK || 1); });
     if (P.str && c.t > c.Tc) { const x = (c.t - c.Tc) / (c.Ts + c.Th); const k = x < 0.35 ? x / 0.35 : Math.max(0, 1 - (x - 0.35) / 0.65); const A = c.side > 0 ? this.armR : this.armL; A.scale.z = 1 + 3.2 * c.str * k; }
     if (!c.fired && c.kind !== 'charge' && c.t >= c.Tc) { c.fired = true; const k = P.kick || [0.02, 3, 0]; if (this.onKick) this.onKick(k[0] * (c.big ? 1.6 : 1), k[1] * (c.big ? 1.5 : 1), k[2] * c.side); if (P.cp) this.camOff.p = P.cp * (c.big ? 1.4 : 1);
       const x = (c.side > 0 ? P.X[0] : [-P.X[0][0], P.X[0][1], P.X[0][2]]); const at = new B.Vector3(x[0] * xk, x[1], x[2] - 0.12); this.sparks.fire(at, this.auraCol || this.styleCol || 0xffffff, c.big ? 1.3 : 0.8); if (!P.one) { this.sparks.fire(at.set(-x[0] * xk, x[1], x[2] - 0.12), this.auraCol || 0xffffff, c.big ? 1.3 : 0.8); } }
@@ -220,5 +220,5 @@ export class ViewModel {
     for (const A of [this.armL, this.armR]) { const au = A.userData.aura; if (!au) continue; au.visible = on; if (!on) continue;
       au.children.forEach((m, i) => { const p = (m.userData.ph += dt * (2 + i * 0.3)); const k = (p % 1.6) / 1.6; m.position.set(Math.cos(i * 2.4 + p) * 0.07, -0.02 + k * 0.16, Math.sin(i * 2.4 + p) * 0.07); m.scale.setScalar((1 - k) * (0.8 + this.cast * 1.5)); }); }
     this.auraMat.opacity = 0.55 + Math.sin(this.t * 12) * 0.15; }
-  render(renderer, aspect) { const k = Math.max(0.34, Math.min(1, aspect / 1.6)); this.xk = k < 1 ? Math.max(0.42, k * 1.12) : 1; this.zk = 1 + (1 - k) * 0.35; this.root.position.set(0, 0, 0); this.root.scale.setScalar(0.5 * (0.62 + 0.38 * k)); this.cam.aspect = aspect; this.cam.updateProjectionMatrix(); renderer.clearDepth(); renderer.render(this.scene, this.cam); }
+  render(renderer, aspect) { const k = Math.max(0.34, Math.min(1, aspect / 1.6)); this.xk = k < 1 ? Math.max(0.42, k * 1.12) : 1; this.zk = 1 + (1 - k) * 0.35; this.armK = 0.66 + 0.34 * k; this.root.position.set(0, 0, 0); this.root.scale.setScalar(0.5 * (0.62 + 0.38 * k)); this.cam.aspect = aspect; this.cam.updateProjectionMatrix(); renderer.clearDepth(); renderer.render(this.scene, this.cam); }
 }
