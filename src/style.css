@@ -493,3 +493,12 @@ b[style*="#ff3df7"],small[style*="#ff3df7"],span[style*="#ff3df7"],button[style*
 span[style*="--c:#ff3df7"]{background:none;-webkit-text-fill-color:initial;color:inherit!important;animation:none}
 .item.r7,.fslot.r7,.dexc[style*="#ff3df7"],.rl-cell[style*="#ff3df7"],.ic[style*="#ff3df7"],.tfi.r7,.rl-win[style*="#ff3df7"]{border-color:#ff4d4d;animation:ultraGlow 2.4s linear infinite!important}
 .rl-win[style*="#ff3df7"].flour:after{background:repeating-conic-gradient(#ff4d4d 0 6deg,#ffb02e 6deg 12deg,#ffe85a 12deg 18deg,#5fd16a 18deg 24deg,#4aa8ff 24deg 30deg,#b46bff 30deg 36deg,transparent 36deg 44deg)}
+/* Japanese title line under the logo: brush-red banner wipes in, then the katakana slams in letter-spaced */
+#cover .t3{margin:4px auto 0;display:inline-block;position:relative;padding:2px 14px 3px;font:900 clamp(11px,2.4vw,19px)/1.2 "Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Noto Sans CJK JP","Noto Sans JP",sans-serif;letter-spacing:.14em;color:#fff;text-shadow:0 2px 0 #3a0000,0 0 10px rgba(255,80,40,.7);animation:jpIn 1s cubic-bezier(.2,.9,.25,1.15) 1.1s both}
+#cover .t3::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,#c8141e 12%,#e8261e 50%,#c8141e 88%,transparent);transform:skewX(-14deg);border-top:2px solid #ffd04a;border-bottom:2px solid #ffd04a;z-index:-1;animation:jpBar .55s cubic-bezier(.6,0,.3,1) 1s both;transform-origin:left}
+#cover .t3 span{display:inline-block;animation:jpGlint 4s ease-in-out 2.4s infinite}
+@keyframes jpBar{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes jpIn{0%{opacity:0;letter-spacing:.9em;filter:blur(6px)}60%{opacity:1;filter:blur(0)}100%{opacity:1;letter-spacing:.14em}}
+@keyframes jpGlint{0%,85%,100%{text-shadow:0 2px 0 #3a0000,0 0 10px rgba(255,80,40,.7)}92%{text-shadow:0 2px 0 #3a0000,0 0 18px #fff,0 0 30px #ffd04a}}
+#cover .title{isolation:isolate}
+@media (orientation:portrait){#cover .t3{font-size:clamp(11px,3.4vw,20px);margin-top:8px}}

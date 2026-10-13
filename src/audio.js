@@ -8,7 +8,7 @@ export class Audio {
   save() { localStorage.setItem(KEY, JSON.stringify(this.set)); this.apply(); }
   apply() { if (!this.ctx) return; const t = this.ctx.currentTime; this.mG.gain.setTargetAtTime(this.set.mute ? 0 : this.set.music * 0.5, t, 0.08); this.sG.gain.setTargetAtTime(this.set.mute ? 0 : this.set.sfx, t, 0.05); }
   // must be called from a user gesture (iOS)
-  unlock() { if (this.ctx) { if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {}); return; } const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; const c = this.ctx = new AC();
+  unlock() { if (this.ctx) { if (this.ctx.state !== 'running') this.ctx.resume().then(() => this._tryTitle()).catch(() => {}); else this._tryTitle(); return; } const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; const c = this.ctx = new AC();
     this.out = c.createDynamicsCompressor(); this.out.threshold.value = -14; this.out.ratio.value = 4; this.out.connect(c.destination);
     this.mG = c.createGain(); this.sG = c.createGain(); this.mG.connect(this.out); this.sG.connect(this.out);
     // shared reverb (generated impulse)
@@ -19,7 +19,13 @@ export class Audio {
     // iOS: play a 1-sample silent buffer inside the gesture, and resume after interruptions / returning to the tab
     try { const sb = c.createBufferSource(); sb.buffer = c.createBuffer(1, 1, 22050); sb.connect(c.destination); sb.start(0); } catch (_) {}
     const wake = () => { if (this.ctx && this.ctx.state !== 'running' && !document.hidden) this.ctx.resume().catch(() => {}); }; document.addEventListener('visibilitychange', wake); addEventListener('focus', wake); addEventListener('pageshow', wake);
-    this.apply(); this.timer = setInterval(() => this.tick(), 50); if (c.state !== 'running') c.resume(); }
+    this.apply(); this.timer = setInterval(() => this.tick(), 50); if (c.state !== 'running') c.resume().then(() => this._tryTitle()).catch(() => {}); else this._tryTitle(); }
+  // anime title call (pre-rendered voice + taiko/brass sting, public/title_voice.mp3): plays once, on the cover, as soon as audio is unlocked; ducks the anthem
+  titleCall() { if (this.titleDone) return; this.wantTitle = true; if (!this._tvBuf) this._tvBuf = fetch('./title_voice.mp3').then(r => r.ok ? r.arrayBuffer() : null).catch(() => null); this._tryTitle(); }
+  async _tryTitle() { if (!this.wantTitle || this.titleDone || this._tvBusy || !this.ctx || this.ctx.state !== 'running') return; const m = window.__g && window.__g.mode; if (m && m !== 'cover' && m !== 'burst' && m !== 'logo') { this.wantTitle = false; return; }
+    this._tvBusy = true; try { const ab = await this._tvBuf; if (!ab || this.titleDone) return; const buf = this._tvDec || (this._tvDec = await this.ctx.decodeAudioData(ab.slice(0))); if (this.titleDone) return; this.titleDone = true; this.titlePlays = (this.titlePlays || 0) + 1;
+      if (this.set.mute) return; const c = this.ctx, t = c.currentTime + 0.05; const src = c.createBufferSource(); src.buffer = buf; const g = c.createGain(); g.gain.value = Math.min(1, 0.35 + Math.max(this.set.music, this.set.sfx) * 0.75); src.connect(g); g.connect(this.out); src.start(t);
+      const mv = this.set.music * 0.5, p = this.mG.gain; p.cancelScheduledValues(t); p.setTargetAtTime(mv * 0.25, t, 0.08); p.setTargetAtTime(mv, t + buf.duration - 0.4, 0.5); src.onended = () => this.apply(); } finally { this._tvBusy = false; } }
   // duel arena + per-island variants are resolved here so callers just say island/night/battle/boss/sail/cover
   setTheme(name) { const g = typeof window !== 'undefined' && window.__g && window.__g.game; if (g && name !== 'cover' && name !== 'sail') { if (g.duel && g.duel.on) name = 'duel'; else if ((name === 'island' || name === 'night') && g.island && ISLAND_VARIANT[g.island.id]) name = ISLAND_VARIANT[g.island.id]; } this.want = name; }
   // ---------- music (crossfade: old track keeps playing while it fades, new one fades in) ----------

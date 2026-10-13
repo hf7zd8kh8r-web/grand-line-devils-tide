@@ -26,7 +26,7 @@ initMouse(renderer.domElement); initTouch($('#hud'));
 const TIPS = ['Tip: Block (right click / BLOCK) cuts damage by 80%.', 'Tip: Dash gives you a moment of invincibility.', 'Tip: Every weapon and fruit has its own mastery. Use it to unlock moves!', 'Tip: Bosses glow red right before they strike.', 'Tip: Jump over Morgan\'s Axe Slam shockwave!', 'Tip: Higher seas need higher levels. Check the World Map (M).'];
 
 // ---------- logo -> cover ----------
-function toCover() { if (mode !== 'logo') return; mode = 'cover'; hide('#logo'); cover = new Cover(); show('#cover'); const u = cover.ultra; $('#ufName').textContent = u.name.toUpperCase(); $('#ufName').style.setProperty('--g', u.glow); $('#qBtn b').textContent = Q.auto ? 'AUTO' : Q.level.toUpperCase(); if (params.get('room')) $('#crewJoin').textContent = `🏴‍☠️ Your friend invited you to crew ${params.get('room').toUpperCase()}`; }
+function toCover() { if (mode !== 'logo') return; mode = 'cover'; hide('#logo'); cover = new Cover(); show('#cover'); audio.titleCall(); const u = cover.ultra; $('#ufName').textContent = u.name.toUpperCase(); $('#ufName').style.setProperty('--g', u.glow); $('#qBtn b').textContent = Q.auto ? 'AUTO' : Q.level.toUpperCase(); if (params.get('room')) $('#crewJoin').textContent = `🏴‍☠️ Your friend invited you to crew ${params.get('room').toUpperCase()}`; }
 show('#logo', 'flex');
 if (params.has('skip')) toCover(); else { setTimeout(toCover, 2600); $('#logo').addEventListener('pointerdown', toCover); }
 $('#qBtn').addEventListener('pointerdown', e => { e.stopPropagation(); const n = Q.auto ? 'low' : { low: 'med', med: 'high', high: 'auto' }[Q.level]; qset(n); $('#qBtn b').textContent = n.toUpperCase(); });
