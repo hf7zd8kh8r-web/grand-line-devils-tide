@@ -1,4 +1,4 @@
-import { awListHtml } from './awaken.js';
+import { awListHtml, awToggleHtml } from './awaken.js';
 import { TRAVEL, travelLabel, flyGate } from './travel.js';
 import { isTouch, Q, qset } from './engine.js';
 import { FRUITS, SWORDS, GUNS, ACCESSORIES, RARITY, RCOL, ISLANDS, SEAS, QUESTS, islandById, RACES, T2, ENEMIES } from './data.js';
@@ -244,7 +244,7 @@ export class UI {
         const t2 = k === 'sword' && T2[id] ? ((S.t2 || {})[id] ? `<small class="gold">★ ${T2[id]}</small>` : `<button data-do="t2:${id}" title="Tier II">★ II</button>`) : '';
         return this.itemCard(k, id, t2 + (k === 'fruit' ? `<button data-do="eat:${idx}">Eat</button>` : `<button data-do="equip:${k}:${id}" class="${eq ? 'on' : ''}">${eq ? 'Equipped' : 'Equip'}</button>`)); }).join('') : '<p class="dim">None yet</p>'}</div>`; };
       const f = S.eq.fruit && FRUITS[S.eq.fruit]; const mlv = f ? ST.mastery(S, 'fr:' + S.eq.fruit).lvl : 0; const aw = S.awake && S.awake[S.eq.fruit];
-      const awk = !f ? '' : f.rar < 4 ? '<p class="dim">Only Legendary, Godly, Mythical and Ultra fruits can Awaken.</p>' : aw ? '<p class="gold">✦ AWAKENED — new awakened kit + awakened special (Y / ✦ button switches kits)</p>' : `<div class="qcard"><b>Awakening</b><span>Needs fruit mastery 40 (you: ${mlv}) and ฿${fmt(this.awakenCost(f))}</span></div><button class="go" data-do="awaken" ${mlv >= 40 ? '' : 'disabled'}>Awaken ${f.short}</button>`;
+      const awk = !f ? '' : f.rar < 4 ? '<p class="dim">Only Legendary, Godly, Mythical and Ultra fruits can Awaken.</p>' : aw ? `<p class="gold">✦ AWAKENED — new awakened kit + awakened special</p>${awToggleHtml(S)}` : `<div class="qcard"><b>Awakening</b><span>Needs fruit mastery 40 (you: ${mlv}) and ฿${fmt(this.awakenCost(f))}</span></div><button class="go" data-do="awaken" ${mlv >= 40 ? '' : 'disabled'}>Awaken ${f.short}</button>`;
       const cur = S.eq.fruit ? `<div class="cur">Ate: ${this.itemCard('fruit', S.eq.fruit, '')}</div>${awk}` : `<p class="dim">You haven't eaten a Devil Fruit yet. (You can only have one power at a time — eating another replaces it.)</p>`;
       body = `<h3>Devil Fruit Power</h3>${cur}` + sec('fruit', 'Fruits in bag') + sec('sword', 'Swords') + sec('gun', 'Guns') + sec('wear', 'Wearables (up to 3)') + `<h3>Materials</h3><p class="dim">${Object.entries(S.inv.mats).map(([k, v]) => `${k} ×${v}`).join(' · ') || 'None yet'}</p>`;
     } else if (tab === 'mastery') {

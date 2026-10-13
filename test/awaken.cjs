@@ -34,9 +34,9 @@ const SH = __dirname + '/../shots/';
   }
   // toggle
   await s.keyboard.press('KeyY'); await s.waitForTimeout(300);
-  const tg = await s.evaluate(() => [__g.game.ui.currentMoves().map(m => m.name), __g.game.save.awk.kit.pika, document.getElementById('awkBtn').textContent]);
-  ok('Y toggles to base kit', tg[1] === 'base' && /Base/.test(tg[2]), JSON.stringify(tg));
-  await s.click('#awkBtn'); await s.waitForTimeout(200); ok('✦ button back to awakened', await s.evaluate(() => __g.game.save.awk.kit.pika === 'awake'));
+  const tg = await s.evaluate(() => [__g.game.ui.currentMoves().map(m => m.name), __g.game.save.awk.kit.pika, !document.getElementById('awkBtn')]);
+  ok('Y toggles to base kit, no HUD button', tg[1] === 'base' && tg[2] === true, JSON.stringify(tg));
+  await s.evaluate(() => { __g.ui.close && __g.ui.close(true); __g.ui.open('inv', 'gear'); }); await s.waitForSelector('[data-awk]', { timeout: 5000 }).catch(() => {}); await s.waitForTimeout(300); await s.screenshot({ path: SH + 'awaken_bag_toggle.png' }); await s.click('[data-awk]'); await s.waitForTimeout(200); ok('Bag kit toggle back to awakened', await s.evaluate(() => __g.game.save.awk.kit.pika === 'awake'));
   const dex = await s.evaluate(() => __g.ui.dexHtml(5)); ok('encyclopedia lists awakened kit', /Awakened: Ryusei Kazan/.test(dex));
   // migration: old save with an awakened fruit and no awk data
   await s.evaluate(() => { const S = __g.game.save; S.awake.mera = true; S.inv.fruits.push('mera'); delete S.awk; delete S.mastery['aw:mera']; __g.saveNow(); });
