@@ -14,15 +14,15 @@ const toCell = (P, W, H, hr, x, y) => { const phi = Math.PI / 2 + Math.asin(Math
 const eyeCache = {}, mouthCache = {};
 function eyeAtlas(eyeC, browC, thick) { const k = eyeC + ':' + browC + ':' + (thick ? 1 : 0); if (eyeCache[k]) return eyeCache[k];
   const cv = document.createElement('canvas'); cv.width = EW * ECOLS; cv.height = EH * EROWS; const c = cv.getContext('2d'); const hr = 0.185;
-  const px = (x, y) => toCell(EP, EW, EH, hr, x, y); const [ , eyY] = px(0, 0.005); const [lx] = px(-0.068, 0); const [rx] = px(0.068, 0); const sx = (lx - px(-0.068 - 0.044, 0)[0]) * -1; const rr = Math.abs(sx) * 0.82; const ry = rr * 1.28;
+  const px = (x, y) => toCell(EP, EW, EH, hr, x, y); const [ , eyY] = px(0, 0.005); const [lx] = px(-0.068, 0); const [rx] = px(0.068, 0); const sx = (lx - px(-0.068 - 0.044, 0)[0]) * -1; const rr = Math.abs(sx) * 0.96; const ry = rr * 1.36;
   const [ , brY] = px(0, 0.08);
   const ink = '#1a0e08';
-  const brow = (x, s, ang, dy = 0) => { c.save(); c.translate(x, brY + dy); c.rotate(ang * s); c.fillStyle = hx(browC); c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1; const w = rr * 1.9, h = thick ? 5.5 : 3.6; c.beginPath(); c.ellipse(0, 0, w / 2, h / 2, 0, 0, 6.283); c.fill(); c.stroke(); c.restore(); };
+  const brow = (x, s, ang, dy = 0) => { c.save(); c.translate(x, brY + dy); c.rotate(ang * s); c.fillStyle = hx(browC); c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1; const w = rr * 2.05, h = thick ? 7 : 5; c.beginPath(); c.ellipse(0, 0, w / 2, h / 2, 0, 0, 6.283); c.fill(); c.stroke(); c.restore(); };
   const openEye = (x, s, o = {}) => { const k = o.k ?? 1; c.save(); c.beginPath(); c.ellipse(x, eyY, rr, ry * k, 0, 0, 6.283); c.fillStyle = '#fff'; c.fill(); c.clip();
     const lx2 = x + (o.dx || 0) * rr * 0.25; c.fillStyle = hx(eyeC); c.beginPath(); c.ellipse(lx2, eyY + ry * 0.12, rr * 0.72, ry * 0.8, 0, 0, 6.283); c.fill(); c.fillStyle = '#0a0a0a'; c.beginPath(); c.ellipse(lx2, eyY + ry * 0.14, rr * 0.38, ry * 0.45, 0, 0, 6.283); c.fill();
     c.fillStyle = '#fff'; c.beginPath(); c.arc(lx2 - rr * 0.28, eyY - ry * 0.25, rr * 0.22, 0, 6.283); c.fill(); c.beginPath(); c.arc(lx2 + rr * 0.25, eyY + ry * 0.35, rr * 0.1, 0, 6.283); c.fill();
     if (o.lid) { c.fillStyle = o.lidC || '#00000000'; } c.restore();
-    c.strokeStyle = ink; c.lineWidth = 2.6; c.beginPath(); c.ellipse(x, eyY, rr, ry * k, 0, Math.PI * 1.08, Math.PI * 1.92); c.stroke(); // upper lash
+    c.strokeStyle = ink; c.lineWidth = 3.6; c.beginPath(); c.ellipse(x, eyY, rr, ry * k, 0, Math.PI * 1.02, Math.PI * 1.98); c.stroke(); // upper lash
     c.lineWidth = 1.2; c.beginPath(); c.ellipse(x, eyY, rr, ry * k, 0, Math.PI * 0.2, Math.PI * 0.8); c.stroke(); if (o.lash) { c.lineWidth = 2; c.beginPath(); c.moveTo(x + s * rr * 0.9, eyY - ry * k * 0.5); c.lineTo(x + s * rr * 1.3, eyY - ry * k * 0.85); c.stroke(); } };
   const lidEye = (x, s, k, angle = 0) => { // eye with upper lid lowered to k (0 open..1 closed)
     c.save(); c.beginPath(); c.ellipse(x, eyY, rr, ry, 0, 0, 6.283); c.clip(); c.fillStyle = '#fff'; c.fillRect(x - rr, eyY - ry, rr * 2, ry * 2); c.fillStyle = hx(eyeC); c.beginPath(); c.ellipse(x, eyY + ry * 0.2, rr * 0.72, ry * 0.8, 0, 0, 6.283); c.fill(); c.fillStyle = '#0a0a0a'; c.beginPath(); c.ellipse(x, eyY + ry * 0.22, rr * 0.38, ry * 0.45, 0, 0, 6.283); c.fill();
@@ -44,7 +44,7 @@ function eyeAtlas(eyeC, browC, thick) { const k = eyeC + ':' + browC + ':' + (th
   cell(EYE.wide, () => both((x, s) => { openEye(x, s, { k: 1.12 }); brow(x, s, -0.15, -6); }));
   const t = new B.CanvasTexture(cv); t.colorSpace = B.SRGBColorSpace; t.anisotropy = 2; return (eyeCache[k] = t); }
 function mouthAtlas(lipC) { const k = lipC; if (mouthCache[k]) return mouthCache[k]; const cv = document.createElement('canvas'); cv.width = MW * MCOLS; cv.height = MH * MROWS; const c = cv.getContext('2d'); const hr = 0.185;
-  const [cx, cy] = toCell(MP, MW, MH, hr, 0, -0.083); const W = toCell(MP, MW, MH, hr, 0.04, 0)[0] - MW / 2; const ink = '#3a120c', inside = '#4a1010', tongue = '#d0505a';
+  const [cx, cy] = toCell(MP, MW, MH, hr, 0, -0.08); const W = toCell(MP, MW, MH, hr, 0.05, 0)[0] - MW / 2; const ink = '#3a120c', inside = '#4a1010', tongue = '#d0505a';
   const cell = (i, fn) => { c.save(); c.translate((i % MCOLS) * MW, Math.floor(i / MCOLS) * MH); c.beginPath(); c.rect(0, 0, MW, MH); c.clip(); c.lineCap = 'round'; c.lineJoin = 'round'; fn(); c.restore(); };
   const openM = (w, h, teeth, tng = true) => { c.fillStyle = inside; c.beginPath(); c.ellipse(cx, cy, w, h, 0, 0, 6.283); c.fill(); if (tng) { c.save(); c.clip(); c.fillStyle = tongue; c.beginPath(); c.ellipse(cx, cy + h * 0.8, w * 0.6, h * 0.55, 0, 0, 6.283); c.fill(); c.restore(); } if (teeth) { c.save(); c.beginPath(); c.ellipse(cx, cy, w, h, 0, 0, 6.283); c.clip(); c.fillStyle = '#fff'; c.fillRect(cx - w, cy - h, w * 2, h * 0.38); if (teeth > 1) c.fillRect(cx - w, cy + h * 0.68, w * 2, h * 0.4); c.restore(); } c.strokeStyle = ink; c.lineWidth = 2.2; c.beginPath(); c.ellipse(cx, cy, w, h, 0, 0, 6.283); c.stroke(); };
   cell(MOUTH.smile, () => { c.strokeStyle = ink; c.lineWidth = 3; c.beginPath(); c.arc(cx, cy - W * 0.7, W * 1.05, Math.PI * 0.2, Math.PI * 0.8); c.stroke(); });

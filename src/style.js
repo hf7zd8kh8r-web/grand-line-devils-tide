@@ -6,7 +6,7 @@ export const EYEC = [['Brown', 0x3a2410], ['Black', 0x111111], ['Blue', 0x2a6ae0
 export const CLOTH = [['Red', 0xc8202a], ['Blue', 0x2a4a9a], ['Navy', 0x1a2a4a], ['White', 0xf4f4f4], ['Black', 0x1a1a1a], ['Green', 0x2a7a3a], ['Yellow', 0xf0c030], ['Orange', 0xe0702a], ['Purple', 0x6a3a9a], ['Pink', 0xe86a9a], ['Brown', 0x6a4a2a], ['Teal', 0x2a8a8a], ['Grey', 0x6a6a72], ['Gold', 0xc9a23a]];
 export const OUTFITS = [['vest', 'Open Vest'], ['tee', 'Shirt'], ['open', 'Open Shirt'], ['tank', 'Sleeveless'], ['jacket', 'Jacket'], ['suit', 'Suit & Tie'], ['kimono', 'Kimono + Sash']];
 export const FREE_HATS = ['none', 'bandana', 'beanie'];
-export const HAIR_NAMES = { spiky: 'Spiky', short: 'Short', messy: 'Messy', slick: 'Slicked Back', long: 'Long', ponytail: 'Ponytail', bun: 'Top Bun', pigtails: 'Pigtails', afro: 'Afro', mohawk: 'Mohawk', buzz: 'Buzz Cut', swept: 'Swept Up', bald: 'Bald' };
+export const HAIR_NAMES = { spiky: 'Spiky', short: 'Short', messy: 'Messy', slick: 'Slicked Back', long: 'Long', ponytail: 'Ponytail', bun: 'Top Bun', pigtails: 'Pigtails', afro: 'Afro', mohawk: 'Mohawk', buzz: 'Buzz Cut', swept: 'Swept Up', bald: 'Bald', wild: 'Wild Spikes', pompadour: 'Pompadour' };
 export const MOUTH_NAMES = { smile: 'Smile', grin: 'Big Grin', line: 'Serious', frown: 'Scowl', teeth: 'Toothy' };
 export const BROWS = [['normal', 'Normal'], ['angry', 'Fierce'], ['kind', 'Kind'], ['sad', 'Worried']];
 // premium cosmetics (Berries) — slot: hat | back | face | neck | extra

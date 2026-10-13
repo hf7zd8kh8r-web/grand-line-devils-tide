@@ -1,6 +1,6 @@
 // v3 characters: one skinned mesh + outline per character, 11 bones, anime-ish proportions,
 // real faces (eyes w/ iris+highlight, brows, nose, mouth), hair styles, hats, coats/capes/vests.
-import { THREE, Builder, mat, toonMat, OUTLINE_MAT } from './engine.js';
+import { THREE, Builder, mat, toonMat, OUTLINE_MAT, qv } from './engine.js';
 import { buildFace } from './face.js';
 const B = THREE;
 const box = (w, h, d) => new B.BoxGeometry(w, h, d);
@@ -15,22 +15,44 @@ export const LOOKS = {
   bandit: { skin: 'tan', shirt: 0x7a4b2a, pants: 0x3b3550, band: 0xb3262a, hair: 0x2a1a10, hairS: 'short', beard: 'stubble', brow: 'angry', mouth: 'grin', vest: 0x4a2e1a },
   thug: { skin: 'tan', shirt: 0x3f6b3a, pants: 0x2d2a26, bald: true, big: 1.2, beard: true, hair: 0x2a1a10, brow: 'angry', mouth: 'frown' },
   marine: { skin: 'light', shirt: 0xf4f4f4, collar: 0x2a5bb8, pants: 0xeeeeee, hat: 'marine', hair: 0x3a2a1a, hairS: 'short', mouth: 'line' },
-  higuma: { skin: 'tan', shirt: 0x5b2d20, pants: 0x2c2c38, band: 0x7a1d18, hair: 0x111111, hairS: 'spiky', beard: 'big', big: 1.1, weapon: 'sabre', brow: 'angry', mouth: 'grin', cape: 0x3a1a12, scar: true },
-  morgan: { skin: 'light', shirt: 0xe9e9e9, cape: 0xffffff, pants: 0x2a3a6a, hair: 0xe8c95a, hairS: 'buzz', jaw: true, big: 1.3, weapon: 'axe', brow: 'angry', mouth: 'frown' },
-  makino: { skin: 'light', shirt: 0xf3e3b8, pants: 0x5e7f3a, band: 0x3d8b3a, hair: 0x1f5a3a, hairS: 'long', dress: true, brow: 'kind', mouth: 'smile', fem: true },
-  mayor: { skin: 'light', shirt: 0x6b4a8a, pants: 0x3a3a3a, hair: 0xe0e0e0, hairS: 'buzz', beard: 'white', mustache: true, old: true, brow: 'kind', mouth: 'line', hat: 'top', hatC: 0x3a2a4a },
+  higuma: { body: 'brute', skin: 'tan', shirt: 0x5b2d20, pants: 0x2c2c38, band: 0x7a1d18, hair: 0x111111, hairS: 'spiky', beard: 'big', big: 1.1, weapon: 'sabre', brow: 'angry', mouth: 'grin', cape: 0x3a1a12, scar: true },
+  morgan: { body: 'brute', skin: 'light', shirt: 0xe9e9e9, cape: 0xffffff, pants: 0x2a3a6a, hair: 0xe8c95a, hairS: 'buzz', jaw: true, big: 1.3, weapon: 'axe', brow: 'angry', mouth: 'frown' },
+  makino: { body: 'longleg', skin: 'light', shirt: 0xf3e3b8, pants: 0x5e7f3a, band: 0x3d8b3a, hair: 0x1f5a3a, hairS: 'long', dress: true, brow: 'kind', mouth: 'smile', fem: true },
+  mayor: { body: 'fat', skin: 'light', shirt: 0x6b4a8a, pants: 0x3a3a3a, hair: 0xe0e0e0, hairS: 'buzz', beard: 'white', mustache: true, old: true, brow: 'kind', mouth: 'line', hat: 'top', hatC: 0x3a2a4a },
   gen: { skin: 'light', shirt: 0x8a8a8a, pants: 0x3a3a3a, hair: 0x2a1a10 },
   villager: { skin: 'tan', shirt: 0x4a7fb8, pants: 0x6b5a3a, hair: 0x5a3a1a, hairS: 'short', mouth: 'smile' },
-  smith: { skin: 'dark', shirt: 0x6a6a6a, pants: 0x3a2a1a, band: 0x222222, hair: 0x111111, hairS: 'buzz', big: 1.15, apron: 0x5a3a1a, mustache: true },
-  coby: { skin: 'light', shirt: 0xf4f4f4, collar: 0x2a5bb8, pants: 0xeeeeee, hat: 'marine', hair: 0xe07ab8, hairS: 'short', glasses: 'round', mouth: 'smile', brow: 'kind' },
-  rika: { skin: 'light', shirt: 0xf27aa0, pants: 0x6a3a2a, hair: 0x6a3a1a, hairS: 'pigtails', dress: true, small: true, mouth: 'smile', fem: true },
+  smith: { body: 'brute', skin: 'dark', shirt: 0x6a6a6a, pants: 0x3a2a1a, band: 0x222222, hair: 0x111111, hairS: 'buzz', big: 1.15, apron: 0x5a3a1a, mustache: true },
+  coby: { body: 'lanky', skin: 'light', shirt: 0xf4f4f4, collar: 0x2a5bb8, pants: 0xeeeeee, hat: 'marine', hair: 0xe07ab8, hairS: 'short', glasses: 'round', mouth: 'smile', brow: 'kind' },
+  rika: { body: 'kid', skin: 'light', shirt: 0xf27aa0, pants: 0x6a3a2a, hair: 0x6a3a1a, hairS: 'pigtails', dress: true, small: true, mouth: 'smile', fem: true },
   player_pirate: { skin: 'light', shirt: 0xc8202a, pants: 0x2a4a8a, hair: 0x111111, hairS: 'spiky', hat: 'straw', open: true, mouth: 'grin' },
   player_marine: { skin: 'light', shirt: 0xf4f4f4, collar: 0x2a5bb8, pants: 0x2a3a6a, cape: 0xffffff, hair: 0x3a2a1a, hairS: 'short', hat: 'marine', mouth: 'smile' },
 };
-export const HAIRS = ['spiky', 'short', 'messy', 'slick', 'long', 'ponytail', 'bun', 'pigtails', 'afro', 'mohawk', 'buzz', 'swept', 'bald'];
+export const HAIRS = ['spiky', 'wild', 'pompadour', 'short', 'messy', 'slick', 'long', 'ponytail', 'bun', 'pigtails', 'afro', 'mohawk', 'buzz', 'swept', 'bald'];
 export const HATS = ['none', 'straw', 'marine', 'bandana', 'tricorn', 'top', 'beanie', 'cowboy', 'chef', 'crown', 'turban', 'horned'];
 export const MOUTHS = ['smile', 'grin', 'line', 'frown', 'teeth'];
 
+// One Piece-style exaggerated body archetypes. leg/torso/arm = length scales, chest/waist = width (x), *D = depth (z), *W = limb thickness, head = head scale.
+export const BODIES = {
+  standard: { leg: 1, torso: 1, arm: 1, chest: 1.08, waist: 0.92, armW: 1, legW: 1, head: 1.06 },
+  lanky:    { leg: 1.2, torso: 1.12, arm: 1.16, chest: 0.9, waist: 0.74, armW: 0.78, legW: 0.76, head: 0.98 },
+  longleg:  { leg: 1.32, torso: 0.98, arm: 1.12, chest: 1.12, waist: 0.78, armW: 0.9, legW: 0.84, head: 0.94 },
+  stocky:   { leg: 0.78, torso: 0.94, arm: 0.92, chest: 1.3, waist: 1.12, armW: 1.3, legW: 1.3, head: 1.12 },
+  brute:    { leg: 0.86, torso: 1.16, arm: 1.14, chest: 1.75, waist: 0.95, chestD: 1.45, waistD: 0.95, armW: 1.75, legW: 1.2, head: 0.86 },
+  fat:      { leg: 0.74, torso: 1.06, arm: 0.95, chest: 1.38, waist: 1.55, chestD: 1.35, waistD: 1.5, belly: 0.35, armW: 1.35, legW: 1.4, head: 1.02 },
+  kid:      { leg: 0.7, torso: 0.8, arm: 0.8, chest: 0.86, waist: 0.84, armW: 0.85, legW: 0.88, head: 1.25 },
+};
+const OT = 0.021; // bolder ink outlines
+const hashS = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0) / 4294967296; };
+export function bodyOf(L, lookId) {
+  let id = L.body;
+  if (!id) { const r = hashS(lookId + ':' + (L.seed ?? '') + ':' + (L.shirt ?? '') + ':' + (L.hair ?? '') + ':' + (L.hairS ?? '') + (L.pants ?? ''));
+    if (L.player || /^player_/.test(lookId)) id = 'standard';
+    else if (lookId === 'thug' || (L.big || 1) >= 1.2) id = 'brute';
+    else if (L.small) id = 'kid';
+    else if (lookId === 'villager' || lookId === 'gen') id = ['standard', 'lanky', 'stocky', 'fat', 'longleg', 'brute', 'standard', 'lanky'][Math.floor(r * 8)];
+    else id = ['standard', 'lanky', 'stocky', 'longleg', 'brute'][Math.floor(r * 5)]; }
+  return { id, ...(BODIES[id] || BODIES.standard) };
+}
 export function makeChar(lookId, overrides = {}) {
   const L = { ...(LOOKS[lookId] || LOOKS.villager), ...overrides };
   if (L.cap && !L.hat) L.hat = L.cap; // legacy key
@@ -39,19 +61,38 @@ export function makeChar(lookId, overrides = {}) {
   const sk = typeof L.skin === 'number' ? L.skin : SKIN[L.skin || 'light'];
   const g = L.big || 1, sm = L.small ? 0.86 : 1;
   const b = new Builder(true);
-  const A = (geo, col, m, bone, o = {}) => b.add(geo, col, m, { bone, ot: 0.016, ...o });
-  const F = (geo, col, m) => b.add(geo, col, m, { bone: 2, outline: false });
   const W = 0.2 * g;              // half shoulder width
   const hipY = 0.95, kneeY = 0.5, shY = 1.47, elY = shY - 0.36;
   const hr = 0.185 * (L.big ? 1.02 : 1), hy = shY + 0.25;
+  // ---- body archetype: parts are authored on the standard rig, then remapped per bone (legs/torso/arms/head) ----
+  const P = bodyOf(L, lookId), AX0 = W + 0.07 * g;
+  const hipN = hipY * P.leg, shN = hipN + (shY - hipY) * P.torso, hyN = shN + (hy - shY) * P.head;
+  const _v = new B.Vector3(), _n = new B.Vector3();
+  const deform = (geo, m, bone) => {
+    if (m) geo.applyMatrix4(m); const pos = geo.attributes.position, nor = geo.attributes.normal; geo.computeBoundingBox(); const bb = geo.boundingBox, cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
+    const isArm = bone === 3 || bone === 4 || bone === 7 || bone === 8, sideA = bone === 3 || bone === 7 ? -1 : 1, sideL = bone === 5 || bone === 9 ? -1 : 1;
+    const thin = isArm && (Math.abs(cx - sideA * AX0) > 0.12 || Math.abs(cz) > 0.12 || bb.max.z - bb.min.z > 0.3); // weapons/props held in the hand: move, don't fatten
+    for (let i = 0; i < pos.count; i++) { _v.fromBufferAttribute(pos, i); let sx = 1, sz = 1;
+      if (bone === 2) { sx = sz = P.head; _v.set(_v.x * P.head, hyN + (_v.y - hy) * P.head, _v.z * P.head); }
+      else if (bone === 5 || bone === 6 || bone === 9 || bone === 10) { const c0 = sideL * 0.1 * g; sx = sz = P.legW; _v.x = c0 * P.waist + (_v.x - c0) * P.legW; _v.z *= P.legW; _v.y *= P.leg; }
+      else if (isArm) { const c0 = sideA * AX0; if (!thin) { sx = sz = P.armW; _v.x = c0 + (_v.x - c0) * P.armW; _v.z *= P.armW; } _v.x += c0 * (P.chest - 1) * 0.82; _v.y = shN + (_v.y - shY) * P.arm; }
+      else { const t = Math.min(1, Math.max(0, (_v.y - hipY) / (shY - hipY))), te = bone === 0 ? 0 : Math.pow(t, 0.8); sx = P.waist + (P.chest - P.waist) * te; sz = (P.waistD || P.waist) + ((P.chestD || P.chest) - (P.waistD || P.waist)) * te;
+        if (P.belly && _v.z > 0) sz *= 1 + P.belly * Math.sin(Math.PI * Math.min(1, Math.max(0, (_v.y - hipY + 0.15) / 0.55)));
+        _v.x *= sx; _v.z *= sz; _v.y = bone === 0 ? hipN + (_v.y - hipY) : hipN + (_v.y - hipY) * P.torso; }
+      pos.setXYZ(i, _v.x, _v.y, _v.z); if (nor) { _n.fromBufferAttribute(nor, i); _n.set(_n.x / sx, _n.y, _n.z / sz).normalize(); nor.setXYZ(i, _n.x, _n.y, _n.z); } }
+    pos.needsUpdate = true; return geo; };
+  const A = (geo, col, m, bone, o = {}) => b.add(deform(geo.index ? geo : geo, m, bone), col, null, { bone, ot: OT, ...o, ...(o.ot ? { ot: o.ot * 1.25 } : {}) });
+  const F = (geo, col, m) => b.add(deform(geo, m, 2), col, null, { bone: 2, outline: false });
   const top = L.coat || L.shirt;
   // ---------- legs: thigh (5/6) + shin (9/10) ----------
+  const sandal = L.sandals ?? (!L.boots && !L.shoes && !L.armor && (lookId === 'player_pirate' || ((lookId === 'villager' || lookId === 'bandit') && hashS(lookId + (L.shirt ?? '') + (L.seed ?? '')) < 0.45)));
   for (const [s, th, sh] of [[-1, 5, 9], [1, 6, 10]]) {
     const x = s * 0.1 * g;
     A(cyl(0.095 * g, 0.075 * g, 0.47), L.pants, mat(x, (hipY + kneeY) / 2, 0), th, { grad: 0.2 });
     A(sph(0.074 * g, 8, 6), L.pants, mat(x, kneeY, 0), sh, { outline: false });
     A(cyl(0.074 * g, 0.058 * g, 0.42), L.boots || L.pants, mat(x, kneeY - 0.22, 0), sh, { grad: 0.25 });
-    A(sph(0.085, 10, 7), L.shoes || 0x2a1d14, mat(x, 0.055, 0.045, 0, 0, 0, 0.95 * g, 0.62, 1.55), sh);
+    if (sandal) { A(sph(0.08, 10, 7), sk, mat(x, 0.06, 0.05, 0, 0, 0, 0.95 * g, 0.6, 1.55), sh); A(box(0.15 * g, 0.03, 0.27), L.sole || 0x5a3a1e, mat(x, 0.015, 0.05), sh, { ot: 0.008 }); A(box(0.15 * g, 0.025, 0.035), L.strap || 0x7a4a22, mat(x, 0.075, 0.09, -0.35), sh, { outline: false }); }
+    else A(sph(0.085, 10, 7), L.shoes || 0x2a1d14, mat(x, 0.055, 0.045, 0, 0, 0, 0.95 * g, 0.62, 1.55), sh);
   }
   // ---------- hips / torso ----------
   A(cyl(W * 0.86, W * 0.8, 0.2, 12), L.pants, mat(0, hipY + 0.04, 0, 0, 0, 0, 1, 1, 0.66), 0);
@@ -92,9 +133,13 @@ export function makeChar(lookId, overrides = {}) {
   if (L.cape) {
     A(box(W * 2.5, 1.0, 0.04), L.cape, mat(0, shY - 0.45, -W * 0.8, 0.06), 1, { grad: 0.2 });
     for (const s of [-1, 1]) { A(box(0.04, 0.95, W * 0.9), L.cape, mat(s * W * 1.28, shY - 0.43, -W * 0.38, 0, 0, s * 0.06), 1, { grad: 0.2 }); A(sph(0.1 * g, 10, 6), L.cape, mat(s * (W + 0.04), shY + 0.01, -0.01, 0, 0, 0, 1.2, 0.6, 1.1), 1); }
-    if (L.capeTxt !== false && (L.cape === 0xffffff)) A(box(W * 1.2, 0.08, 0.01), 0x2a3a6a, mat(0, shY - 0.3, -W * 0.83 - 0.02), 1, { outline: false });
+    if (L.capeTxt !== false && (L.cape === 0xffffff)) { const ez = -W * 0.83 - 0.025, ey = shY - 0.36, ec = L.capeEmblem || 0x2a4a9a; // original Tide Watch emblem: wave-ring + anchor bar + star (not the canon kanji)
+      A(new B.TorusGeometry(0.11, 0.018, 5, 18), ec, mat(0, ey, ez), 1, { outline: false }); A(box(0.022, 0.2, 0.012), ec, mat(0, ey, ez - 0.004), 1, { outline: false }); A(box(0.14, 0.022, 0.012), ec, mat(0, ey + 0.06, ez - 0.004), 1, { outline: false });
+      A(new B.TorusGeometry(0.06, 0.016, 4, 10, Math.PI), ec, mat(0, ey - 0.06, ez - 0.004, 0, 0, Math.PI), 1, { outline: false }); A(box(W * 1.3, 0.05, 0.01), ec, mat(0, shY - 0.12, ez), 1, { outline: false }); }
   }
   if (L.fur) { for (const s of [-1, 1]) for (let i = 0; i < 3; i++) A(sph(0.12 * g, 8, 6), L.fur, mat(s * (W * 0.5 + i * 0.09), shY + 0.02 - i * 0.03, -0.03 - i * 0.02), 1, { ot: 0.01 }); A(sph(0.2 * g, 8, 6), L.fur, mat(0, shY - 0.02, -W * 0.7, 0, 0, 0, 1.5, 0.6, 0.6), 1, { ot: 0.01 }); }
+  if (L.feathers) { const fc = L.feathers; for (let i = 0; i < 16; i++) { const a = Math.PI * 0.35 + i / 15 * Math.PI * 1.3; const r2 = W * 1.35; A(sph(0.13 * g, 7, 5), i % 2 ? shade(fc, 0.85) : fc, mat(Math.sin(a) * r2, shY - 0.02 + (i % 3) * 0.03, Math.cos(a) * r2 * 0.85 - 0.02, 0, 0, 0, 1, 0.85, 1), 1, { ot: 0.01 }); }
+    for (let r3 = 0; r3 < 3; r3++) for (let i = 0; i < 6; i++) A(sph(0.12 * g, 7, 5), (i + r3) % 2 ? shade(fc, 0.85) : fc, mat((i - 2.5) * W * 0.42, shY - 0.3 - r3 * 0.3, -W * 0.9 - 0.04, 0, 0, 0, 1, 1.2, 0.7), 1, { ot: 0.01 }); }
   if (L.scarf) A(cyl(W * 0.7, W * 0.85, 0.22, 12), L.scarf === true ? 0x6a1a2a : L.scarf, mat(0, shY + 0.06, 0.01, 0, 0, 0, 1, 1, 0.9), 1);
   if (L.wings) for (const s of [-1, 1]) { const wc = L.wingC || 0xffffff, rx = s * 0.12, ry = shY - 0.06, rz = -W * 0.72; // feathered Skypiean wings fanning out past the shoulders
     for (let i = 0; i < 5; i++) { const a = 0.95 - i * 0.32, len = 0.62 - i * 0.07; const dx = Math.cos(a) * s, dy = Math.sin(a); A(box(len, 0.11, 0.03), i % 2 ? shade(wc, 0.92) : wc, mat(rx + dx * len * 0.5, ry + dy * len * 0.5, rz - 0.03 - i * 0.012, 0, s * 0.35, s * a), 1, { ot: 0.008 }); }
@@ -161,6 +206,7 @@ export function makeChar(lookId, overrides = {}) {
     on(box(0.075, L.thickBrow ? 0.03 : 0.018, 0.004), L.hair && L.hairS !== 'bald' ? shade(L.hair, 0.8) : 0x2a1a10, s * ex, ey + 0.075, 0.004, s * br);
   }
   if (L.scar) on(box(0.04, 0.008, 0.003), 0x8a3a2a, -0.075, ey - 0.05, 0.003, 0.3);
+  if (L.scar === 'bar') { on(box(0.3, 0.014, 0.003), 0x8a3a2a, 0, ey - 0.035, 0.006, 0.08); for (let i = -3; i <= 3; i++) on(box(0.006, 0.035, 0.003), 0x8a3a2a, i * 0.04, ey - 0.033 - i * 0.003, 0.007); }
   if (L.scar === 'x') { on(box(0.16, 0.012, 0.003), 0x8a3a2a, 0, ey - 0.02, 0.006, 0.5); }
   if (!L.saw && !L.clown) A(cone(0.018, 0.045, 5), shade(sk, 0.92), mat(0, hy - 0.035, hr * 0.98 + 0.012, Math.PI / 2), 2, { outline: false });
   const my = hy - 0.095, mo = FACE ? 'none' : (L.mouth || 'smile');
@@ -200,6 +246,8 @@ export function makeChar(lookId, overrides = {}) {
     if (hs === 'mohawk') for (let i = 0; i < 5; i++) spike(0, hy + 0.18, hr * (0.6 - i * 0.35), -0.3 + i * 0.15, 0, 0.05, 0.22);
     if (hs === 'long') { A(box(hr * 1.9, 0.5, 0.1), hc, mat(0, hy - 0.25, -hr * 0.7), 2, { ot: 0.01, grad: 0.2 }); for (const s of [-1, 1]) A(box(0.07, 0.36, 0.12), hc, mat(s * hr * 0.92, hy - 0.12, hr * 0.15), 2, { ot: 0.008 }); for (let i = -2; i <= 2; i++) spike(i * 0.05, hy + 0.1, hr * 0.84, 1.95, -i * 0.15, 0.04, 0.1); }
     if (hs === 'ponytail') { A(sph(0.05, 8, 6), L.band || hc, mat(0, hy + 0.02, -hr * 1.0), 2); A(cone(0.08, 0.4, 7), hc, mat(0, hy - 0.18, -hr * 1.15, Math.PI - 0.25), 2, { ot: 0.01 }); }
+    if (hs === 'pompadour') { A(sph(hr * 0.75, 12, 8), hc, mat(0, hy + hr * 0.95, hr * 0.55, 0, 0, 0, 1.15, 0.8, 1.6), 2, { ot: 0.012 }); A(cone(hr * 0.5, hr * 0.9, 7), hc, mat(0, hy + hr * 0.9, hr * 1.45, Math.PI / 2 + 0.25, 0, 0, 1.2, 1, 0.75), 2, { ot: 0.01 }); }
+    if (hs === 'wild') { for (let i = 0; i < 9; i++) { const a = -1.25 + i / 8 * 2.5; spike(Math.sin(a) * hr * 0.8, hy + hr * 0.55 + Math.cos(a) * hr * 0.35, -hr * 0.25, -0.5, -a * 1.05, 0.075, 0.34); } for (let i = -2; i <= 2; i++) spike(i * 0.06, hy + 0.11, hr * 0.85, 2.0, -i * 0.3, 0.05, 0.16); for (let i = -1; i <= 1; i++) spike(i * 0.11, hy + 0.02, -hr * 0.95, -2.2, -i * 0.4, 0.08, 0.3); }
     if (hs === 'bun') A(sph(0.09, 10, 7), hc, mat(0, hy + 0.17, -hr * 0.55), 2, { ot: 0.01 });
     if (hs === 'pigtails') for (const s of [-1, 1]) A(cone(0.07, 0.3, 7), hc, mat(s * hr * 1.05, hy - 0.12, -0.03, Math.PI, 0, s * 0.3), 2, { ot: 0.01 });
   }
@@ -230,20 +278,23 @@ export function makeChar(lookId, overrides = {}) {
   // ---------- skeleton ----------
   const { fill, line } = b.geos();
   const bones = []; const mk = (x, y, z, p) => { const bo = new B.Bone(); bo.position.set(x, y, z); if (p) p.add(bo); bones.push(bo); return bo; };
-  const hips = mk(0, hipY, 0); const torso = mk(0, 0, 0, hips); const head = mk(0, shY + 0.02 - hipY, 0, torso);
-  const armL = mk(-AX, shY - hipY - 0.03, 0, torso); const armR = mk(AX, shY - hipY - 0.03, 0, torso);
-  const legL = mk(-0.1 * g, 0, 0, hips); const legR = mk(0.1 * g, 0, 0, hips);
-  const foreL = mk(0, elY - shY + 0.03, 0, armL); const foreR = mk(0, elY - shY + 0.03, 0, armR);
-  const shinL = mk(0, kneeY - hipY, 0, legL); const shinR = mk(0, kneeY - hipY, 0, legR);
+  const AXn = AX + AX * (P.chest - 1) * 0.82;
+  const hips = mk(0, hipN, 0); const torso = mk(0, 0, 0, hips); const head = mk(0, shN + 0.02 - hipN, 0, torso);
+  const armL = mk(-AXn, shN - hipN - 0.03, 0, torso); const armR = mk(AXn, shN - hipN - 0.03, 0, torso);
+  const legL = mk(-0.1 * g * P.waist, 0, 0, hips); const legR = mk(0.1 * g * P.waist, 0, 0, hips);
+  const foreL = mk(0, (elY - shY + 0.03) * P.arm, 0, armL); const foreR = mk(0, (elY - shY + 0.03) * P.arm, 0, armR);
+  const shinL = mk(0, (kneeY - hipY) * P.leg, 0, legL); const shinR = mk(0, (kneeY - hipY) * P.leg, 0, legR);
   const skel = new B.Skeleton(bones);
   const material = toonMat({ emissive: 0x000000 });
   const root = new B.Group();
   const mesh = new B.SkinnedMesh(fill, material); mesh.add(hips); mesh.bind(skel); mesh.frustumCulled = false;
   const om = new B.SkinnedMesh(line, OUTLINE_MAT); om.bind(skel, mesh.bindMatrix); om.frustumCulled = false; om.userData.isOutline = true;
+  // LOD: drop the ink outline (half the draw cost) for distant characters; quality setting still wins
+  const _wp = new B.Vector3(); mesh.onBeforeRender = (r, sc2, cam) => { const on = qv().outline; if (!on) { om.visible = false; return; } mesh.getWorldPosition(_wp); om.visible = _wp.distanceToSquared(cam.position) < 45 * 45; };
   root.add(mesh, om);
   const sc = (L.scale || 1) * sm; root.scale.setScalar(sc);
-  const C = { root, mesh, bones: { hips, torso, head, armL, armR, legL, legR, foreL, foreR, shinL, shinR }, material, hipY, height: (hy + 0.3) * sc, look: L };
-  if (FACE) C.face = buildFace(C, L, { hr, hy, headY: shY + 0.02 });
+  const C = { root, mesh, bones: { hips, torso, head, armL, armR, legL, legR, foreL, foreR, shinL, shinR }, material, hipY: hipN, height: (hyN + 0.3 * P.head) * sc, look: L, body: P.id };
+  if (FACE) C.face = buildFace(C, L, { hr: hr * P.head, hy: hyN, headY: shN + 0.02 });
   return C;
 }
 
