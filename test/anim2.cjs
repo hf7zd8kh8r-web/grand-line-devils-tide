@@ -9,7 +9,7 @@ const SEQ = [ // [name, kind, id, action, frames, stepFrames]
   ['skOni', 'sword', 'wado', 'mv0', 24, 2], ['skTatsu', 'sword', 'wado', 'mv1', 24, 2], ['skFly', 'sword', 'kikoku', 'mv0', 24, 2],
   ['idle', 'sword', 'wado', 'idle', 16, 4], ['walk', 'sword', 'wado', 'walk', 16, 3],
   ['meraBasic', 'fruit', 'mera', 'atk1', 20, 1], ['gomuBasic', 'fruit', 'gomu', 'atk1', 20, 1], ['guraBasic', 'fruit', 'gura', 'atk1', 20, 1],
-  ['nika0', 'fruit', 'nika', 'mv0', 24, 3], ['seiryu0', 'fruit', 'seiryu', 'mv0', 24, 3], ['gura0', 'fruit', 'gura', 'mv0', 24, 3], ['yami1', 'fruit', 'yami', 'mv1', 24, 3], ['soru2', 'fruit', 'soru', 'mv2', 24, 3], ['pika0', 'fruit', 'pika', 'mv0', 24, 3], ['magu1', 'fruit', 'magu', 'mv1', 24, 3],
+  ['nika0', 'fruit', 'nika', 'mv0', 24, 3], ['seiryu0', 'fruit', 'seiryu', 'mv0', 24, 3], ['gura0', 'fruit', 'gura', 'mv0', 24, 3], ['yami1', 'fruit', 'yami', 'mv1', 24, 3], ['soru2', 'fruit', 'soru', 'mv2', 24, 3], ['pika0', 'fruit', 'pika', 'mv0', 24, 3], ['magu1', 'fruit', 'magu', 'mv1', 24, 3], ['supaBasic', 'fruit', 'supa', 'atk1', 20, 1], ['kumoBasic', 'fruit', 'kumo', 'atk1', 20, 1], ['suna0', 'fruit', 'suna', 'mv0', 24, 3], ['suna2', 'fruit', 'suna', 'mv2', 24, 3], ['suna3', 'fruit', 'suna', 'mv3', 24, 3],
 ].filter(s => !FIL || FIL.split(',').some(f => s[0].startsWith(f)));
 const VIEWS = (process.env.VIEWS || 'land,port').split(',').map(v => ({ land: { n: 'land', w: 844, h: 390 }, port: { n: 'port', w: 390, h: 844 } }[v]));
 (async () => { const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] }); const errs = [];

@@ -66,11 +66,12 @@ export function fruitBasic(g, id, combo) {
         onTick: (pr) => { if (Math.random() < 0.6) g.fx.burst(pr.mesh.position, 1, col, { speed: 0.6, size: 0.35, life: 0.25, grav: id === 'mera' ? -2 : 0, spread: 0.2 }); },
         onEnd: (pr) => { g.fx.burst(pr.mesh.position, 8, col, { speed: 3, size: 0.4, life: 0.35 }); g.fx.shock(pr.mesh.position, col, 1, 0.2, 0.7); fxClean(pr.mesh); } }); }
     g.fx.burst(hand, 6, col, { speed: 2, size: 0.3, life: 0.25, grav: 0 }); }); return; }
+  const fp1 = g.vm && g.vm.fruitArc && !(g.tpv && g.tpv.on);
   if (kind === 'slash') { const r = big ? 4.4 : 3.6; const e0 = g.eyePos(); const fl = g.fwdFlat(V()); const yaw = Math.atan2(fl.x, fl.z); const sd = (g.vm.side || 1);
-    for (let i = 0; i < 6; i++) { const a1 = yaw + sd * (-0.9 + i * 0.3), a2 = a1 + sd * 0.3; g.fx.beam(new B.Vector3(e0.x + Math.sin(a1) * r * 0.8, e0.y - 0.3 + i * 0.04, e0.z + Math.cos(a1) * r * 0.8), new B.Vector3(e0.x + Math.sin(a2) * r * 0.8, e0.y - 0.3 + (i + 1) * 0.04, e0.z + Math.cos(a2) * r * 0.8), id === 'ope' ? 0x7ad0ff : col, 0.1, 0.16); }
+    if (fp1) g.vm.fruitArc(big ? 'over' : (sd > 0 ? 'sweep' : 'diag'), col, big, big); else for (let i = 0; i < 6; i++) { const a1 = yaw + sd * (-0.9 + i * 0.3), a2 = a1 + sd * 0.3; g.fx.beam(new B.Vector3(e0.x + Math.sin(a1) * r * 0.8, e0.y - 0.3 + i * 0.04, e0.z + Math.cos(a1) * r * 0.8), new B.Vector3(e0.x + Math.sin(a2) * r * 0.8, e0.y - 0.3 + (i + 1) * 0.04, e0.z + Math.cos(a2) * r * 0.8), id === 'ope' ? 0x7ad0ff : col, 0.1, 0.16); }
     for (const e of g.enemiesInCone(r, 0.75)) g.damageEnemy(e, dmg * 0.95, { ...O, kb: big ? 6 : 2 }); return; }
   if (kind === 'claw') { const reach = (big ? 3.6 : 3.1) * (tf > 1 ? 1.2 : 1); const c = g.eyePos().clone().addScaledVector(g.fwd(V()), 2);
-    for (let k = 0; k < 3; k++) g.fx.beam(c.clone().add(new B.Vector3(-0.6 + k * 0.4, 0.7, 0)), c.clone().add(new B.Vector3(-0.2 + k * 0.4, -0.7, 0)), col, 0.08, 0.15);
+    if (fp1) g.vm.fruitArc('diag', col, big, true); else for (let k = 0; k < 3; k++) g.fx.beam(c.clone().add(new B.Vector3(-0.6 + k * 0.4, 0.7, 0)), c.clone().add(new B.Vector3(-0.2 + k * 0.4, -0.7, 0)), col, 0.08, 0.15);
     g.fx.burst(c, 8, col, { speed: 3, size: 0.35, life: 0.3, grav: 0 });
     const hits = g.enemiesInCone(reach, 0.5); for (const e of hits) g.damageEnemy(e, dmg * 0.6, { ...O, kb: 1.5 });
     setTimeout(() => { if (g.dead) return; g.vm.doPose ? g.vm.doPose('claw', { big }) : g.vm.doPunch(); for (const e of g.enemiesInCone(reach, 0.5)) g.damageEnemy(e, dmg * 0.55, { ...O, kb: big ? 7 : 2.5 }); }, 120); return; }

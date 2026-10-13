@@ -133,6 +133,7 @@ export class ViewModel {
     this.fxG.scale.x = 1; }
   // ---- fruit / style cast poses ----
   doCast(k = 0) { const kind = typeof k === 'string' ? k : k >= 1 ? 'push' : k > 0 ? 'stretch' : 'jab'; this.doPose(kind, { str: typeof k === 'number' && k > 0 && k < 1 ? k : 1 }); }
+  fruitArc(kind, col, big = false, x = false) { if (!this.cres) return; this.fa = { t: 0, S: SWINGS[kind] || SWINGS.sweep, col: new B.Color(col).lerp(new B.Color(0xffffff), 0.35).getHex(), big, x, b: 0 }; }
   charge(T = 0.12, big = false) { if (!this.armR) return; this.cp = { kind: 'charge', t: 0, Tc: T, big, fr: this._handsNow() }; this.cast = 1; }
   doPose(kind, o = {}) { if (!this.armR) return; const P = POSES[kind] || POSES.push; const ch = this.cp && this.cp.kind === 'charge';
     let side = 1; if (P.one) { side = this.t - (this._pT ?? -9) > 0.7 ? 1 : -(this._pS || -1); this._pS = side; } this._pT = this.t;
@@ -214,7 +215,7 @@ export class ViewModel {
     else this.root.position.y = 0;
     if (this.gbreak > 0 && this.mode !== 'sword') { const g2 = Math.sin(Math.min(1, (1 - this.gbreak) * 3) * Math.PI / 2) * this.gbreak; L.position.x -= 0.25 * g2; R.position.x += 0.25 * g2; L.position.y -= 0.2 * g2; R.position.y -= 0.2 * g2; L.rotation.z += 0.6 * g2; R.rotation.z -= 0.6 * g2; this.root.rotation.x = -0.08 * g2; } else this.root.rotation.x = 0;
     if (this.sparks) this.sparks.update(dt); if (!this._ik) { L.position.x *= this.xk || 1; R.position.x *= this.xk || 1; if (this.leg) this.leg.position.x *= this.xk || 1; } this._ik = false;
-    if (this.mode !== 'sword') { if (this.cres) for (const C of this.cres) C.set(0, 0); if (this.an) this.an.sw = null; if (!this.cp) { this.camOff.p *= 0.8; } this.camOff.y *= 0.8; this.camOff.r *= 0.8; }
+    if (this.mode !== 'sword') { const f = this.fa; if (f && this.cres) { f.t += dt; if (!f.b) { f.b = 1; this.cres[0].build(f.S, -0.14, 1.07, 1.1, false, this.xk || 1, f.big); if (f.x) this.cres[1].build(f.S, -0.14, 1.07, 1.1, true, this.xk || 1, f.big); } const fade = f.t < 0.09 ? 1 : Math.max(0, 1 - (f.t - 0.09) / 0.16); this.cres[0].set(Math.min(1, f.t / 0.09), fade, f.col); this.cres[1].set(f.x ? Math.min(1, Math.max(0, f.t - 0.03) / 0.09) : 0, f.x ? fade : 0, f.col); if (fade <= 0) this.fa = null; } else if (this.cres) for (const C of this.cres) C.set(0, 0); if (this.an) this.an.sw = null; if (!this.cp) { this.camOff.p *= 0.8; } this.camOff.y *= 0.8; this.camOff.r *= 0.8; }
   }
   _aura(dt) { const on = !!this.auraCol && this.mode === 'fist';
     for (const A of [this.armL, this.armR]) { const au = A.userData.aura; if (!au) continue; au.visible = on; if (!on) continue;

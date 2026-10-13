@@ -42,9 +42,9 @@ export class FX {
     m.position.copy(p); if (flat) m.rotation.x = -Math.PI / 2; else m.lookAt(this.camera.position);
     return this.add(m, dur, (t) => { m.scale.setScalar(0.2 + r * t); m.material.opacity = (1 - t) * thick; });
   }
-  orb(p, color, r = 1, dur = 0.4) {
+  orb(p, color, r = 1, dur = 0.4) { const nk = this.camera ? Math.max(0.15, Math.min(1, p.distanceTo(this.camera.position) / (r * 1.6 + 0.01))) : 1; r *= nk;
     const m = new B.Mesh(this.sphGeo, new B.MeshBasicMaterial({ color, transparent: true, blending: B.AdditiveBlending, depthWrite: false }));
-    m.position.copy(p); return this.add(m, dur, t => { m.scale.setScalar(r * (0.4 + t)); m.material.opacity = 1 - t; });
+    m.position.copy(p); return this.add(m, dur, t => { m.scale.setScalar(r * (0.4 + t)); m.material.opacity = (1 - t) * nk; });
   }
   pillar(p, color, r = 1.5, h = 8, dur = 1) {
     const m = new B.Mesh(this.cylGeo, new B.MeshBasicMaterial({ color, transparent: true, blending: B.AdditiveBlending, depthWrite: false, side: B.DoubleSide }));
