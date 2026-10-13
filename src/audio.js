@@ -1,63 +1,31 @@
 // Procedural WebAudio music + SFX (all synthesized, no samples / no copyrighted tracks).
-// Themes: cover (sea shanty), island (calm), night, battle, boss, sail. Crossfades between them.
+// Music lives in music.js (composed pirate tracks + island variants); this file owns the context, iOS unlock, volumes, crossfades and SFX.
+import { Music, ISLAND_VARIANT } from './music.js';
 const KEY = 'gldt_audio';
 const midi = n => 440 * Math.pow(2, (n - 69) / 12);
-const SCALES = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], phryg: [0, 1, 3, 5, 7, 8, 10] };
-// chord = scale degree (0-based); melody generated per theme from a seeded RNG so loops are stable
-const THEMES = {
-  cover: { bpm: 132, six: true, root: 62, scale: 'dorian', prog: [0, 6, 0, 4, 0, 6, 3, 4], lead: 'accordion', bass: 'pluckbass', drums: 'shanty', pad: 0.0, seed: 7, dens: 0.8 },
-  sail: { bpm: 118, six: true, root: 60, scale: 'major', prog: [0, 3, 4, 0, 5, 3, 4, 4], lead: 'fiddle', bass: 'pluckbass', drums: 'shanty', pad: 0.05, seed: 11, dens: 0.75 },
-  island: { bpm: 92, root: 67, scale: 'major', prog: [0, 5, 3, 4, 0, 5, 1, 4], lead: 'pluck', bass: 'softbass', drums: 'shaker', pad: 0.08, seed: 3, dens: 0.5, arp: true },
-  night: { bpm: 74, root: 57, scale: 'minor', prog: [0, 5, 2, 6, 0, 3, 4, 4], lead: 'celesta', bass: 'softbass', drums: 'none', pad: 0.12, seed: 5, dens: 0.35, arp: true },
-  battle: { bpm: 150, root: 52, scale: 'minor', prog: [0, 0, 5, 6, 0, 0, 3, 4], lead: 'brass', bass: 'drivebass', drums: 'rock', pad: 0.0, seed: 9, dens: 0.7 },
-  boss: { bpm: 164, root: 50, scale: 'phryg', prog: [0, 1, 0, 6, 0, 1, 5, 4], lead: 'brass', bass: 'drivebass', drums: 'epic', pad: 0.14, seed: 13, dens: 0.75, choir: true },
-};
-function rng(seed) { let s = seed * 9301 + 49297; return () => ((s = (s * 9301 + 49297) % 233280) / 233280); }
 export class Audio {
   constructor() { let s = {}; try { s = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (_) {} this.set = { music: s.music ?? 0.55, sfx: s.sfx ?? 0.8, mute: !!s.mute }; this.ctx = null; this.cur = null; this.want = 'cover'; this.layers = {}; this.step = 0; this.last = {}; }
   save() { localStorage.setItem(KEY, JSON.stringify(this.set)); this.apply(); }
   apply() { if (!this.ctx) return; const t = this.ctx.currentTime; this.mG.gain.setTargetAtTime(this.set.mute ? 0 : this.set.music * 0.5, t, 0.08); this.sG.gain.setTargetAtTime(this.set.mute ? 0 : this.set.sfx, t, 0.05); }
   // must be called from a user gesture (iOS)
-  unlock() { if (this.ctx) { if (this.ctx.state !== 'running') this.ctx.resume(); return; } const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; const c = this.ctx = new AC();
+  unlock() { if (this.ctx) { if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {}); return; } const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; const c = this.ctx = new AC();
     this.out = c.createDynamicsCompressor(); this.out.threshold.value = -14; this.out.ratio.value = 4; this.out.connect(c.destination);
     this.mG = c.createGain(); this.sG = c.createGain(); this.mG.connect(this.out); this.sG.connect(this.out);
     // shared reverb (generated impulse)
     const len = c.sampleRate * 1.6, ir = c.createBuffer(2, len, c.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
     this.rev = c.createConvolver(); this.rev.buffer = ir; this.revG = c.createGain(); this.revG.gain.value = 0.25; this.rev.connect(this.revG); this.revG.connect(this.out);
     const nb = c.createBuffer(1, c.sampleRate, c.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1; this.noiseBuf = nb;
-    this.apply(); this.nextT = c.currentTime + 0.1; this.timer = setInterval(() => this.tick(), 40); if (c.state !== 'running') c.resume(); }
-  setTheme(name) { this.want = name; }
-  // ---------- music ----------
-  layer(name) { if (!this.layers[name]) { const g = this.ctx.createGain(); g.gain.value = 0; g.connect(this.mG); const send = this.ctx.createGain(); send.gain.value = 0.35; g.connect(send); send.connect(this.rev); this.layers[name] = { g, mel: this.melody(THEMES[name]) }; } return this.layers[name]; }
-  melody(T) { const r = rng(T.seed); const bars = T.prog.length, per = T.six ? 6 : 8; const notes = []; let deg = 4;
-    for (let b = 0; b < bars; b++) for (let i = 0; i < per; i++) { const strong = i === 0 || i === (T.six ? 3 : 4); const play = strong ? r() < 0.92 : r() < T.dens * 0.7; if (!play) { notes.push(null); continue; } deg += Math.round((r() - 0.5) * 3.2); if (strong) deg = T.prog[b] + [0, 2, 4][Math.floor(r() * 3)]; deg = Math.max(-2, Math.min(9, deg)); notes.push({ deg, len: strong ? 1.6 : 0.9 }); }
-    // second half answers the first: repeat bars 0-3 with a different ending
-    for (let i = 0; i < per * 3; i++) notes[per * 4 + i] = notes[i]; return notes; }
-  degNote(T, deg, oct = 0) { const sc = SCALES[T.scale]; const o = Math.floor(deg / 7), d = ((deg % 7) + 7) % 7; return T.root + sc[d] + 12 * (o + oct); }
-  tick() { const c = this.ctx; if (!c || c.state !== 'running') return;
-    if (this.want !== this.cur) { const t = c.currentTime; if (this.cur && this.layers[this.cur]) this.layers[this.cur].g.gain.setTargetAtTime(0, t, 0.6); this.cur = this.want; if (this.cur) { const L = this.layer(this.cur); L.g.gain.setTargetAtTime(1, t + 0.15, 0.7); } this.step = 0; this.nextT = Math.max(this.nextT, t + 0.05); }
-    if (!this.cur) return; const T = THEMES[this.cur]; const L = this.layers[this.cur]; const per = T.six ? 6 : 8; const dur = 60 / T.bpm / (T.six ? 2 : 2);
-    while (this.nextT < c.currentTime + 0.25) { this.playStep(T, L, this.step, this.nextT, dur, per); this.nextT += dur; this.step = (this.step + 1) % (per * T.prog.length); }
-    // fading-out layers keep playing their tail only via envelopes; nothing else to do
-  }
-  playStep(T, L, s, t, dur, per) { const bar = Math.floor(s / per), i = s % per; const chord = T.prog[bar]; const out = L.g;
-    // bass
-    if (T.bass === 'drivebass') this.tone(out, midi(this.degNote(T, chord, -2)), t, dur * 0.9, 'sawtooth', 0.16, { cut: 700, dec: 0.12 });
-    else if (i === 0 || i === (T.six ? 3 : 4) || (T.bass === 'pluckbass' && i === (T.six ? 5 : 6))) this.tone(out, midi(this.degNote(T, chord + (i ? 4 : 0), -2)), t, dur * 2.2, T.bass === 'softbass' ? 'sine' : 'triangle', 0.22, { dec: 0.4 });
-    // chords / arp / pad
-    if (T.arp) { const a = [0, 2, 4, 7, 4, 2, 0, 4][i % 8]; this.tone(out, midi(this.degNote(T, chord + a, 0)), t, dur * 3, 'triangle', 0.05, { dec: 0.5 }); }
-    else if (i === 0 || (!T.six && i === 4) || (T.six && i === 3)) for (const a of [0, 2, 4]) this.tone(out, midi(this.degNote(T, chord + a, -1)), t, dur * (T.six ? 2.6 : 3.6), T.lead === 'accordion' ? 'square' : 'sawtooth', 0.025, { cut: 1400, dec: 0.3 });
-    if (T.pad && i === 0) for (const a of [0, 2, 4]) this.tone(out, midi(this.degNote(T, chord + a, -1)), t, dur * per, 'sawtooth', T.pad * 0.3, { cut: 900, att: dur * 2, dec: 1, det: 6 });
-    if (T.choir && i === 0) for (const a of [0, 4]) this.tone(out, midi(this.degNote(T, chord + a, 0)), t, dur * per, 'triangle', 0.05, { att: dur * 2, vib: 5 });
-    // melody (skips every other loop for breathing room in calm themes)
-    const n = L.mel[s]; const rest = (T.dens < 0.6) && (Math.floor(this.loopN = (this.loopN || 0)) % 2 === 1); if (s === 0) this.loopN = (this.loopN || 0) + 1;
-    if (n && !rest) { const f = midi(this.degNote(T, n.deg, T.lead === 'celesta' ? 1 : 0)); const v = { accordion: ['square', 0.07, { cut: 2200, vib: 4, det: 8 }], fiddle: ['sawtooth', 0.07, { cut: 2600, vib: 6, att: 0.04 }], pluck: ['triangle', 0.09, { dec: 0.35 }], celesta: ['sine', 0.09, { dec: 0.8 }], brass: ['sawtooth', 0.08, { cut: 1800, att: 0.02, det: 5 }] }[T.lead]; this.tone(out, f, t, dur * n.len, v[0], v[1], v[2]); }
-    // drums
-    const D = T.drums; if (D === 'none') return; const beat = T.six ? (i === 0 || i === 3) : i % 2 === 0;
-    if (D === 'shanty') { if (i === 0) this.kick(out, t, 0.5); if (i === 3) this.snare(out, t, 0.18, 0.08); if (i % 1 === 0) this.hat(out, t, i % 3 === 0 ? 0.05 : 0.03, 'tamb'); }
-    if (D === 'shaker') { this.hat(out, t, i % 2 ? 0.02 : 0.035, 'shaker'); if (i === 0) this.kick(out, t, 0.25); }
-    if (D === 'rock') { if (i === 0 || i === 3 || i === 6 && bar % 2) this.kick(out, t, 0.6); if (i === 2 || i === 6) this.snare(out, t, 0.3, 0.14); this.hat(out, t, 0.035); }
-    if (D === 'epic') { if (i % 2 === 0) this.kick(out, t, 0.55); if (i === 4) this.snare(out, t, 0.35, 0.2); if (i === 6 || i === 7) this.tom(out, t, 0.3, i === 6 ? 110 : 85); this.hat(out, t, 0.03); } }
+    const lite = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent)); this.music = new Music(c, this.mG, lite);
+    // iOS: play a 1-sample silent buffer inside the gesture, and resume after interruptions / returning to the tab
+    try { const sb = c.createBufferSource(); sb.buffer = c.createBuffer(1, 1, 22050); sb.connect(c.destination); sb.start(0); } catch (_) {}
+    const wake = () => { if (this.ctx && this.ctx.state !== 'running' && !document.hidden) this.ctx.resume().catch(() => {}); }; document.addEventListener('visibilitychange', wake); addEventListener('focus', wake); addEventListener('pageshow', wake);
+    this.apply(); this.timer = setInterval(() => this.tick(), 50); if (c.state !== 'running') c.resume(); }
+  // duel arena + per-island variants are resolved here so callers just say island/night/battle/boss/sail/cover
+  setTheme(name) { const g = typeof window !== 'undefined' && window.__g && window.__g.game; if (g && name !== 'cover' && name !== 'sail') { if (g.duel && g.duel.on) name = 'duel'; else if ((name === 'island' || name === 'night') && g.island && ISLAND_VARIANT[g.island.id]) name = ISLAND_VARIANT[g.island.id]; } this.want = name; }
+  // ---------- music (crossfade: old track keeps playing while it fades, new one fades in) ----------
+  tick() { const c = this.ctx; if (!c || c.state !== 'running' || !this.music) return; const t = c.currentTime;
+    if (this.want !== this.cur) { if (this.curSt) this.music.stop(this.curSt, t); this.cur = this.want; this.curSt = this.cur ? this.music.start(this.cur, t + 0.08) : null; }
+    this.music.schedule(t + 0.3); }
   tone(out, f, t, d, type, vol, o = {}) { const c = this.ctx; const os = c.createOscillator(); os.type = type; os.frequency.value = f; if (o.det) os.detune.value = (Math.random() - 0.5) * o.det * 2; const g = c.createGain(); let node = os;
     if (o.cut) { const fl = c.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = o.cut; os.connect(fl); node = fl; }
     if (o.vib) { const lf = c.createOscillator(); lf.frequency.value = o.vib; const lg = c.createGain(); lg.gain.value = f * 0.006; lf.connect(lg); lg.connect(os.frequency); lf.start(t); lf.stop(t + d + 0.5); }
