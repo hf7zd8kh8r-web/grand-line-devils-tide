@@ -443,3 +443,8 @@ html,body{font-family:"Nunito","Trebuchet MS","Segoe UI",sans-serif}
 @keyframes tvBar{to{width:100%}}@keyframes tvIn{from{opacity:0}}
 .dexTv{color:#7ad8ff!important}.go.fly{margin-left:6px;background:linear-gradient(#3aa8e8,#1a6aa8)}
 .traveling #prompt{display:none!important}
+/* Awakening */
+.awkbtn{position:fixed;right:max(12px,env(safe-area-inset-right));top:calc(max(8px,env(safe-area-inset-top)) + 62px);z-index:7;padding:5px 10px;border-radius:14px;border:2px solid #ffd860;background:rgba(40,20,60,.75);color:#ffe9a0;font:900 12px "Nunito",sans-serif}
+.awkbtn.on{background:linear-gradient(135deg,rgba(255,200,60,.85),rgba(200,80,255,.85));color:#fff;box-shadow:0 0 14px #ffd860}
+.mv.awk{box-shadow:0 0 0 2px #ffd860,0 0 12px rgba(255,216,96,.7)!important}.mv.awk span{color:#fff3c0}
+small.awk{color:#ffd860!important}

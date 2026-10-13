@@ -9,6 +9,7 @@ import { RACES, ISLANDS, islandById } from './data.js';
 import { makeWater, makeSky } from './world.js';
 import { makeShip } from './models.js';
 import { Voyage } from './voyage.js';
+import { installAwaken, migrate as migrateAw } from './awaken.js';
 import { migrateShips } from './ships.js';
 import * as ST from './state.js';
 import { defaultLook, randomLook } from './style.js';
@@ -84,7 +85,7 @@ function toCreate() {
 const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function begin(save) {
   hide('#create'); mode = 'game'; creator = null; ST.save(save);
-  game.start(save); ui.show(true); setTimeout(() => { const r = document.getElementById('rotHint'); if (r) { r.classList.add('bye'); setTimeout(() => r.remove(), 700); } }, 7000); IN.enabled = true; ui.updateHud(); ui.updateQuest(); ui.updateMoves();
+  game.start(save); try { migrateAw(game.save); installAwaken(game); } catch (e) { console.warn('awaken', e); } ui.show(true); setTimeout(() => { const r = document.getElementById('rotHint'); if (r) { r.classList.add('bye'); setTimeout(() => r.remove(), 700); } }, 7000); IN.enabled = true; ui.updateHud(); ui.updateQuest(); ui.updateMoves();
   const room = params.get('room'); if (room) setTimeout(() => game.net.connect(room), 600);
   if (!save.stats.time) setTimeout(() => ui.toast(isTouch ? 'Drag left side to move, right side to look' : 'Click to lock the mouse · WASD to move', 'blk'), 1500);
 }
