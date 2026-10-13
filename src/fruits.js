@@ -5,6 +5,7 @@ import { FRUITS, SWORDS, GUNS, GUN_SKILLS, swordDmg, T2 } from './data.js';
 import * as ST from './state.js';
 import { STYLES, styleOf } from './styles.js';
 import { weaponMove } from './canonw.js';
+import { after } from './skills.js';
 import { basicShape, basicFist, cleanup as fxClean, fruitMove, ultraSpecial, ultraStyleOf, specialBody, spShape, canonSpecial } from './themed.js';
 const B = THREE; const V = () => new B.Vector3();
 const FCOL = { gomu: 0xff9ad0, mera: 0xff6a1a, pika: 0xfff27a };
@@ -53,25 +54,26 @@ export function fruitBasic(g, id, combo) {
   const tf = S.tf ? (S.tf === 2 ? 1.35 : 1.15) : 1; // Zoan transform boosts claws
   const dmg = g.baseDmg() * (1 + f.rar * 0.18) * 0.95 * ST.mastMul(S, key) * (big ? 1.8 : 1) * (kind === 'claw' ? tf : 1);
   const O = { mast: key, mastName: f.short, col, cls: 'fruit' };
-  const hand = g.eyePos().clone().addScaledVector(g.fwd(V()), 1.1).add(new B.Vector3(0, -0.25, 0));
-  if (kind === 'stretch') { g.vm.doCast(big ? 1 : 0.6); const reach = big ? 7 : 5.2; const tip = g.eyePos().clone().addScaledVector(g.fwd(V()), reach);
+  if (g.vm && g.vm.doPose) g.vm.doPose({ stretch: 'stretch', bolt: 'jab', slash: 'chop', claw: 'claw', pulse: 'palm' }[kind] || 'jab', { big, str: big ? 1 : 0.7 });
+  const hand = (g.vm && g.vm.handWorld && !(g.tpv && g.tpv.on && !g.tpv.close) && g.vm.handWorld(g.vm.cp ? g.vm.cp.side : 1, g.cam)) || g.eyePos().clone().addScaledVector(g.fwd(V()), 1.1).add(new B.Vector3(0, -0.25, 0));
+  if (kind === 'stretch') { const reach = big ? 7 : 5.2; const tip = g.eyePos().clone().addScaledVector(g.fwd(V()), reach);
     g.fx.beam(hand, tip, id === 'nika' ? 0xffffff : 0xffc9a0, big ? 0.32 : 0.2, 0.14); basicFist(g, tip, g.fwd(V()), big ? 1.1 : 0.7); g.fx.shock(tip, col, big ? 1.6 : 1, 0.2); g.fx.burst(tip, 8, col, { speed: 3, size: 0.35, life: 0.3 });
     for (const e of g.enemiesInCone(reach, 0.28)) g.damageEnemy(e, dmg, { ...O, kb: big ? 8 : 3 }); return; }
-  if (kind === 'bolt') { g.vm.doCast(0); const fw = g.fwd(V()); const n = big ? 3 : 1;
+  if (kind === 'bolt') { const fw = g.fwd(V()); const n = big ? 3 : 1; after(g, 0.05, () => { if (g.dead) return;
     for (let i = 0; i < n; i++) { const d = fw.clone().applyAxisAngle(new B.Vector3(0, 1, 0), (i - (n - 1) / 2) * 0.12);
       const m = basicShape(id, big ? 1.0 : 0.7); m.position.copy(hand); m.lookAt(hand.clone().add(d));
       g.projectile({ pos: hand.clone(), vel: d.multiplyScalar(id === 'pika' || id === 'goro' ? 60 : 34), r: 0.8, dmg: dmg * (big ? 0.7 : 0.85), kb: big ? 5 : 2, life: 0.9, player: true, mesh: m, col, mast: key,
         onTick: (pr) => { if (Math.random() < 0.6) g.fx.burst(pr.mesh.position, 1, col, { speed: 0.6, size: 0.35, life: 0.25, grav: id === 'mera' ? -2 : 0, spread: 0.2 }); },
         onEnd: (pr) => { g.fx.burst(pr.mesh.position, 8, col, { speed: 3, size: 0.4, life: 0.35 }); g.fx.shock(pr.mesh.position, col, 1, 0.2, 0.7); fxClean(pr.mesh); } }); }
-    g.fx.burst(hand, 6, col, { speed: 2, size: 0.3, life: 0.25, grav: 0 }); return; }
-  if (kind === 'slash') { g.vm.doPunch(); const r = big ? 4.4 : 3.6; const e0 = g.eyePos(); const fl = g.fwdFlat(V()); const yaw = Math.atan2(fl.x, fl.z); const sd = (g.vm.side || 1);
+    g.fx.burst(hand, 6, col, { speed: 2, size: 0.3, life: 0.25, grav: 0 }); }); return; }
+  if (kind === 'slash') { const r = big ? 4.4 : 3.6; const e0 = g.eyePos(); const fl = g.fwdFlat(V()); const yaw = Math.atan2(fl.x, fl.z); const sd = (g.vm.side || 1);
     for (let i = 0; i < 6; i++) { const a1 = yaw + sd * (-0.9 + i * 0.3), a2 = a1 + sd * 0.3; g.fx.beam(new B.Vector3(e0.x + Math.sin(a1) * r * 0.8, e0.y - 0.3 + i * 0.04, e0.z + Math.cos(a1) * r * 0.8), new B.Vector3(e0.x + Math.sin(a2) * r * 0.8, e0.y - 0.3 + (i + 1) * 0.04, e0.z + Math.cos(a2) * r * 0.8), id === 'ope' ? 0x7ad0ff : col, 0.1, 0.16); }
     for (const e of g.enemiesInCone(r, 0.75)) g.damageEnemy(e, dmg * 0.95, { ...O, kb: big ? 6 : 2 }); return; }
   if (kind === 'claw') { const reach = (big ? 3.6 : 3.1) * (tf > 1 ? 1.2 : 1); const c = g.eyePos().clone().addScaledVector(g.fwd(V()), 2);
     for (let k = 0; k < 3; k++) g.fx.beam(c.clone().add(new B.Vector3(-0.6 + k * 0.4, 0.7, 0)), c.clone().add(new B.Vector3(-0.2 + k * 0.4, -0.7, 0)), col, 0.08, 0.15);
     g.fx.burst(c, 8, col, { speed: 3, size: 0.35, life: 0.3, grav: 0 });
     const hits = g.enemiesInCone(reach, 0.5); for (const e of hits) g.damageEnemy(e, dmg * 0.6, { ...O, kb: 1.5 });
-    setTimeout(() => { if (g.dead) return; g.vm.doPunch(); for (const e of g.enemiesInCone(reach, 0.5)) g.damageEnemy(e, dmg * 0.55, { ...O, kb: big ? 7 : 2.5 }); }, 120); return; }
+    setTimeout(() => { if (g.dead) return; g.vm.doPose ? g.vm.doPose('claw', { big }) : g.vm.doPunch(); for (const e of g.enemiesInCone(reach, 0.5)) g.damageEnemy(e, dmg * 0.55, { ...O, kb: big ? 7 : 2.5 }); }, 120); return; }
   // pulse: shock palm with a small shockwave cone
   const reach = big ? 4 : 3.2; const tip = g.eyePos().clone().addScaledVector(g.fwd(V()), 1.8);
   g.fx.ring(tip, col, big ? 2.6 : 1.6, 0.25, false); g.fx.burst(hand, 8, col, { speed: 3, size: 0.3, life: 0.3, grav: 0 }); if (big) g.fx.shake = Math.max(g.fx.shake, 0.25);
@@ -80,10 +82,11 @@ export function fruitBasic(g, id, combo) {
 export function castMove(g, m) {
   const S = g.save, p = g.p; let { dmg, key } = fd(g, m); if (m.src === 'fruit' && S.awake && S.awake[S.eq.fruit]) dmg *= 1.5; const col = m.src === 'fruit' ? fcol(S.eq.fruit) : m.src === 'sword' ? 0xdff0ff : m.src === 'gun' ? 0xffb04a : styleOf(S).col;
   const eye = () => g.eyePos().clone(); const fw = () => g.fwd(V()); const fl = () => g.fwdFlat(V());
-  if (m.src === 'fruit') { const el = elementOf(S.eq.fruit); audio.elementSfx(el); g.camPunch && g.camPunch(0.02, 4); } else if (m.src === 'sword') { audio.sfx('slash', { vol: 1.2 }); g.slashFx && g.slashFx(col, 1, true); setTimeout(() => g.slashFx && g.slashFx(col, -1, true), 90); } else if (m.src === 'gun') audio.sfx('gun'); else audio.sfx('heavy', { vol: 0.6 });
+  if (m.src === 'fruit') { const el = elementOf(S.eq.fruit); audio.elementSfx(el); g.camPunch && g.camPunch(0.02, 4); } else if (m.src === 'sword') { audio.sfx('slash', { vol: 1.2 }); if (g.vm && g.vm.doSkillSwing) { const sw0 = SWORDS[S.eq.sword] || {}; g.vm.setTrailColor && g.vm.setTrailColor(sw0.aura || sw0.col || 0xbfe0ff); } if (g.vm && g.vm.doSkillSwing) g.vm.doSkillSwing(m.k === 'spin' || /tatsumaki|tornado|storm|king of hell/i.test(m.name) ? 'spin' : /oni giri|shishi|sonson|iai|giri|draw/i.test(m.name) ? 'iai' : 'over'); g.slashFx && g.slashFx(col, 1, true); setTimeout(() => g.slashFx && g.slashFx(col, -1, true), 90); } else if (m.src === 'gun') audio.sfx('gun'); else audio.sfx('heavy', { vol: 0.6 });
   const O = { mast: key, mastName: m.name, col, cls: m.src === 'fruit' ? 'fruit' : '' };
   title(g, m.name, col);
   if (m.src === 'fruit' && fruitMove(g, m, dmg, col, O)) return;
+  if (m.src === 'fruit' && g.vm && g.vm.doPose && !/^(lightsword|lightkick|kick|heavy|smash|blink|spin|slash)$/.test(m.k)) g.vm.doPose(/beads|pistol|gatling|bolt|shot|bullet|rifle|fist|punch/.test(m.k) ? 'jab' : /rain|meteor|sky|storm|emperor|sun|nova/.test(m.k) ? 'raise' : /quake|stomp|ground|slam|crack/.test(m.k) ? 'slam' : 'push', { big: (FRUITS[S.eq.fruit] || {}).rar >= 5, Tc: 0.08 });
   if (m.src !== 'fruit' && weaponMove(g, m, dmg, col, O)) return;
   if (m.k.startsWith('g:')) return generic(g, m.k.slice(2), dmg, col, O, m);
   switch (m.k) {
@@ -98,18 +101,18 @@ export function castMove(g, m) {
     // ---- gun ----
     case 'rapid': { let n = 0; const iv = setInterval(() => { g.p.atkCd = 0; g.attack(); if (++n >= 6) clearInterval(iv); }, 110); break; }
     // ---- Gum-Gum ----
-    case 'pistol': { g.vm.doCast(1); const o = eye(); const d = fw(); const r = g.rayEnemy(o, d, 16, 1.0); const end = o.clone().addScaledVector(d, r ? r.d : 16);
+    case 'pistol': { g.vm.doPose ? g.vm.doPose('stretch', { big: true }) : g.vm.doCast(1); const o = eye(); const d = fw(); const r = g.rayEnemy(o, d, 16, 1.0); const end = o.clone().addScaledVector(d, r ? r.d : 16);
       g.fx.beam(o.clone().add(new B.Vector3(0, -0.3, 0)), end, 0xf2c49b, 0.25, 0.3); g.fx.burst(end, 14, col, { speed: 5, size: 0.35, life: 0.4 }); if (r) g.damageEnemy(r.e, dmg, { ...O, kb: 10 }); break; }
     case 'gatling': { let n = 0; g.vm.gatling = 1; const iv = setInterval(() => { const c = eye().addScaledVector(fw(), 2.5); for (let i = 0; i < 2; i++) g.fx.burst(c.clone().add(new B.Vector3((Math.random() - .5) * 2, (Math.random() - .5) * 1.4, (Math.random() - .5) * 2)), 2, 0xf2c49b, { speed: 1, size: 0.5, life: 0.15, grav: 0 });
       for (const e of g.enemiesInCone(5.5, 0.55)) g.damageEnemy(e, dmg, { ...O, kb: 1, stun: 0.3 }); g.fx.shake = Math.max(g.fx.shake, 0.2); if (++n >= 14) { clearInterval(iv); g.vm.gatling = 0; } }, 100); break; }
-    case 'bazooka': { g.vm.doCast(0); setTimeout(() => { const c = eye().addScaledVector(fw(), 2.5); g.fx.ring(c, 0xffffff, 3, 0.3, false); g.fx.burst(c, 30, col, { speed: 8, size: 0.4, life: 0.5 }); g.fx.shake = 0.5; for (const e of g.enemiesInCone(5, 0.35)) g.damageEnemy(e, dmg, { ...O, kb: 22, up: 6 }); }, 220); break; }
+    case 'bazooka': { g.vm.doPose ? g.vm.doPose('push', { big: true }) : g.vm.doCast(0); setTimeout(() => { const c = eye().addScaledVector(fw(), 2.5); g.fx.ring(c, 0xffffff, 3, 0.3, false); g.fx.burst(c, 30, col, { speed: 8, size: 0.4, life: 0.5 }); g.fx.shake = 0.5; for (const e of g.enemiesInCone(5, 0.35)) g.damageEnemy(e, dmg, { ...O, kb: 22, up: 6 }); }, 220); break; }
     // ---- Flame ----
     case 'firefist': { g.vm.doCast(0); const o = eye().addScaledVector(fw(), 1).add(new B.Vector3(0, -0.2, 0)); const m2 = new B.Mesh(g.fx.sphGeo, new B.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.9, blending: B.AdditiveBlending, depthWrite: false })); m2.scale.setScalar(0.9);
       const boom = (pr) => { const c = pr.mesh.position.clone(); g.fx.orb(c, 0xff8a2a, 4, 0.5); g.fx.burst(c, 40, 0xff6a1a, { speed: 9, size: 0.6, life: 0.7, grav: -4 }); g.fx.shake = Math.max(g.fx.shake, 0.4); for (const e of g.enemiesInRadius(c, 4.5)) g.damageEnemy(e, dmg, { ...O, kb: 9, from: c }); };
       g.projectile({ pos: o, vel: fw().multiplyScalar(30), r: 1, dmg: 0, life: 1.2, player: true, mesh: m2, onHit: () => {}, onEnd: boom, onTick: (pr) => g.fx.burst(pr.mesh.position, 3, 0xffa030, { speed: 1, size: 0.7, life: 0.35, grav: -3, spread: 0.6 }) }); break; }
     case 'pillar': { const c = p.pos.clone(); g.fx.pillar(c, 0xff5a10, 5.5, 12, 1.4); g.fx.ring(c.clone().setY(c.y + 0.2), 0xffa030, 7, 0.6); let n = 0; const iv = setInterval(() => { g.fx.burst(c.clone().setY(c.y + 1 + Math.random() * 4), 12, 0xff6a1a, { speed: 6, size: 0.7, life: 0.6, grav: -6, spread: 4 }); for (const e of g.enemiesInRadius(c, 6.5)) g.damageEnemy(e, dmg * 0.4, { ...O, kb: 3, up: 3, from: c }); if (++n >= 5) clearInterval(iv); }, 220); break; }
     case 'firedash': { const d = fl(); p.dash = 0.4; p.dashDir.copy(d); p.iframe = 0.5; const hit = new Set(); let n = 0; const iv = setInterval(() => { g.fx.burst(p.pos.clone().setY(p.pos.y + 0.6), 10, 0xff6a1a, { speed: 2, size: 0.8, life: 0.6, grav: -4, spread: 1 }); for (const e of g.enemiesInRadius(p.pos, 2.6)) if (!hit.has(e)) { hit.add(e); g.damageEnemy(e, dmg, { ...O, kb: 6, up: 4 }); } if (++n >= 9) clearInterval(iv); }, 45); break; }
-    case 'emperor': { g.vm.doCast(0); const c = p.pos.clone().setY(p.pos.y + 7); const sun = new B.Mesh(g.fx.sphGeo, new B.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.95, blending: B.AdditiveBlending, depthWrite: false }));
+    case 'emperor': { g.vm.doPose ? g.vm.doPose('raise', { big: true }) : g.vm.doCast(0); const c = p.pos.clone().setY(p.pos.y + 7); const sun = new B.Mesh(g.fx.sphGeo, new B.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.95, blending: B.AdditiveBlending, depthWrite: false }));
       g.fx.add(sun, 1.0, (t) => { sun.position.copy(c); sun.scale.setScalar(0.5 + t * 3.5); g.fx.burst(c, 4, 0xffb030, { speed: 3, size: 1, life: 0.5, grav: 0, spread: 3 }); });
       setTimeout(() => { const tgt = aimPoint(g, 40); const m2 = new B.Mesh(g.fx.sphGeo, sun.material.clone()); m2.scale.setScalar(4); const v = tgt.clone().sub(c).normalize().multiplyScalar(26);
         g.projectile({ pos: c, vel: v, r: 3, dmg: 0, life: 2.5, player: true, mesh: m2, onHit: () => {}, onEnd: (pr) => { const q = pr.mesh.position.clone(); g.fx.orb(q, 0xff7a1a, 9, 0.8); g.fx.ring(q, 0xffd080, 12, 0.7); g.fx.burst(q, 80, 0xff6a1a, { speed: 14, size: 0.9, life: 1, grav: -3 }); g.fx.shake = 1; for (const e of g.enemiesInRadius(q, 9)) g.damageEnemy(e, dmg, { ...O, kb: 14, up: 8, from: q }); }, onTick: (pr) => g.fx.burst(pr.mesh.position, 6, 0xff8a1a, { speed: 3, size: 1.2, life: 0.4, grav: 0, spread: 3 }) }); }, 1000); break; }

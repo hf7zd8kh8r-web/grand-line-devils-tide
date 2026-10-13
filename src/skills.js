@@ -51,7 +51,7 @@ export function ctxFor(g, o) {
   c.flat = () => { const y = yaw(); return V(-Math.sin(y), 0, -Math.cos(y)); };
   c.right = () => { const y = yaw(); return V(Math.cos(y), 0, -Math.sin(y)); };
   c.yaw = yaw;
-  c.hand = (side = 1) => local ? c.eye().addScaledVector(c.fwd(), 0.9).addScaledVector(c.right(), 0.3 * side).add(V(0, -0.32, 0)) : c.P().add(V(0, 1.2, 0)).addScaledVector(c.flat(), 0.6).addScaledVector(c.right(), 0.3 * side);
+  c.hand = (side = 1) => local && g.vm && g.vm.handWorld && !g.cut && !(g.tpv && g.tpv.on && !g.tpv.close) ? (g.vm.handWorld(side, g.cam) || c.eye()) : local ? c.eye().addScaledVector(c.fwd(), 0.9).addScaledVector(c.right(), 0.3 * side).add(V(0, -0.32, 0)) : c.P().add(V(0, 1.2, 0)).addScaledVector(c.flat(), 0.6).addScaledVector(c.right(), 0.3 * side);
   c.ground = v => { v.y = g.groundAt(v.x, v.z); return v; };
   c.aim = (max = 30) => { const e0 = c.eye(), d = c.fwd(); if (local) { const h = g.rayEnemy(e0, d, max, 1.0); if (h) return g.chest(h.e, V()); }
     for (let t = 1; t < max; t += 0.5) { const q = e0.clone().addScaledVector(d, t); if (q.y < g.groundAt(q.x, q.z) + 0.2) return q; } return local ? e0.addScaledVector(d, max) : c.ground(c.P().addScaledVector(c.flat(), Math.min(max, 14))); };

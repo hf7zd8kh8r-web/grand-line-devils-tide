@@ -10,7 +10,6 @@ import * as ST from './state.js';
 import { defaultLook, lookOverrides, randomLook } from './style.js';
 import * as FS from './fruitshop.js';
 import * as QH from './quests.js';
-import { Duel } from './duel.js';
 import { makeDevilFruit } from './fruitart.js';
 import { decorate } from './decor.js';
 import { Folk } from './folk.js';
@@ -26,6 +25,7 @@ import { castMove, castSpecial, fruitBasic, SP_REQ, ZOAN } from './fruits.js';
 import { Net } from './net.js';
 import { FruitHunt } from './fruithunt.js';
 import { Travel } from './travel.js';
+import { Duel } from './duel.js';
 import { Roller } from './roller.js';
 import { ThirdPerson } from './tpv.js';
 import { Fishing, hakiToggle, hakiVisual, conqueror, fakeSpawn, fakeUpdate, fakeRemove, HAKI, hk } from './features.js';
@@ -56,7 +56,7 @@ export class Game {
     this.water = makeWater(false); this.scene.add(this.water);
     this.sky = makeSky(0x3f9be8, 0xcfeeff); this.scene.add(this.sky); this.amb = new Ambience(this); this.events = new Events(this); this.crew = new CrewMates(this); this.folk = new Folk(this);
     this.fx = new FX(this.scene, this.cam); this.nums = new DmgNums(document.getElementById('nums'));
-    this.vm = new ViewModel(); this.tpv = new ThirdPerson(this);
+    this.vm = new ViewModel(); this.vm.onKick = (a, f, r) => this.camPunch(a, f, r); this.tpv = new ThirdPerson(this);
     this.enemies = []; this.npcs = []; this.projs = []; this.island = null; this.cut = null; this.t = 0; this.paused = false;
     this.p = { pos: V(), vy: 0, yaw: Math.PI, pitch: 0, ground: true, dash: 0, dashCd: 0, dashDir: V(), iframe: 0, atkCd: 0, combo: 0, comboT: 0, phase: 0, moving: false, cds: {}, special: 0, regen: 0, hurtT: 0, swim: false, stun: 0 };
     this.shadowGeo = new B.CircleGeometry(0.5, 12); this.shadowMat = new B.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
@@ -187,7 +187,7 @@ export class Game {
     if (e.dead || dmg <= 0) return;
     const S0 = this.save, hon = S0.haki && S0.haki.buso; const crit = Math.random() < (o.remote ? 0.1 : 0.1 + (S0.haki && S0.haki.ken && hk(S0, 'ken', 2) ? 0.1 : 0)); if (!o.remote && this.p.fsight) { dmg *= 2; this.p.fsight = 0; } if (!o.remote && e.boss && hon && hk(S0, 'buso', 2)) dmg *= 1.15; dmg = Math.round(dmg * (crit ? (hk(S0, 'conq', 3) ? 1.9 : 1.6) : 1) * (0.9 + Math.random() * 0.2) * (!o.remote && this.seaDrain() ? 0.5 : 1));
     if (!o.remote) this.net.hit(e, dmg);
-    e.hp -= dmg; e.c.face && e.c.face.set(e.hp <= 0 ? 'ko' : 'hurt', e.hp <= 0 ? 99 : 0.35); e.flash = 0.12; e.hitT = o.stun ?? 0.22; e.aggro = true; e.lastHitT = this.t; e.calmT = 0; if (!e.boss) { e.state = 'hit'; e.atk = 0; }
+    e.hp -= dmg; e.c.face && e.c.face.set(e.hp <= 0 ? 'ko' : 'hurt', e.hp <= 0 ? 99 : 0.35); e.flash = 0.09; e.hitT = o.stun ?? 0.22; e.aggro = true; e.lastHitT = this.t; e.calmT = 0; if (!e.boss) { e.state = 'hit'; e.atk = 0; }
     const kb = o.kb ?? 3; tmp.copy(e.c.root.position).sub(o.from || this.p.pos).setY(0).normalize(); e.vel.addScaledVector(tmp, kb * (e.boss ? 0.3 : 1)); if (o.up) e.vy = o.up * (e.boss ? 0.2 : 1);
     this.nums.spawn(this.chest(e, V()).add(new B.Vector3(0, 0.5, 0)), dmg, crit ? 'crit' : (o.cls || ''));
     { const hp0 = this.chest(e, V()); const el = o.el || (o.mast && o.mast.startsWith('fr:') ? elementOf(o.mast.slice(3), elementFromColor(o.col || 0xffe6a0)) : elementFromColor(o.col || 0xffe6a0)); const pw = (o.kb ?? 3) / 3.5 + (crit ? 0.6 : 0); const dirv = tmp.clone(); dirv.y = 0.3;
@@ -308,7 +308,7 @@ export class Game {
     const S = this.save, p = this.p; if (p.atkCd > 0) return;
     const slot = S.slot; this.net.fx('atk', 0);
     if (slot === 'fist' || slot === 'fruit') {
-      p.combo = p.comboT > 0 ? (p.combo % 4) + 1 : 1; p.comboT = 0.8; p.atkCd = p.combo === 4 ? 0.42 : 0.26; this.vm.doPunch(); S.stats.punches++;
+      p.combo = p.comboT > 0 ? (p.combo % 4) + 1 : 1; p.comboT = 0.8; p.atkCd = p.combo === 4 ? 0.42 : 0.26; if (slot !== 'fruit') this.vm.doPunch(); S.stats.punches++;
       if (slot === 'fruit') { fruitBasic(this, S.eq.fruit, p.combo); return; }
       const st = styleOf(S); const key = 'fs:' + st.id; const kickHit = st.kick && p.combo % 2 === 0; if (kickHit) this.vm.doKick(); const hits = this.enemiesInCone(kickHit ? 3.1 : 2.7, 0.45);
       const dmg = this.baseDmg() * st.pow * ST.mastMul(S, key) * (p.combo === 4 ? 1.8 : 1) * (S.race === 'Mink' ? 1.05 : 1) * (st.needsHaki && S.haki && S.haki.buso ? 1.1 : 1);
@@ -317,11 +317,15 @@ export class Game {
       for (const e of hits) this.damageEnemy(e, dmg, { kb: (p.combo === 4 ? 7 : 2.5) * heavy, mast: key, mastName: st.name, col, cls: st.id === 'brawler' ? '' : 'fruit', el: st.el || elementFromColor(col), snd: p.combo === 4 || heavy > 1 ? 'heavy' : 'punch' });
       if (hits.length) { this.fx.shake = Math.min(1, this.fx.shake + 0.08); this.hitstop = p.combo === 4 ? 0.08 : 0.045; this.camPunch(p.combo === 4 ? 0.035 : 0.015, p.combo === 4 ? 5 : 2, (Math.random() - 0.5) * 0.02); if (p.combo === 4 || heavy > 1) this.speedLines(1); }
     } else if (slot === 'sword') {
-      const sw = SWORDS[S.eq.sword]; p.atkCd = 0.42 / sw.spd; this.vm.doSwing(); const key = 'sw:' + S.eq.sword;
-      const hits = this.enemiesInCone(3.3, 0.25); const dmg = swordDmg(S, S.eq.sword) * (1 + S.lvl * 0.06) * this.st.dmg * ST.mastMul(S, key) * (sw.santoryu ? 1.15 : 1);
-      const scol = sw.aura || sw.col || 0xbfe0ff; this.vm.setTrailColor && this.vm.setTrailColor(scol === 0xb9b9b9 ? 0xbfe0ff : scol); this.slashFx(scol === 0xb9b9b9 ? 0xbfe0ff : scol, this.vm.side, sw.rar >= 4); audio.sfx('slash');
-      for (const e of hits) this.damageEnemy(e, dmg, { kb: 3.5, mast: key, mastName: sw.name, col: 0xffffff, el: 'slash', snd: 'slashhit' });
-      if (hits.length) { this.fx.shake += 0.1; this.hitstop = 0.06; this.vm.hitPause && this.vm.hitPause(0.07); this.camPunch(0.012, 2.5, this.vm.side * 0.015); }
+      const sw = SWORDS[S.eq.sword]; p.atkCd = 0.42 / sw.spd; const kind = this.vm.doSwing() || 'diag'; const SWG = { over: 1, thrust: 1 }; const key = 'sw:' + S.eq.sword;
+      const scol0 = sw.aura || sw.col || 0xbfe0ff, scol = scol0 === 0xb9b9b9 ? 0xbfe0ff : scol0; this.vm.setTrailColor && this.vm.setTrailColor(scol); audio.sfx('slash', { vol: SWG[kind] ? 1.2 : 0.9 });
+      if (this.tpv.on && !this.tpv.close) this.slashFx(scol, this.vm.side, sw.rar >= 4);
+      const fin = !!SWG[kind]; p.lunge = this.fwdFlat(V()).multiplyScalar(fin ? 4.2 : 2.2);
+      // damage lands when the blade actually crosses the screen (end of anticipation + half the strike)
+      const tg = new B.Group(); tg.material = { dispose() {} }; this.fx.add(tg, 0.125, (t) => { if (t < 1 || this.dead) return;
+        const hits = this.enemiesInCone(fin ? 3.6 : 3.3, kind === 'thrust' ? 0.55 : 0.25); const dmg = swordDmg(S, S.eq.sword) * (1 + S.lvl * 0.06) * this.st.dmg * ST.mastMul(S, key) * (sw.santoryu ? 1.15 : 1) * (fin ? 1.25 : 1);
+        for (const e of hits) this.damageEnemy(e, dmg, { kb: fin ? 6 : 3.5, mast: key, mastName: sw.name, col: 0xffffff, el: 'slash', snd: 'slashhit' });
+        if (hits.length) { this.fx.shake = Math.min(1, this.fx.shake + (fin ? 0.22 : 0.12)); this.hitstop = fin ? 0.07 : 0.04; this.vm.impact && this.vm.impact(scol); this.camPunch(fin ? 0.03 : 0.014, fin ? 5 : 2.5, this.vm.side * 0.02); if (fin) this.speedLines(0.8); } });
     } else if (slot === 'gun') {
       const g = GUNS[S.eq.gun]; p.atkCd = g.cd; this.vm.doShoot(); const key = 'gn:' + S.eq.gun;
       const o = this.eyePos().clone(); const d = this.fwd(V()); const r = this.rayEnemy(o, d, g.range);
@@ -426,7 +430,7 @@ export class Game {
     if (!this.cut) {
       const bob = p.moving ? Math.sin(p.phase) * 0.05 : 0;
       this.cam.position.set(p.pos.x + (Math.random() - 0.5) * shake, p.pos.y + this.st.eye + bob + (p.swim ? -0.2 : 0) - (this.seat ? 0.55 * (this.st.eye / 1.6) : 0) + (Math.random() - 0.5) * shake, p.pos.z);
-      const ck = this.kick || { p: 0, r: 0, f: 0 }; this.cam.rotation.order = 'YXZ'; this.cam.rotation.set(p.pitch + ck.p, p.yaw, ck.r); this.cam.up.set(0, 1, 0);
+      const ck = this.kick || { p: 0, r: 0, f: 0 }; this.cam.rotation.order = 'YXZ'; const vo = this.vm.camOff || { p: 0, y: 0, r: 0 }; this.cam.rotation.set(p.pitch + ck.p + vo.p, p.yaw + vo.y, ck.r + vo.r); this.cam.up.set(0, 1, 0);
       if (this.kick) { const k = this.kick; k.p *= Math.exp(-dt * 14); k.r *= Math.exp(-dt * 10); k.f *= Math.exp(-dt * 9); }
       const tf = (p.dash > 0 ? 86 : 72) - (this.kick ? this.kick.f : 0); if (Math.abs(this.cam.fov - tf) > 0.1) { this.cam.fov = damp(this.cam.fov, tf, 10, dt); this.cam.updateProjectionMatrix(); }
     } else this.cut.update(dt);
@@ -511,7 +515,7 @@ export class Game {
     }
     if (bossActive) this.ui.bossBar(bossActive); else if (this.ui.bossShown && !this.enemies.some(e => e.boss && e.aggro && !e.dead)) this.ui.bossBar(null);
   }
-  flashMat(e) { const m = e.c.material; if (e.flash > 0) { m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.9; } else if (e.state === 'windup' || e.state === 'skill') { m.emissive.setHex(0xff2010); m.emissiveIntensity = 0.35 + Math.sin(this.t * 30) * 0.25; } else { m.emissiveIntensity = 0; } }
+  flashMat(e) { const m = e.c.material; if (e.flash > 0) { m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.25 + 0.5 * Math.min(1, e.flash / 0.09); } else if (e.state === 'windup' || e.state === 'skill') { m.emissive.setHex(0xff2010); m.emissiveIntensity = 0.35 + Math.sin(this.t * 30) * 0.25; } else { m.emissiveIntensity = 0; } }
   enemyStrike(e, dist) {
     const def = e.def; e.state = 'chase'; e.cd = def.cd * (0.8 + Math.random() * 0.5) / (e.phase2 ? 1.3 : 1); e.anim.attack = 1;
     const lvlMul = 1 + (e.lvl - 1) * 0.1; const dmg = def.dmg * lvlMul;

@@ -36,7 +36,7 @@ export class FX {
       this.s0[i] = (o.size ?? 0.35) * (0.6 + Math.random() * 0.8); this.max[i] = this.life[i] = (o.life ?? 0.7) * (0.6 + Math.random() * 0.6); this.grav[i] = o.grav ?? 9;
     }
   }
-  add(mesh, max, fn) { this.scene.add(mesh); this.objs.push({ mesh, life: 0, max, fn }); return mesh; }
+  add(mesh, max, fn) { this.scene.add(mesh); this.objs.push({ mesh, life: 0, max, fn }); try { fn(0, 0); } catch (e) { /* first-frame pose only */ } return mesh; } // pose at t=0 now so new effects never render one frame at their raw (huge) geometry scale
   ring(p, color, r = 4, dur = 0.5, flat = true, thick = 1) {
     const m = new B.Mesh(this.ringGeo, new B.MeshBasicMaterial({ color, transparent: true, blending: B.AdditiveBlending, depthWrite: false, side: B.DoubleSide }));
     m.position.copy(p); if (flat) m.rotation.x = -Math.PI / 2; else m.lookAt(this.camera.position);
@@ -82,8 +82,8 @@ export class FX {
     const ob = this.objs[this.objs.length - 1]; const f0 = ob.fn; ob.fn = (t, dt) => { f0(t, dt); if (t >= 1) g.dispose(); }; return m; }
   // element-flavoured hit impact
   impact(p, el, power = 1, dir) { const P = palette(el); const pw = Math.min(2.5, power);
-    this.orb(p, P.core, 0.1 + 0.06 * pw, 0.08); this.shock(p, P.glow, 0.45 + 0.35 * pw, 0.2 + 0.05 * pw, 0.85); this.sparks(p, 6 + 6 * pw, P.spark, { speed: 9 + 5 * pw, dir });
-    if (pw > 1.3) { this.shock(p, P.core, 0.7 * pw, 0.32, 0.5); this.ring(p.clone().setY(p.y - 0.8), P.glow, 1.4 * pw, 0.35); }
+    this.orb(p, P.core, 0.1 + 0.06 * pw, 0.08); this.shock(p, P.glow, 0.35 + 0.2 * pw, 0.14 + 0.04 * pw, 0.55); this.sparks(p, 6 + 6 * pw, P.spark, { speed: 9 + 5 * pw, dir });
+    if (pw > 1.3 && el !== 'slash') { this.shock(p, P.core, 0.7 * pw, 0.32, 0.5); this.ring(p.clone().setY(p.y - 0.8), P.glow, 1.4 * pw, 0.35); }
     if (P.rise) this.burst(p, 8 * pw, P.glow, { speed: 2.5, up: 3, size: 0.32, life: 0.6, grav: -3 });
     if (P.heavy) this.burst(p, 8 * pw, P.spark, { speed: 4, up: 3, size: 0.3, life: 0.6, grav: 14 });
     if (P.shards) this.sparks(p, 8 * pw, 0xffffff, { speed: 7, up: 0.6, life: 0.45, grav: 18 });

@@ -1,4 +1,5 @@
 import { THREE, Builder, mat, toonMat } from './engine.js';
+import { SWINGS, COMBO, swingPose, bladeQuat, Crescent, Sparks, placeArm, POSES, REST, CHARGE, eOut3, sstep, c01 } from './vmanim.js';
 const B = THREE;
 const box = (w, h, d) => new B.BoxGeometry(w, h, d);
 export class ViewModel {
@@ -17,7 +18,7 @@ export class ViewModel {
     const cyl = (rt, rb, h, n = 12) => new B.CylinderGeometry(rt, rb, h, n); const sph = (r, w = 12, h = 9) => new B.SphereGeometry(r, w, h); const RX = Math.PI / 2;
     const dk = new B.Color(skin).multiplyScalar(0.82).getHex(), nail = new B.Color(skin).lerp(new B.Color(0xffffff), 0.35).getHex();
     const mk = (s) => { const b = new Builder(); const o = { ot: 0.005 };
-      b.add(cyl(0.085, 0.078, 0.34), sleeve, mat(0, 0, 0.14, RX), o);                                  // sleeve
+      b.add(cyl(0.085, 0.078, 0.34), sleeve, mat(0, 0, 0.14, RX), o); b.add(cyl(0.09, 0.085, 0.8), sleeve, mat(0, 0, 0.7, RX), { outline: false });                                  // sleeve
       b.add(new B.TorusGeometry(0.078, 0.018, 6, 14), cuff, mat(0, 0, -0.03), { outline: false });        // cuff ring
       b.add(cyl(0.056, 0.064, 0.3), skin, mat(0, 0, -0.18, RX), o);                                    // forearm (tapers to wrist)
       b.add(sph(0.05, 10, 7), skin, mat(0, -0.005, -0.33, 0, 0, 0, 1.05, 0.9, 1), { outline: false }); // wrist
@@ -43,7 +44,10 @@ export class ViewModel {
     { const b = new Builder(); const o = { ot: 0.006 }; b.add(cyl(0.11, 0.09, 0.5), 0x2a2a3a, mat(0, 0.25, 0), o); b.add(cyl(0.09, 0.075, 0.42), 0x3a3a52, mat(0, -0.2, 0), o); b.add(new B.BoxGeometry(0.16, 0.12, 0.3), 0x1a1a1a, mat(0, -0.44, 0.06), o);
       this.leg = b.build(this.mat); this.leg.visible = false; this.root.add(this.leg);
       this.fistGlowR = this.armR.userData.glow; this.fistGlowL = this.armL.userData.glow; }
-    this.sword = new B.Group(); this.armR.add(this.sword); this.sword.position.set(0, 0.0, -0.44);
+    this.rig = new B.Group(); this.root.add(this.rig); this.swP = new B.Group(); this.rig.add(this.swP); this.sword = new B.Group(); this.swP.add(this.sword); this.sword.rotation.x = Math.PI / 2;
+    this.swPL = new B.Group(); this.rig.add(this.swPL); this.swPM = new B.Group(); this.rig.add(this.swPM); this.fxG = new B.Group(); this.rig.add(this.fxG); this.cres = [new Crescent(this.fxG), new Crescent(this.fxG)]; this.sparks = new Sparks(this.rig);
+    this.an = { cur: [null, null], hold: 0, q: [] }; this.camOff = { p: 0, y: 0, r: 0 }; this._o = [{ p: new B.Vector3(), d: new B.Vector3(), e: new B.Vector3() }, { p: new B.Vector3(), d: new B.Vector3(), e: new B.Vector3() }]; this._q = new B.Quaternion(); this._v = [new B.Vector3(), new B.Vector3(), new B.Vector3(), new B.Vector3()];
+    this.hp = [{ p: new B.Vector3(0.3, -0.5, -0.72), q: new B.Quaternion() }, { p: new B.Vector3(-0.3, -0.5, -0.72), q: new B.Quaternion() }];
     // flintlock: octagonal barrel, brass bands, curved walnut stock, hammer + trigger guard
     const gb = new Builder(); const o = { ot: 0.005 };
     gb.add(cyl(0.024, 0.026, 0.46, 8), 0x3a3a42, mat(0, 0.085, -0.3, RX), o); gb.add(cyl(0.032, 0.032, 0.02, 10), 0xc9a23a, mat(0, 0.085, -0.52, RX), { outline: false }); gb.add(cyl(0.03, 0.03, 0.02, 10), 0xc9a23a, mat(0, 0.085, -0.25, RX), { outline: false });
@@ -80,49 +84,88 @@ export class ViewModel {
       b.add(new B.BoxGeometry(0.01, 0.05 - bend * 0.01, L / seg + 0.004), def.col || 0xdde3ea, mat(0, y, z0 - L / seg / 2, -0.05 * (def.curve ?? 1)), o);
       b.add(new B.BoxGeometry(0.012, 0.012, L / seg), def.hamon || 0xffffff, mat(0, y - 0.022, z0 - L / seg / 2, -0.05 * (def.curve ?? 1)), { outline: false }); }
     b.add(new B.ConeGeometry(0.025, 0.08, 4), def.col || 0xdde3ea, mat(0, 0.05 * (def.curve ?? 1), -0.12 - L - 0.03, -RX, 0, 0, 0.4, 1, 1), o);
-    const g = b.build(this.mat); this.sword.add(g); this.swordLen = L; if (this.mouth) { this.mouth.removeFromParent(); this.mouth = null; }
+    const g = b.build(this.mat); this.sword.add(g); this.swordLen = L; if (this.mouth) { this.mouth.removeFromParent(); this.mouth = null; } this.swordDef = null;
     if (this.swordL) { this.swordL.removeFromParent(); this.swordL = null; }
-    if (def.santoryu) { this.swordL = g.clone(); this.swordL.position.set(0, 0.0, -0.44); this.armL.add(this.swordL); }
+    if (def.santoryu) { this.swordL = new B.Group(); this.swordL.add(g.clone()); this.swordL.rotation.x = Math.PI / 2; this.swPL.add(this.swordL); this.mouth = new B.Group(); this.mouth.add(g.clone()); this.mouth.rotation.x = Math.PI / 2; this.mouth.scale.setScalar(0.92); this.swPM.add(this.mouth); }
+    this.swordDef = def;
   }
   aura(col) { this.auraCol = col; this.auraMat.color.setHex(col || 0xffffff); }
-  setMode(m) { this.mode = m; if (!this.armR) return; this.sword.visible = m === 'sword'; if (this.swordL) this.swordL.visible = m === 'sword'; this.gun.visible = m === 'gun'; this.equipK = 0; if (this.mouth) this.mouth.visible = m === 'sword'; if (this.trailM) this.trailM.visible = false; }
+  setMode(m) { this.mode = m; if (!this.armR) return; this.sword.visible = m === 'sword'; if (this.swordL) this.swordL.visible = m === 'sword'; this.gun.visible = m === 'gun'; this.equipK = 0; if (this.mouth) this.mouth.visible = m === 'sword'; if (this.trailM) this.trailM.visible = false; if (this.an) { this.an.sw = null; this.an.q.length = 0; } this.cp = null; }
   tint(hex, k) { this.mat.emissive.setHex(hex); this.mat.emissiveIntensity = k; }
   doPunch() { this.punch = 1; this.side = -this.side; }
   doKick() { this.kick = 1; }
   setStyle(col, on) { this.styleCol = on ? col : null; }
-  doSwing() { this.swing = 1; this.side = -this.side; this.swc = ((this.swc ?? -1) + 1) % 4; this.trailN = 0; }
-  hitPause(t = 0.07) { this.hold = Math.max(this.hold || 0, t); }
-  // combo patterns: [rotZ start,end] [rotX start,end] [posX start,end] [posY start,end]; 0 diag down-right, 1 rising left, 2 flat sweep, 3 overhead crush
-  _swordPose(dt, bob, drop) { const R = this.armR, L = this.armL; const P = [[[-1.3, 1.5], [1.4, -0.9], [-0.05, 0.45], [0.1, -0.14]], [[1.4, -1.2], [-0.6, 1.1], [0.5, -0.1], [-0.16, 0.12]], [[-1.65, 1.65], [0.3, 0.2], [-0.15, 0.55], [-0.02, -0.04]], [[0.1, 0.05], [2.0, -1.4], [0.18, 0.12], [0.2, -0.22]]];
-    const three = !!this.swordL; const idle = { x: 0.26, y: -0.27 + bob - drop, z: -0.4 };
-    // draw from the hip while equipping (sheathe = reverse when equipK low)
-    const dr = 1 - this.equipK; R.position.set(idle.x + dr * 0.1, idle.y - dr * 0.25, idle.z + dr * 0.15); R.rotation.set(0.5 + dr * 1.6, -0.2 - dr * 0.6, 0.25 + dr * 0.4);
-    if (three) { L.position.set(-0.26, idle.y, -0.4); L.rotation.set(0.5, 0.2, -0.25); } else { L.position.set(0.12, idle.y - 0.1, -0.3); L.rotation.set(0.7, 0.4, 0.5); }
-    if (this.hold > 0) { this.hold -= dt; this.swing = Math.min(1, this.swing + dt * 3.0); }
-    let e = 0, sw = 0; if (this.swing > 0) { const s = 1 - this.swing; const pt = P[this.swc ?? 0]; const ph = s < 0.16 ? -0.18 * Math.sin(s / 0.16 * Math.PI / 2) : s < 0.42 ? -0.18 + 1.18 * (1 - Math.pow(1 - (s - 0.16) / 0.26, 3)) : s < 0.6 ? 1 + 0.08 * Math.sin((s - 0.42) / 0.18 * Math.PI) : 1;
-      const back = s < 0.6 ? 0 : Math.pow((s - 0.6) / 0.4, 1.5); e = ph; sw = s > 0.14 && s < 0.5 ? Math.sin((s - 0.14) / 0.36 * Math.PI) : 0; const lr = (k) => k[0] + (k[1] - k[0]) * Math.max(-0.2, ph);
-      const mix = (v, i) => v + (i - v) * back; const rz = mix(lr(pt[0]), 0.25), rx = mix(lr(pt[1]), 0.5), px = mix(lr(pt[2]), idle.x), py = mix(idle.y + lr(pt[3]), idle.y);
-      R.rotation.z = rz; R.rotation.x = rx; R.position.x = px; R.position.y = py; R.position.z = idle.z - Math.sin(Math.max(0, Math.min(1, ph)) * Math.PI) * 0.22 * (1 - back);
-      if (three) { L.rotation.z = -rz; L.rotation.x = rx; L.position.x = -px; L.position.y = py; L.position.z = R.position.z; }
-      else { L.position.set(R.position.x - 0.1, R.position.y - 0.06, R.position.z + 0.06); L.rotation.copy(R.rotation); }
-      this.root.rotation.z = (this.side || 1) * Math.sin(Math.max(0, Math.min(1, ph)) * Math.PI) * 0.06 * (1 - back); this.root.position.z = -0.04 * sw; }
-    else { this.root.rotation.z *= 0.85; this.root.position.z *= 0.85; }
-    // mouth sword (Three Sword Style): held horizontally under the camera
-    if (three && !this.mouth && this.swordL) { this.mouth = this.swordL.clone(); this.mouth.position.set(0, -0.36, -0.42); this.mouth.rotation.set(0, Math.PI / 2, 0.15); this.mouth.scale.setScalar(0.9); this.root.add(this.mouth); }
-    if (this.mouth) { this.mouth.visible = three && this.mode === 'sword'; if (three) this.mouth.rotation.z = 0.15 + sw * 0.15; }
-    this._trail(sw); }
-  _trail(k) { if (!this.trailM) { const N = 14; const geo = new B.BufferGeometry(); geo.setAttribute('position', new B.BufferAttribute(new Float32Array(N * 2 * 3), 3)); const al = new Float32Array(N * 2); for (let i = 0; i < N; i++) al[i * 2] = al[i * 2 + 1] = i / (N - 1); geo.setAttribute('a', new B.BufferAttribute(al, 1)); const id = []; for (let i = 0; i < N - 1; i++) { const q = i * 2; id.push(q, q + 1, q + 2, q + 1, q + 3, q + 2); } geo.setIndex(id);
-      this.trailMat = new B.ShaderMaterial({ transparent: true, depthWrite: false, blending: B.AdditiveBlending, side: B.DoubleSide, uniforms: { col: { value: new B.Color(0xcfe8ff) }, k: { value: 0 } }, vertexShader: 'attribute float a; varying float vA; void main(){ vA=a; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }', fragmentShader: 'uniform vec3 col; uniform float k; varying float vA; void main(){ float a=vA*vA*k; gl_FragColor=vec4(mix(col,vec3(1.),vA*0.6)*a*1.6,a); }' });
-      this.trailM = new B.Mesh(geo, this.trailMat); this.trailM.frustumCulled = false; this.root.add(this.trailM); this.trailPts = []; this._tA = new B.Vector3(); this._tB = new B.Vector3(); }
-    const on = k > 0.02 && this.mode === 'sword'; this.trailM.visible = on; this.trailMat.uniforms.k.value = k; if (!on) { this.trailPts.length = 0; return; }
-    this.root.updateMatrixWorld(true); const L = (this.swordLen || 1); const hilt = this.sword.localToWorld(this._tA.set(0, 0, -0.15)); const tip = this.sword.localToWorld(this._tB.set(0, 0.05, -0.15 - L)); this.root.worldToLocal(hilt); this.root.worldToLocal(tip);
-    this.trailPts.push([hilt.clone().lerp(tip, 0.45), tip.clone()]); const N = 14; while (this.trailPts.length > N) this.trailPts.shift(); const P = this.trailM.geometry.attributes.position;
-    for (let i = 0; i < N; i++) { const q = this.trailPts[Math.max(0, this.trailPts.length - N + i)] || this.trailPts[0]; P.setXYZ(i * 2, q[0].x, q[0].y, q[0].z); P.setXYZ(i * 2 + 1, q[1].x, q[1].y, q[1].z); } P.needsUpdate = true; }
-  setTrailColor(c) { if (this.trailMat) this.trailMat.uniforms.col.value.setHex(c); this._trailCol = c; }
+  // ---- sword: keyframed combo swings ----
+  doSwing(kind) { const a = this.an; if (!a) return; if (!kind) { if (this.t - (a.lastT ?? -9) > 0.95) a.ci = -1; a.ci = ((a.ci ?? -1) + 1) % COMBO.length; kind = COMBO[a.ci]; } a.lastT = this.t; a.q.length = 0;
+    this._startSwing(kind, false); this.swing = 1; this.side = (SWINGS[kind].A > 90 && SWINGS[kind].A < 270) ? 1 : -1; this.swc = a.ci; return kind; }
+  doSkillSwing(kind) { const a = this.an; if (!a) return; a.q.length = 0; if (kind === 'spin') { this._startSwing('spinA', true); a.q.push('spinB', 'spinA', 'spinB'); } else this._startSwing(kind === 'iai' ? 'iai' : 'over', true); this.swing = 1; a.lastT = this.t; a.ci = -1; }
+  _startSwing(kind, skill) { const S = SWINGS[kind] || SWINGS.diag; const fr = this.hp.map(h => ({ p: h.p.clone(), q: h.q.clone() })); this.an.sw = { k: kind, S, t: 0, fr, Tw: S.Tw ?? (skill ? 0.13 : 0.07), Ts: S.Ts ?? 0.095, To: 0.05, Th: 0.08, Tr: 0.24, built: false, big: !!(S.big || skill || S.heavy), lag: this.swordL ? 0.025 : 0, released: false }; }
+  hitPause(t = 0.07) { if (this.an) this.an.hold = Math.max(this.an.hold, t); }
+  impact(col) { if (!this.sparks || this.mode !== 'sword') return; const h = this.hp[0], L = this.swordLen || 1; const d = this._v[3].set(0, 1, 0).applyQuaternion(h.q); const at = this._v[2].copy(h.p).addScaledVector(d, L * 0.62); at.x *= this.xk || 1; this.sparks.fire(at, col ?? this._trailCol ?? 0xffffff, 1); }
+  _swordAnim(dt, bob, bobx, drop) { const a = this.an, three = !!this.swordL, L = this.swordLen || 1, xk = this.xk || 1, t = this.t; this._ik = true;
+    const O = this._o; const idle = (i, o) => { const s = i ? -1 : 1; if (three) { o.p.set(0.38 * s, -0.44, -0.8); o.d.set(-0.3 * s, 0.76, -0.56); } else { o.p.set(0.34, -0.44, -0.82); o.d.set(-0.42, 0.78, -0.5); } o.e.set(-0.8 * s, -0.2, -0.6);
+      o.p.y += bob + Math.sin(t * 1.7) * 0.008 - drop * 1.4; o.p.x += bobx * s; o.p.z += drop * 0.4; o.d.x += Math.sin(t * 1.1 + i) * 0.03 - drop * 1.2 * s; o.d.z += drop * 1.5; o.d.normalize();
+      if (this.blockK > 0.01) { const b = this.blockK * this.blockK * (3 - 2 * this.blockK), hb = this.bhit || 0; o.p.lerp(this._v[0].set((three ? 0.2 : 0.1) * s, -0.3 + hb * 0.03, -0.6 + hb * 0.08), b); o.d.lerp(this._v[1].set(-1 * s, three ? 0.5 : 0.22, -0.3), b).normalize(); o.e.lerp(this._v[1].set(0, 1, -0.2), b); } return o; };
+    const sw = a.sw; let crest = 0; this.camOff.p *= Math.exp(-dt * 12); this.camOff.y *= Math.exp(-dt * 12); this.camOff.r *= Math.exp(-dt * 12);
+    for (let i = 0; i < (three ? 2 : 1); i++) { const o = O[i], h = this.hp[i]; idle(i, o); const iq = bladeQuat(o.d, o.e, this._q).clone(); const ip = o.p.clone();
+      if (!sw) { const k = 1 - Math.exp(-dt * 16); h.p.lerp(ip, k); h.q.slerp(iq, k); continue; }
+      const tt = sw.t - (i ? sw.lag : 0); let u, bl = 1, rec = 0; const T1 = sw.Tw, T2 = T1 + sw.Ts, T3 = T2 + sw.To, T4 = T3 + sw.Th;
+      if (tt < T1) { u = -0.14; bl = eOut3(c01(tt / T1)); } else if (tt < T2) { const x = (tt - T1) / sw.Ts; u = -0.14 + 1.14 * (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2); } else if (tt < T3) u = 1 + 0.07 * Math.sin((tt - T2) / sw.To * Math.PI / 2); else if (tt < T4) u = 1.07 - 0.07 * sstep((tt - T3) / sw.Th); else { u = 1; rec = sstep(c01((tt - T4) / sw.Tr)); }
+      swingPose(sw.S, u, o); if (i) { o.p.x = -o.p.x; o.d.x = -o.d.x; o.e.x = -o.e.x; } const sq = bladeQuat(o.d, o.e, this._q).clone();
+      if (bl < 1) { h.p.copy(sw.fr[i].p).lerp(o.p, bl); h.q.copy(sw.fr[i].q).slerp(sq, bl); } else if (rec > 0) { h.p.copy(o.p).lerp(ip, rec); h.q.copy(sq).slerp(iq, rec); } else { h.p.copy(o.p); h.q.copy(sq); }
+      // crescent arc: built on release, head follows the blade, then fades fast
+      const C = this.cres[i]; if (tt >= T1 && !sw['b' + i]) { sw['b' + i] = 1; C.build(sw.S, -0.14, 1.07, L, !!i, xk, sw.big); }
+      if (sw['b' + i]) { const head = c01((u + 0.14) / 1.21 + 0.02); const fade = tt < T2 ? 1 : c01(1 - (tt - T2) / (sw.big ? 0.18 : 0.1)); C.set(head, fade * (sw.big ? 1 : 0.9), this._trailCol ?? 0xbfe0ff); crest = Math.max(crest, fade); } }
+    if (sw) { if (a.hold > 0) a.hold -= dt; else sw.t += dt; const S = sw.S, tt = sw.t; const T1 = sw.Tw, T2 = T1 + sw.Ts; const cam = S.cam || {};
+      const amp = tt < T1 ? -0.35 * eOut3(tt / T1) : Math.sin(Math.min(1, (tt - T1) / (sw.Ts + 0.1)) * Math.PI) * (1 - c01((tt - T2 - 0.1) / 0.2));
+      this.camOff.r = (cam.r || 0) * amp; this.camOff.y = (cam.y || 0) * amp; this.camOff.p = (cam.p || 0) * amp;
+      if (!sw.released && tt >= T1) { sw.released = true; if (this.onKick) this.onKick(S.heavy ? 0.03 : 0.012, S.fov || (S.heavy ? 4 : 2), (cam.r || 0) * 0.3); }
+      if (tt > T2 + sw.To + sw.Th + (a.q.length ? 0 : sw.Tr)) { a.sw = null; if (a.q.length) this._startSwing(a.q.shift(), true); } }
+    else for (const C of this.cres) C.set(0, 0);
+    this.swing = sw ? Math.max(0.01, 1 - sw.t / 0.45) : 0;
+    // apply: pivots, arms gripping the hilt (two-hand on one sword; one per sword for Three Sword Style)
+    const sh = this._v; const shR = sh[0].set(0.6 * xk, -1.08, 0.12), shL = sh[1].set(-0.6 * xk, -1.08, 0.12);
+    const zk = this.zk || 1; const put = (P, h) => { P.position.copy(h.p); P.position.x *= xk; P.position.z *= zk; P.quaternion.copy(h.q); };
+    put(this.swP, this.hp[0]); const dR = sh[3].set(0, 1, 0).applyQuaternion(this.hp[0].q); const hR = this.swP.position.clone(); placeArm(this.armR, hR, shR, dR, 1);
+    if (three) { put(this.swPL, this.hp[1]); const dL = new B.Vector3(0, 1, 0).applyQuaternion(this.hp[1].q); placeArm(this.armL, this.swPL.position.clone(), shL, dL, -1); }
+    else { const hL = hR.clone().addScaledVector(dR, -0.15); placeArm(this.armL, hL, shL, dR, -1); }
+    if (this.mouth) { this.swPM.visible = three; const k = this.swing; this.swPM.position.set(-0.05 * xk, -0.6 + bob * 0.6 - drop, -0.48); this.swPM.quaternion.copy(bladeQuat(sh[2].set(1, 0.06 + Math.sin(t * 1.3) * 0.02 + k * 0.05, -0.28), new B.Vector3(0, -0.2, -1), this._q)); }
+    this.fxG.scale.x = 1; }
+  // ---- fruit / style cast poses ----
+  doCast(k = 0) { const kind = typeof k === 'string' ? k : k >= 1 ? 'push' : k > 0 ? 'stretch' : 'jab'; this.doPose(kind, { str: typeof k === 'number' && k > 0 && k < 1 ? k : 1 }); }
+  charge(T = 0.12, big = false) { if (!this.armR) return; this.cp = { kind: 'charge', t: 0, Tc: T, big, fr: this._handsNow() }; this.cast = 1; }
+  doPose(kind, o = {}) { if (!this.armR) return; const P = POSES[kind] || POSES.push; const ch = this.cp && this.cp.kind === 'charge';
+    let side = 1; if (P.one) { side = this.t - (this._pT ?? -9) > 0.7 ? 1 : -(this._pS || -1); this._pS = side; } this._pT = this.t;
+    this.cp = { kind, P, side, t: 0, Tc: ch ? 0.0001 : (o.Tc ?? 0.04), Ts: o.Ts ?? 0.075, Th: (P.hold ?? 0.06) + (o.hold || 0), Tr: 0.24, big: !!o.big || (ch && this.cp.big), fr: this._handsNow(), str: o.str ?? 1, fired: false, glow0: ch ? 1 : 0 }; this.cast = 1; }
+  _handsNow() { return [this.armR, this.armL].map(A => A.localToWorld(new B.Vector3(0, 0, -0.41)).applyMatrix4(new B.Matrix4().copy(this.root.matrixWorld).invert())).map(v => { v.x /= (this.xk || 1); return v; }); }
+  _poseTargets(c, out) { // -> out[0..1] hand targets (unsqueezed root space), returns {w, glow}
+    const t = c.t, V0 = out[0], V1 = out[1]; const tw = (a, b, k, i) => (i ? V1 : V0).set(a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k);
+    if (c.kind === 'charge') { const k = eOut3(c01(t / c.Tc)); const j = Math.sin(t * 46) * 0.006 * k; for (let i = 0; i < 2; i++) { tw(c.fr[i].toArray(), CHARGE[i], k, i); (i ? V1 : V0).x += j * (i ? -1 : 1); } return { glow: k, rel: 0 }; }
+    const P = c.P, s = c.side; const pick = (arr, i) => { const q = arr[s > 0 ? i : 1 - i]; return s > 0 ? q : [-q[0], q[1], q[2]]; };
+    const T1 = c.Tc, T2 = T1 + c.Ts, T3 = T2 + c.Th; let glow = 0, rel = 0;
+    for (let i = 0; i < 2; i++) { const C = pick(P.C, i), X = pick(P.X, i), R = REST[i];
+      if (t < T1) { tw(c.fr[i].toArray(), C, eOut3(c01(t / T1)), i); glow = c.glow0 + (1 - c.glow0) * 0.3; }
+      else if (t < T2) { tw(C, X, eOut3((t - T1) / c.Ts) * 1.07, i); rel = 1; glow = 1; }
+      else if (t < T3) { const x = (t - T2) / c.Th; tw(C, X, 1.07 - 0.07 * sstep(Math.min(1, x * 3)), i); const v = i ? V1 : V0; const rk = Math.sin(Math.min(1, x * 2.5) * Math.PI) * (P.rec ?? 0.1); v.z += rk; v.y += rk * 0.3; rel = 1 - x * 0.6; glow = 1 - x * 0.5; }
+      else { const x = sstep(c01((t - T3) / c.Tr)); tw(X, R, x, i); rel = 0; glow = 0.5 * (1 - x); } }
+    return { glow, rel }; }
+  _castPose(dt, bob) { const c = this.cp; if (!c) return; c.t += dt; const end = c.kind === 'charge' ? c.Tc + 0.35 : c.Tc + c.Ts + c.Th + c.Tr; if (c.t > end) { if (c.kind === 'charge') { this.cp = null; this.doPose('push', { Tc: 0.0001 }); } else this.cp = null; return; }
+    const out = [this._v[0], this._v[1]]; const r = this._poseTargets(c, out); const xk = this.xk || 1; this._ik = true;
+    const sh = [new B.Vector3(0.6 * xk, -1.08, 0.12), new B.Vector3(-0.6 * xk, -1.08, 0.12)]; const P = c.P || {}; const up = c.kind === 'push' || c.kind === 'raise' || c.kind === 'palm';
+    [this.armR, this.armL].forEach((A, i) => { const h = out[i].clone(); h.y += bob; h.x *= xk; h.z *= this.zk || 1; const s = i ? -1 : 1; placeArm(A, h, sh[i], up ? new B.Vector3(0, 1, 0) : new B.Vector3(-s, 0.35, 0), s); A.scale.set(1, 1, 1); });
+    if (P.str && c.t > c.Tc) { const x = (c.t - c.Tc) / (c.Ts + c.Th); const k = x < 0.35 ? x / 0.35 : Math.max(0, 1 - (x - 0.35) / 0.65); const A = c.side > 0 ? this.armR : this.armL; A.scale.z = 1 + 3.2 * c.str * k; }
+    if (!c.fired && c.kind !== 'charge' && c.t >= c.Tc) { c.fired = true; const k = P.kick || [0.02, 3, 0]; if (this.onKick) this.onKick(k[0] * (c.big ? 1.6 : 1), k[1] * (c.big ? 1.5 : 1), k[2] * c.side); if (P.cp) this.camOff.p = P.cp * (c.big ? 1.4 : 1);
+      const x = (c.side > 0 ? P.X[0] : [-P.X[0][0], P.X[0][1], P.X[0][2]]); const at = new B.Vector3(x[0] * xk, x[1], x[2] - 0.12); this.sparks.fire(at, this.auraCol || this.styleCol || 0xffffff, c.big ? 1.3 : 0.8); if (!P.one) { this.sparks.fire(at.set(-x[0] * xk, x[1], x[2] - 0.12), this.auraCol || 0xffffff, c.big ? 1.3 : 0.8); } }
+    this.camOff.p *= Math.exp(-dt * 7);
+    const col = this.auraCol || this.styleCol || 0xffffff; for (const [gl, A, i] of [[this.fistGlowR, this.armR, 0], [this.fistGlowL, this.armL, 1]]) { if (!gl) continue; const one = P.one && (c.side > 0 ? i === 1 : i === 0); const g = one ? 0 : r.glow; gl.visible = g > 0.02; if (!gl.visible) continue; gl.material.color.setHex(col); gl.material.opacity = Math.min(0.8, 0.18 + g * 0.42); gl.scale.setScalar(0.45 + g * (c.big ? 0.75 : 0.5) + r.rel * 0.25); } }
+  handWorld(side, mainCam, out) { if (!this.armR || !mainCam) return null; const xk = this.xk || 1; let v;
+    const c = this.cp; if (c && c.P) { const P = c.P; const i = side > 0 ? 0 : 1; const q = (c.side > 0 ? P.X[i] : P.X[1 - i]); v = new B.Vector3((c.side > 0 ? q[0] : -q[0]) * xk, q[1], q[2] - 0.1); this.root.updateMatrixWorld(true); this.root.localToWorld(v); }
+    else { this.scene.updateMatrixWorld(); v = (side > 0 ? this.armR : this.armL).localToWorld(new B.Vector3(0, 0, -0.5)); }
+    const d = Math.max(0.7, v.length() * 2); const n = v.clone().project(this.cam); n.x = Math.max(-0.95, Math.min(0.95, n.x)); n.y = Math.max(-0.95, Math.min(0.95, n.y)); mainCam.updateMatrixWorld(); const dir = new B.Vector3(n.x, n.y, 0.5).unproject(mainCam).sub(mainCam.position).normalize(); return (out || new B.Vector3()).copy(mainCam.position).addScaledVector(dir, d); }
+  setTrailColor(c) { const l = (((c >> 16) & 255) * 0.3 + ((c >> 8) & 255) * 0.59 + (c & 255) * 0.11) / 255; this._trailCol = l > 0.72 ? 0x2f86ff : c; } // pale blades get a saturated blue rim so the white-core slash reads against bright skies
   doShoot() { this.recoil = 1; this.flashT = 0.06; if (this.flash) { this.flash.rotation.z = Math.random() * 6.28; this.flash.scale.setScalar(0.8 + Math.random() * 0.5); } }
   blockHit() { this.bhit = 1; }
   guardBreak() { this.gbreak = 1; }
-  doCast(stretch = 0) { this.cast = 1; this.stretch = stretch; }
   update(dt, st) {
     this.t += dt; if (!this.armR) return; this._aura(dt);
     const bob = st.moving ? Math.sin(st.phase) * 0.018 : Math.sin(this.t * 1.6) * 0.005; const bobx = st.moving ? Math.cos(st.phase * 0.5) * 0.015 : 0;
@@ -146,16 +189,14 @@ export class ViewModel {
       this.root.rotation.z = sx * -0.05 * Math.max(0, k); this.root.position.z = -0.03 * Math.max(0, k);
       const sk = u > 0.1 && u < 0.5 ? Math.sin((u - 0.1) / 0.4 * Math.PI) : 0; this.streakMat.opacity = sk * 0.55; this.streakMat.color.setHex(this.styleCol ?? 0xffffff); A.userData.streak.visible = sk > 0.01; A.userData.streak.scale.set(1, 0.6 + sk, 1); O.userData.streak.visible = false;
       if (this.gatling > 0) { const g = Math.sin(this.t * 60); R.position.z -= 0.3 * Math.max(0, g); L.position.z -= 0.3 * Math.max(0, -g); R.position.x -= 0.12; L.position.x += 0.12; }
-    } else if (this.mode === 'sword') { if (this.armL.userData.streak) this.armL.userData.streak.visible = this.armR.userData.streak.visible = false; this._swordPose(dt, bob, drop);
+    } else if (this.mode === 'sword') { if (this.armL.userData.streak) this.armL.userData.streak.visible = this.armR.userData.streak.visible = false; this._swordAnim(dt, bob, bobx, drop);
     } else if (this.mode === 'gun') {
       const rc = this.recoil, rk = rc > 0.8 ? (1 - rc) / 0.2 : rc / 0.8; R.position.set(0.22, -0.22 + bob - drop + rk * 0.04, -0.42 + rk * 0.12); R.rotation.set(rk * 0.65, -0.05, rk * 0.12); this.root.rotation.z = rk * 0.03;
       this.flashT = (this.flashT || 0) - dt; if (this.flash) this.flash.visible = this.flashT > 0;
       L.position.y -= 0.15;
     }
-    if (this.cast > 0) { const c = this.cast; const k = c > 0.7 ? (1 - c) / 0.3 : c / 0.7;
-      R.position.z -= 0.3 * k; R.position.x -= 0.1 * k; R.position.y += 0.08 * k; if (this.stretch) R.scale.z = 1 + this.stretch * k * 8;
-      if (this.stretch === 0) { L.position.z -= 0.3 * k; L.position.x += 0.1 * k; L.position.y += 0.08 * k; } }
-    if (fishing) { this.fishK = Math.max(0, this.fishK - dt * (this.fishSt === 'cast' ? 1.6 : 2.4)); const k = this.fishK;
+    if (this.mode === 'fist' && !fishing) this._castPose(dt, bob); else this.cp = null;
+    if (fishing) { this._ik = false; this.fishK = Math.max(0, this.fishK - dt * (this.fishSt === 'cast' ? 1.6 : 2.4)); const k = this.fishK;
       R.position.set(0.2, -0.27 + bob * 0.5, -0.36); R.rotation.set(0.1, -0.15, 0.05); L.position.set(0.02, -0.36 + bob * 0.5, -0.3); L.rotation.set(0.6, 0.5, 0.3);
       let pitch = 0.55, bend = 0, jig = 0;
       if (this.fishSt === 'cast') { const e = 1 - k; pitch = e < 0.35 ? 0.55 + (e / 0.35) * 1.1 : 1.65 - Math.min(1, (e - 0.35) / 0.25) * 1.45; bend = e > 0.35 && e < 0.7 ? 0.12 : 0; R.position.y += e < 0.35 ? e * 0.2 : 0; }
@@ -167,15 +208,17 @@ export class ViewModel {
     if (this.mode !== 'fist' || this.punch <= 0) { if (this.armL.userData.streak) this.armL.userData.streak.visible = this.armR.userData.streak.visible = false; if (this.mode !== 'sword' && this.mode !== 'gun' && this.punch <= 0) { this.root.rotation.z *= 0.8; this.root.position.z *= 0.8; } }
     if (this.blockK > 0.01) { const b = this.blockK * this.blockK * (3 - 2 * this.blockK); const hb = this.bhit; const jit = hb * Math.sin(this.t * 70) * 0.012;
       const lerpRot = (A, x, y, z) => { A.rotation.x += (x - A.rotation.x) * b; A.rotation.y += (y - A.rotation.y) * b; A.rotation.z += (z - A.rotation.z) * b; };
-      if (this.mode === 'sword') { R.position.lerp(new B.Vector3(0.2 + jit, -0.2 + hb * 0.03, -0.42 + hb * 0.08), b); lerpRot(R, 0.35, -1.25, -0.15); L.position.lerp(new B.Vector3(-0.12, -0.3, -0.44 + hb * 0.06), b); lerpRot(L, 0.9, 0.5, 0.3); }
+      if (this.mode === 'sword') { /* sword guard handled by _swordAnim */ } else if (false) { R.position.lerp(new B.Vector3(0.2 + jit, -0.2 + hb * 0.03, -0.42 + hb * 0.08), b); lerpRot(R, 0.35, -1.25, -0.15); L.position.lerp(new B.Vector3(-0.12, -0.3, -0.44 + hb * 0.06), b); lerpRot(L, 0.9, 0.5, 0.3); }
       else { L.position.lerp(new B.Vector3(-0.17 + jit, -0.46 + hb * 0.02, -0.4 + hb * 0.1), b); R.position.lerp(new B.Vector3(0.17 + jit, -0.48 + hb * 0.02, -0.38 + hb * 0.1), b); lerpRot(L, 1.2, 0, -0.62); lerpRot(R, 1.2, 0, 0.62); }
       this.root.position.y = -0.02 * b; }
     else this.root.position.y = 0;
-    if (this.gbreak > 0) { const g2 = Math.sin(Math.min(1, (1 - this.gbreak) * 3) * Math.PI / 2) * this.gbreak; L.position.x -= 0.25 * g2; R.position.x += 0.25 * g2; L.position.y -= 0.2 * g2; R.position.y -= 0.2 * g2; L.rotation.z += 0.6 * g2; R.rotation.z -= 0.6 * g2; this.root.rotation.x = -0.08 * g2; } else this.root.rotation.x = 0;
+    if (this.gbreak > 0 && this.mode !== 'sword') { const g2 = Math.sin(Math.min(1, (1 - this.gbreak) * 3) * Math.PI / 2) * this.gbreak; L.position.x -= 0.25 * g2; R.position.x += 0.25 * g2; L.position.y -= 0.2 * g2; R.position.y -= 0.2 * g2; L.rotation.z += 0.6 * g2; R.rotation.z -= 0.6 * g2; this.root.rotation.x = -0.08 * g2; } else this.root.rotation.x = 0;
+    if (this.sparks) this.sparks.update(dt); if (!this._ik) { L.position.x *= this.xk || 1; R.position.x *= this.xk || 1; if (this.leg) this.leg.position.x *= this.xk || 1; } this._ik = false;
+    if (this.mode !== 'sword') { if (this.cres) for (const C of this.cres) C.set(0, 0); if (this.an) this.an.sw = null; if (!this.cp) { this.camOff.p *= 0.8; } this.camOff.y *= 0.8; this.camOff.r *= 0.8; }
   }
   _aura(dt) { const on = !!this.auraCol && this.mode === 'fist';
     for (const A of [this.armL, this.armR]) { const au = A.userData.aura; if (!au) continue; au.visible = on; if (!on) continue;
       au.children.forEach((m, i) => { const p = (m.userData.ph += dt * (2 + i * 0.3)); const k = (p % 1.6) / 1.6; m.position.set(Math.cos(i * 2.4 + p) * 0.07, -0.02 + k * 0.16, Math.sin(i * 2.4 + p) * 0.07); m.scale.setScalar((1 - k) * (0.8 + this.cast * 1.5)); }); }
     this.auraMat.opacity = 0.55 + Math.sin(this.t * 12) * 0.15; }
-  render(renderer, aspect) { const k = Math.max(0.34, Math.min(1, aspect / 1.6)); this.root.position.set(0, (1 - k) * 0.02, 0); this.root.scale.set(0.5 * k, 0.5 * (0.85 + 0.15 * k), 0.5); this.cam.aspect = aspect; this.cam.updateProjectionMatrix(); renderer.clearDepth(); renderer.render(this.scene, this.cam); }
+  render(renderer, aspect) { const k = Math.max(0.34, Math.min(1, aspect / 1.6)); this.xk = k < 1 ? Math.max(0.42, k * 1.12) : 1; this.zk = 1 + (1 - k) * 0.35; this.root.position.set(0, 0, 0); this.root.scale.setScalar(0.5 * (0.62 + 0.38 * k)); this.cam.aspect = aspect; this.cam.updateProjectionMatrix(); renderer.clearDepth(); renderer.render(this.scene, this.cam); }
 }

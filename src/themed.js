@@ -165,7 +165,8 @@ function themed(c, kind, Th) { const g = c.g; const s = 1 + c.rar * 0.09; const 
 // ---------- dispatcher ----------
 export function fruitMove(g, m, dmg, col, O) { const S = g.save; const id = S.eq.fruit; const f = FRUITS[id]; if (!f || m.beast) return false; const idx = f.moves.findIndex(x => x.name === m.name); if (idx < 0) return false;
   const c = ctxFor(g, { fruit: id, dmg, col, O, rar: f.rar }); const U = ULTRA[id] || CANON[id];
-  try { if (U && U[idx]) U[idx](c); else if (!m.k.startsWith('g:') || !themed(c, m.k.slice(2), themeOf(id))) return false; } catch (e) { console.warn('skill', id, idx, e); return false; }
+  if (U && U[idx]) { const T = f.rar >= 5 ? 0.2 : 0.12; if (g.vm && g.vm.charge) g.vm.charge(T, f.rar >= 5); after(g, T, () => { if (g.dead) return; try { U[idx](c); } catch (e) { console.warn('skill', id, idx, e); } if (g.vm && g.vm.cp && g.vm.cp.kind === 'charge') g.vm.doPose('push'); }); }
+  else try { if (!m.k.startsWith('g:') || !themed(c, m.k.slice(2), themeOf(id))) return false; } catch (e) { console.warn('skill', id, idx, e); return false; }
   try { g.net && g.net.fx && g.net.fx(('mv:' + id + ':' + idx).slice(0, 16), col, g.p.pos.clone().setY(g.p.pos.y + 1)); } catch (e) { /* offline */ }
   return true; }
 // co-op: replay a peer's move visually (damage arrives separately via net 'hit')
