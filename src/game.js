@@ -13,6 +13,7 @@ import * as FS from './fruitshop.js';
 import * as QH from './quests.js';
 import { makeDevilFruit } from './fruitart.js';
 import { decorate } from './decor.js';
+import { buildMapFx } from './mapfx.js';
 import { Folk } from './folk.js';
 import { STYLES, styleOf } from './styles.js';
 import { makeShipModel, migrateShips } from './ships.js';
@@ -122,7 +123,7 @@ export class Game {
     const tr = Object.values(STYLES).filter(st => st.island === I.id); if (tr.length && !I.npcs.some(n => n.role === 'trainer')) { const g0 = I.npcs.find(n => n.role === 'quest') || { x: 0, z: I.R * 0.4 };
       I.npcs.push({ id: 'trainer', look: 'smith', name: tr[0].name + ' Master', role: 'trainer', x: g0.x - 3.2, z: g0.z - 3, ry: Math.PI / 2, over: { shirt: tr[0].col, band: 0xffffff, hairS: 'buzz', sash: 0x1a1a1a, mouth: 'line' } }); }
     for (const n of I.npcs) this.spawnNpc(n);
-    try { decorate(this, I); } catch (err) { console.warn('decor', err); } try { this.folk.spawn(I); } catch (err) { console.warn('folk', err); }
+    try { decorate(this, I); } catch (err) { console.warn('decor', err); } try { buildMapFx(this, I); } catch (err) { console.warn('mapfx', err); } try { this.folk.spawn(I); } catch (err) { console.warn('folk', err); }
     { const fd = I.npcs.find(n => n.shop === 'rot'); if (fd) { const fx = Math.sin(fd.ry || 0), fz = Math.cos(fd.ry || 0); const st = new B.Group(); const tx = fd.x + fx * 1.5, tz = fd.z + fz * 1.5; st.position.set(tx, I.hf ? I.hf(tx, tz) : this.groundAt(tx, tz), tz); st.rotation.y = fd.ry || 0;
       const wood = new B.MeshToonMaterial({ color: 0x8a5a32 }), cloth = new B.MeshToonMaterial({ color: 0x6a2a8a }); const top = new B.Mesh(new B.BoxGeometry(2.4, 0.12, 0.9), wood); top.position.y = 0.9; st.add(top); const cl = new B.Mesh(new B.BoxGeometry(2.45, 0.5, 0.92), cloth); cl.position.y = 0.66; st.add(cl);
       for (const [x, z] of [[-1.1, -0.38], [1.1, -0.38], [-1.1, 0.38], [1.1, 0.38]]) { const lg = new B.Mesh(new B.BoxGeometry(0.1, 0.9, 0.1), wood); lg.position.set(x, 0.45, z); st.add(lg); }

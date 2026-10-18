@@ -102,12 +102,28 @@ export function addHouse(b, x, y, z, rot = 0, o = {}) {
   // roof: triangular prism via cylinder 3 sides
   const rg = new B.CylinderGeometry(d * 0.72, d * 0.72, w + 0.8, 3);
   b.add(rg, roof, M(0, h + 0.2 + d * 0.36 * 0.98, 0, 0, 0, Math.PI / 2, 1, 1, 1).multiply(new B.Matrix4().makeRotationY(Math.PI / 2)), { grad: 0.2 });
-  // door + windows
-  b.add(box(0.9, 1.7, 0.1), 0x6a3f22, M(0, 1.05, d / 2 + 0.03), { outline: false });
-  for (const sx of [-1, 1]) { b.add(box(0.8, 0.8, 0.1), 0x9fd3ff, M(sx * w * 0.3, h * 0.6 + 0.2, d / 2 + 0.03), { outline: false }); b.add(box(0.95, 0.12, 0.12), 0x6a4528, M(sx * w * 0.3, h * 0.6 - 0.25, d / 2 + 0.06), { outline: false }); }
-  if (o.chimney) b.add(box(0.5, 1.5, 0.5), 0x9a6a5a, M(w * 0.25, h + 1.4, -d * 0.15));
+  // roof detail: ridge cap, eave trims, shingle rows (roof prism: apex at h+0.2+1.07d, eaves at h+0.19, z=+-0.62d)
+  const rc = new B.Color(roof).multiplyScalar(0.62).getHex(), ry0 = h + 0.19, ry1 = h + 0.2 + 1.07 * d, rz = 0.623 * d, ang = Math.atan2(ry1 - ry0, rz);
+  b.add(box(w + 0.95, 0.22, 0.34), rc, M(0, ry1 - 0.02, 0), { outline: false });
+  for (const sz of [-1, 1]) { b.add(box(w + 0.86, 0.13, 0.16), rc, M(0, ry0 + 0.02, sz * (rz + 0.02)), { outline: false });
+    for (let k = 1; k <= 3; k++) { const u = k / 4; b.add(box(w + 0.82, 0.06, 0.12), rc, M(0, ry0 + (ry1 - ry0) * u + 0.035, sz * (rz * (1 - u) + 0.035), sz * ang, 0, 0), { outline: false }); } }
+  // door: frame + step; windows: frame, mullions, shutters, flower boxes (front + back) and a gable window
+  const wood = 0x5a3a20, sh = new B.Color(roof).lerp(new B.Color(0x6a4a2a), 0.4).getHex();
+  b.add(box(0.9, 1.7, 0.1), 0x6a3f22, M(0, 1.05, d / 2 + 0.03), { outline: false }); b.add(box(1.15, 0.14, 0.16), wood, M(0, 1.95, d / 2 + 0.05), { outline: false });
+  for (const sx of [-1, 1]) b.add(box(0.12, 1.75, 0.14), wood, M(sx * 0.52, 1.05, d / 2 + 0.05), { outline: false }); b.add(box(1.3, 0.16, 0.5), 0x9a8a7a, M(0, 0.28, d / 2 + 0.3), { outline: false });
+  for (const fz of [1, -1]) for (const sx of [-1, 1]) { const wx = sx * w * 0.3, wy = h * 0.6 + 0.2, wz = fz * (d / 2 + 0.03);
+    b.add(box(0.8, 0.8, 0.1), 0x9fd3ff, M(wx, wy, wz), { outline: false });
+    for (const [bx, by, bw, bh] of [[0, 0.44, 0.98, 0.1], [0, -0.44, 0.98, 0.1], [0.44, 0, 0.1, 0.9], [-0.44, 0, 0.1, 0.9], [0, 0, 0.05, 0.8], [0, 0, 0.8, 0.05]]) b.add(box(bw, bh, 0.06), wood, M(wx + bx, wy + by, wz + fz * 0.05), { outline: false });
+    for (const ss of [-1, 1]) b.add(box(0.32, 0.86, 0.06), sh, M(wx + ss * 0.63, wy, wz + fz * 0.04), { outline: false });
+    b.add(box(0.95, 0.22, 0.26), 0x7a5030, M(wx, wy - 0.56, wz + fz * 0.14), { outline: false });
+    for (let f = 0; f < 4; f++) b.add(box(0.14, 0.14, 0.14), [0xff4a6a, 0xffd04a, 0xff8ad0, 0xffffff][(f + (sx > 0 ? 1 : 0)) % 4], M(wx - 0.33 + f * 0.22, wy - 0.4, wz + fz * 0.16), { outline: false }); }
+  for (const sx of [-1, 1]) { b.add(box(0.1, 0.7, 0.7), 0x9fd3ff, M(sx * (w / 2 + 0.03), h * 0.6 + 0.2, 0), { outline: false }); b.add(box(0.12, 0.84, 0.1), wood, M(sx * (w / 2 + 0.05), h * 0.6 + 0.2, 0), { outline: false }); b.add(box(0.12, 0.1, 0.84), wood, M(sx * (w / 2 + 0.05), h * 0.6 + 0.2, 0), { outline: false }); }
+  // lantern by the door (glow added at runtime by mapfx) + chimney with cap (smoke added by mapfx)
+  b.add(box(0.08, 0.08, 0.5), 0x2a2a2a, M(0.95, 2.1, d / 2 + 0.25), { outline: false }); b.add(box(0.26, 0.34, 0.26), 0x2a2a2a, M(0.95, 1.86, d / 2 + 0.45), { outline: false }); b.add(box(0.18, 0.24, 0.18), 0xffe6a0, M(0.95, 1.86, d / 2 + 0.45), { outline: false });
+  const wp = (lx, ly, lz) => new B.Vector3().setFromMatrixPosition(M(lx, ly, lz)); const out = { lan: [wp(0.95, 1.86, d / 2 + 0.45)] };
+  if (o.chimney) { b.add(box(0.5, 1.5, 0.5), 0x9a6a5a, M(w * 0.25, h + 1.4, -d * 0.15)); b.add(box(0.66, 0.14, 0.66), 0x5a4a4a, M(w * 0.25, h + 2.2, -d * 0.15), { outline: false }); out.smoke = wp(w * 0.25, h + 2.35, -d * 0.15); }
   if (o.sign) { b.add(box(1.6, 0.6, 0.08), 0x8a5a2b, M(0, h - 0.2, d / 2 + 0.25)); b.add(box(1.3, 0.35, 0.02), o.sign, M(0, h - 0.2, d / 2 + 0.3), { outline: false }); }
-  return { x, z, hw: (w + 0.3) / 2, hd: (d + 0.3) / 2, rot };
+  return { x, z, hw: (w + 0.3) / 2, hd: (d + 0.3) / 2, rot, ...out };
 }
 export function addWindmill(b, x, y, z, rot = 0) {
   const M = (lx, ly, lz, rx = 0, ry = 0, rz = 0) => new B.Matrix4().makeRotationY(rot).setPosition(x, y, z).multiply(mat(lx, ly, lz, rx, ry, rz));

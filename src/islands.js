@@ -218,7 +218,7 @@ function addHouseStyled(b, hf, x, z, rot, d, r) {
     for (const sx of [-1, 1]) b.add(new B.BoxGeometry(0.7, 0.7, 0.1), 0x3a4a6a, M(sx * w * 0.28, h * 0.6, dd / 2 + 0.03), { outline: false });
     if (d.theme === 'desert' && r() < 0.5) b.add(sph(w * 0.3, 10, 6), roof, M(0, h, 0));
     return { x, z, hw: (w + 0.3) / 2, hd: (dd + 0.3) / 2, rot }; }
-  const c = addHouse(b, x, y, z, rot, { roof, wall: d.walls || [0xf1e2c0, 0xe8d8c0, 0xf4ece0][Math.floor(r() * 3)], h: 3 * tall, w: 4.5 + r() * 2, chimney: r() < 0.3 });
+  const c = addHouse(b, x, y, z, rot, { roof, wall: d.walls || [0xf1e2c0, 0xe8d8c0, 0xf4ece0][Math.floor(r() * 3)], h: 3 * tall, w: 4.5 + r() * 2, chimney: r() < 0.55 });
   if (d.pagoda) { const M = new B.Matrix4().makeRotationY(rot).setPosition(x, y, z); b.add(cyl(0.01, 4.4, 1.2, 4), roof, M.clone().multiply(mat(0, 3 * tall + 2.4, 0, 0, Math.PI / 4)), {}); }
   return c;
 }
