@@ -5,6 +5,7 @@ import { FRUITS, SWORDS, GUNS, GUN_SKILLS, swordDmg, T2 } from './data.js';
 import * as ST from './state.js';
 import { STYLES, styleOf } from './styles.js';
 import { weaponMove } from './canonw.js';
+import { kitMoves, SW_UNLOCK } from './swordkits.js';
 import { after } from './skills.js';
 import { basicShape, basicFist, cleanup as fxClean, fruitMove, ultraSpecial, ultraStyleOf, specialBody, spShape, canonSpecial } from './themed.js';
 const B = THREE; const V = () => new B.Vector3();
@@ -18,7 +19,7 @@ export const SP_REQ = { 4: 50, 5: 40, 6: 30, 7: 25 }; // cutscene special: Legen
 // move list + required mastery for any item (bag, shops, dojo, buttons)
 export function moveInfo(S, kind, id) { const key = { fruit: 'fr:', sword: 'sw:', gun: 'gn:', style: 'fs:' }[kind] + id; const m = ST.mastery(S, key).lvl; let names = [], req = UNLOCK, sp = null;
   if (kind === 'fruit') { const f = FRUITS[id]; names = f.moves.map(x => x.name); if (f.special) sp = { name: f.special.name, req: SP_REQ[f.rar] || 50 }; }
-  else if (kind === 'sword') { names = SWORDS[id].moves.map(x => x.name); req = UNLOCK2; }
+  else if (kind === 'sword') { names = (kitMoves(id, SWORDS[id], (S.t2 || {})[id]) || SWORDS[id].moves).map(x => x.name); req = SW_UNLOCK; }
   else if (kind === 'gun') { names = (GUN_SKILLS[id] || [['rapid', 'Rapid Fire']]).map(x => x[1]); req = UNLOCK2; }
   else if (kind === 'style') { const st = STYLES[id]; names = st ? st.moves.map(x => x[1]) : []; }
   return { m, moves: names.map((n, i) => ({ name: n, req: req[i] ?? 50, ok: m >= (req[i] ?? 50) })), sp: sp && { ...sp, ok: m >= sp.req } }; }
@@ -29,7 +30,7 @@ export function movesFor(S) {
     if (S.tf === 2 && ZOAN[S.eq.fruit]) { const z = ZOAN[S.eq.fruit]; return f.moves.map((mv, i) => ({ ...mv, k: BEASTK[i % 4], name: z[2 + (i % 4)], dmg: (mv.dmg || 1.5) * 1.15, id: 'fr:beast' + i, src: 'fruit', fruit: S.eq.fruit, beast: true, lock: m < UNLOCK[i] ? `Needs ${f.short} mastery ${UNLOCK[i]}` : null, req: UNLOCK[i] })); }
     return f.moves.map((mv, i) => ({ ...mv, id: 'fr:' + mv.k, src: 'fruit', fruit: S.eq.fruit, lock: m < UNLOCK[i] ? `Needs ${f.short} mastery ${UNLOCK[i]}` : null, req: UNLOCK[i] })); }
   if (slot === 'sword' && S.eq.sword) { const s = SWORDS[S.eq.sword]; const m = ST.mastery(S, 'sw:' + S.eq.sword).lvl;
-    return s.moves.map((mv, i) => ({ ...mv, id: 'sw:' + mv.k, src: 'sword', dmg: i ? 1.6 : 2.2, lock: m < UNLOCK2[i] ? `Needs ${s.name} mastery ${UNLOCK2[i]}` : null, req: UNLOCK2[i] })); }
+    return (kitMoves(S.eq.sword, s, (S.t2 || {})[S.eq.sword]) || s.moves).map((mv, i) => ({ dmg: i ? 1.6 : 2.2, ...mv, id: 'sw:' + mv.k, src: 'sword', lock: m < SW_UNLOCK[i] ? `Needs ${s.name} mastery ${SW_UNLOCK[i]}` : null, req: SW_UNLOCK[i] })); }
   if (slot === 'gun' && S.eq.gun) { const ml = ST.mastery(S, 'gn:' + S.eq.gun).lvl; return (GUN_SKILLS[S.eq.gun] || [['rapid', 'Rapid Fire']]).map(([k, name, dm], i) => ({ k: k === 'rapid' ? 'rapid' : 'g:' + k, id: 'gn:' + S.eq.gun + i, name, cd: [7, 11][i], src: 'gun', dmg: dm || 1, lock: ml < UNLOCK2[i] ? `Needs gun mastery ${UNLOCK2[i]}` : null, req: UNLOCK2[i] })); }
   const st = styleOf(S); const m = ST.mastery(S, 'fs:' + st.id).lvl;
   return st.moves.map(([kind, name, dm], i) => ({ k: kind === 'heavy' || kind === 'kick' ? kind : (st.id === 'brawler' && i === 2 ? 'smash' : 'g:' + kind), id: 'fs:' + st.id + i, name, cd: [3, 5, 8, 12][i], src: 'fist', dmg: dm, style: st.id, lock: m < UNLOCK[i] ? `Needs ${st.name} mastery ${UNLOCK[i]}` : null, req: UNLOCK[i] }));
@@ -84,7 +85,7 @@ export function castMove(g, m) {
   g._lastCastT = g.t;
   const S = g.save, p = g.p; let { dmg, key } = fd(g, m); if (m.src === 'fruit' && S.awake && S.awake[S.eq.fruit]) dmg *= 1.5; const col = m.src === 'fruit' ? fcol(S.eq.fruit) : m.src === 'sword' ? 0xdff0ff : m.src === 'gun' ? 0xffb04a : styleOf(S).col;
   const eye = () => g.eyePos().clone(); const fw = () => g.fwd(V()); const fl = () => g.fwdFlat(V());
-  if (m.src === 'fruit') { const el = elementOf(S.eq.fruit); audio.elementSfx(el); g.camPunch && g.camPunch(0.02, 4); } else if (m.src === 'sword') { audio.sfx('slash', { vol: 1.2 }); if (g.vm && g.vm.doSkillSwing) { const sw0 = SWORDS[S.eq.sword] || {}; g.vm.setTrailColor && g.vm.setTrailColor(sw0.aura || sw0.col || 0xbfe0ff); } if (g.vm && g.vm.doSkillSwing) g.vm.doSkillSwing(m.k === 'spin' || /tatsumaki|tornado|storm|king of hell/i.test(m.name) ? 'spin' : /oni giri|shishi|sonson|iai|giri|draw/i.test(m.name) ? 'iai' : 'over'); g.slashFx && g.slashFx(col, 1, true); setTimeout(() => g.slashFx && g.slashFx(col, -1, true), 90); } else if (m.src === 'gun') audio.sfx('gun'); else audio.sfx('heavy', { vol: 0.6 });
+  if (m.src === 'fruit') { const el = elementOf(S.eq.fruit); audio.elementSfx(el); g.camPunch && g.camPunch(0.02, 4); } else if (m.src === 'sword') { audio.sfx('slash', { vol: 1.2 }); if (g.vm && g.vm.doSkillSwing) { const sw0 = SWORDS[S.eq.sword] || {}; g.vm.setTrailColor && g.vm.setTrailColor(sw0.aura || sw0.col || 0xbfe0ff); } if (m.pose && g.vm) { g.vm.doSkillSwing && g.vm.doSkillSwing(m.pose.startsWith('c:') ? ({ raise: 'sky', slam: 'over', claw: 'diag', push: 'thrust', jab: 'thrust', palm: 'thrust' }[m.pose.slice(2)] || 'over') : m.pose); } else if (g.vm && g.vm.doSkillSwing) g.vm.doSkillSwing(m.k === 'spin' || /tatsumaki|tornado|storm|king of hell/i.test(m.name) ? 'spin' : /oni giri|shishi|sonson|iai|giri|draw/i.test(m.name) ? 'iai' : 'over'); g.slashFx && g.slashFx(col, 1, true); setTimeout(() => g.slashFx && g.slashFx(col, -1, true), 90); } else if (m.src === 'gun') audio.sfx('gun'); else audio.sfx('heavy', { vol: 0.6 });
   const O = { mast: key, mastName: m.name, col, cls: m.src === 'fruit' ? 'fruit' : '' };
   title(g, m.name, col);
   if (m.src === 'fruit' && fruitMove(g, m, dmg, col, O)) return;

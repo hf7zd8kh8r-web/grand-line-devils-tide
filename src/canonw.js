@@ -3,6 +3,7 @@
 // Built on the canon.js archetypes. Co-op peers replay visuals via net fx 'mw:<s|g|f>:<idx>:<move>'.
 import { V, G, M, R, group, mesh, run, after, busy, zone, word, puff, boom, wave, fist, flame, ctxFor } from './skills.js';
 import { SWORDS, GUNS, GUN_LIST, SWORD_LIST } from './data.js';
+import { kitMoves, playKit } from './swordkits.js';
 import { STYLES, STYLE_IDS } from './styles.js';
 import { fly, slashes, flyingSlash, volley, rush, warp, deco, sweep, rakes, quake, floor, skyDrops, bigHand, pressure, roar, palmShock, cracks, orbiters, slam, summonBird, palm, ball, heal, rankStorm, sfx, near } from './canon.js';
 const SW_IDS = Object.keys(SWORDS); const GN_IDS = Object.keys(GUNS);
@@ -21,7 +22,10 @@ function tornado(c, col, o = {}) { const g = c.g; sfx(c, 'slash'); const P0 = c.
 function oniGiri(c, col, three) { const g = c.g; rush(c, { col, c2: 0xffffff, t: 0.32, word: three ? 'ONI GIRI!!' : 'SHISHI SONSON!', mul: 0.6 }); after(g, 0.34, () => { const e0 = c.eye(); const f = c.fwd(); const rt = c.right(); const up = rt.clone().cross(f).normalize();
   const n = three ? 3 : 1; for (let i = 0; i < n; i++) { const a = (i - (n - 1) / 2) * 0.7; const r2 = rt.clone().multiplyScalar(Math.cos(a)).addScaledVector(up, Math.sin(a)); g.fx.slash(e0.clone().addScaledVector(f, c.local ? 2.4 : -1.5), r2, c.local ? f.clone() : f.clone().negate(), col, { r: c.local ? 1.8 : 2.6, w: 0.55, a0: 2.4, a1: 0.7, dur: 0.4 }); }
   c.hitR(c.P().addScaledVector(c.flat(), -1.5), 3.5, three ? 1.6 : 1.3, { kb: 6, up: 3, stun: 0.5 }); c.shake(0.5); c.punch(0.04, 4); sfx(c, 'slashhit'); }); }
-export function swordMove(c, id, i) { const col = swordCol(id); const s = SWORDS[id] || {}; const three = !!s.santoryu;
+// every sword gets its own kit (swordkits.js); legacy two-move fallback kept below for unknown ids
+for (const [id, sw] of Object.entries(SWORDS)) { const K = kitMoves(id, sw); if (K) sw.moves = K; }
+export function swordMove(c, id, i) { if (playKit(c, id, i, (SWORDS[id] || {}).rar, i >= 10)) return; swordMoveOld(c, id, i); }
+function swordMoveOld(c, id, i) { const col = swordCol(id); const s = SWORDS[id] || {}; const three = !!s.santoryu;
   if (id === 'yoru' || id === 'kokuto') { if (i === 0) { slashes(c, { col: 0x3aff8a, n: 1, r: 3, vertical: true, mul: 0.8 }); after(c.g, 0.12, () => flyingSlash(c, { col: 0x3aff8a, core: 0xffffff, dark: true, s: 3.2, speed: 34, mul: 1.6, vertical: true })); word(c.g, c.eye().addScaledVector(c.fwd(), 6), 'KOKUTO: KOGATANA!', '#3aff8a', 2, 0.7); }
     else { for (let k = 0; k < 2; k++) after(c.g, k * 0.12, () => flyingSlash(c, { col: 0x3aff8a, dark: true, s: 2.6, roll: k ? 0.8 : -0.8, mul: 1.1 })); word(c.g, c.eye().addScaledVector(c.fwd(), 6), 'KOKUTO: JUJI!', '#3aff8a', 2, 0.7); } return; }
   if (id === 'enma') { if (i === 0) { slashes(c, { col: 0xb03aff, c2: 0x1a0a2a, n: 2, r: 3, mul: 0.7 }); after(c.g, 0.25, () => flyingSlash(c, { col: 0xb03aff, dark: true, s: 3, mul: 1.6 })); word(c.g, c.eye().addScaledVector(c.fwd(), 6), 'ENMA: FLYING DRAGON!', '#d08aff', 2, 0.7); } else tornado(c, 0xb03aff, { word: 'KING OF HELL!!', mul: 0.38 }); return; }
@@ -97,7 +101,7 @@ function skyPillar2(c, col, w) { const g = c.g; const P = c.P(); for (let i = 0;
 export function styleMove(c, id, i) { const L = STK[id]; const fn = L && L[i]; if (!fn) return false; fn(c); return true; }
 // ---------- dispatcher (from castMove) + co-op replay ----------
 export function weaponMove(g, m, dmg, col, O) { const S = g.save; let kind, idx, i;
-  if (m.src === 'sword' && S.eq.sword) { kind = 's'; idx = SW_IDS.indexOf(S.eq.sword); i = (SWORDS[S.eq.sword].moves || []).findIndex(x => x.name === m.name); }
+  if (m.src === 'sword' && S.eq.sword) { kind = 's'; idx = SW_IDS.indexOf(S.eq.sword); i = m.ki ?? (SWORDS[S.eq.sword].moves || []).findIndex(x => x.name === m.name); }
   else if (m.src === 'gun' && S.eq.gun) { kind = 'g'; idx = GN_IDS.indexOf(S.eq.gun); i = +String(m.id).slice(-1); if (m.k === 'rapid') return false; }
   else if (m.src === 'fist') { kind = 'f'; const st = m.style || 'brawler'; idx = STYLE_IDS.indexOf(st); i = +String(m.id).slice(-1); }
   else return false; if (idx < 0 || i < 0 || isNaN(i)) return false;
