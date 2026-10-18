@@ -27,6 +27,7 @@ import { Net } from './net.js';
 import { FruitHunt } from './fruithunt.js';
 import { Travel } from './travel.js';
 import * as HD from './hard.js';
+import { AwakenTrial, decorateIsland } from './awakenisle.js';
 import { Duel } from './duel.js';
 import { Roller } from './roller.js';
 import { ThirdPerson } from './tpv.js';
@@ -63,7 +64,7 @@ export class Game {
     this.p = { pos: V(), vy: 0, yaw: Math.PI, pitch: 0, ground: true, dash: 0, dashCd: 0, dashDir: V(), iframe: 0, atkCd: 0, combo: 0, comboT: 0, phase: 0, moving: false, cds: {}, special: (() => { try { return Math.min(100, +sessionStorage.getItem('gldt_sp') || 0); } catch (_) { return 0; } })(), regen: 0, hurtT: 0, swim: false, stun: 0 };
     this.shadowGeo = new B.CircleGeometry(0.5, 12); this.shadowMat = new B.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
     this.blobs = new B.InstancedMesh(this.shadowGeo, this.shadowMat, 64); this.blobs.frustumCulled = false; this.scene.add(this.blobs);
-    this.bars = document.getElementById('bars'); this.fishing = new Fishing(this); this.net = new Net(this); this.hunt = new FruitHunt(this); this.trv = new Travel(this); this.roller = new Roller(this); this.duel = new Duel(this); this.anim = (c, st) => animChar(c, st, this.t);
+    this.bars = document.getElementById('bars'); this.fishing = new Fishing(this); this.awk = new AwakenTrial(this); this.net = new Net(this); this.hunt = new FruitHunt(this); this.trv = new Travel(this); this.roller = new Roller(this); this.duel = new Duel(this); this.anim = (c, st) => animChar(c, st, this.t);
     this.markers = [];
     qualityHooks.push(() => { setOutlinesVisible(this.scene); this.cam.far = qv().far + 250; this.cam.updateProjectionMatrix(); this.scene.fog && (this.scene.fog.far = qv().far); this.water.userData.mat.uniforms.fogF.value = qv().far; });
   }
@@ -111,7 +112,7 @@ export class Game {
     for (const e of this.enemies) this.scene.remove(e.c.root); for (const n of this.npcs) { this.scene.remove(n.c.root); if (n.mark) this.scene.remove(n.mark); if (n.machine) this.scene.remove(n.machine); }
     for (const p of this.projs) p.mesh && this.scene.remove(p.mesh); fakeRemove(this); this.fishing && this.fishing.stop(); this.clearGather();
     this.enemies = []; this.npcs = []; this.projs = []; this.nums.clear(); this.bars.innerHTML = ''; this.barPool = [];
-    const I = this.island = (BUILDERS[id] || BUILDERS.windmill)(); this.save.island = I.id;
+    const I = this.island = (BUILDERS[id] || BUILDERS.windmill)(); decorateIsland(I); this.save.island = I.id;
     if (!this.save.unlocked.includes(I.id)) this.save.unlocked.push(I.id);
     this.scene.add(I.group);
     const pal = I.palette; this.sky.userData.mat.uniforms.top.value.set(pal.skyTop); this.sky.userData.mat.uniforms.bot.value.set(pal.skyBot);
@@ -452,7 +453,7 @@ export class Game {
     this.net.update(dt);
     this.amb.update(dt); this.events.update(dt); this.crew.update(dt); this._rk = (this._rk || 0) - dt; if (this._rk <= 0) { this._rk = 2; this.rankCheck(); checkAch(this); } this._clk = (this._clk || 0) - dt; if (this._clk <= 0) { this._clk = 1; const ck = document.getElementById('clock'); if (ck) { const nt = this.amb.isNight(); ck.textContent = `${nt ? '🌙' : '☀️'} ${this.amb.clock()}${nt ? ' · Night +20% ฿/XP' : ''}${this.amb.stormT > 0 ? ' · ⛈ Storm' : ''}`; ck.classList.toggle('night', nt); } }
     if (this.fed && this.fed.t > 0) { this.fed.t -= dt; if (this.fed.t <= 0) { this.fed = null; this.ui.toast('Well Fed buff wore off', 'blk'); } }
-    this.updateEnemies(dt); this.updateProjs(dt); this.questTick(dt); this.stockTick(); this.rumorTick(); try { this.trv.update(dt); } catch (err) { if (!this._tErr) { this._tErr = 1; console.warn('travel', err); } } try { this.hunt.update(dt); } catch (err) { if (!this._hErr) { this._hErr = 1; console.warn('hunt', err); } } if (this.preview) { this.preview.root.rotation.y += Math.sin(this.t * 0.7) * dt * 0.4; animChar(this.preview, { move: 0, wave: Math.sin(this.t * 0.5) > 0.7 }, this.t); } this.updateNpcs(dt); this.fishing.update(dt); fakeUpdate(this, dt); try { this.duel && this.duel.update(dt); } catch (err) { if (!this._dErr) { this._dErr = 1; console.warn('duel', err); } }
+    this.updateEnemies(dt); this.updateProjs(dt); this.questTick(dt); this.stockTick(); this.rumorTick(); try { this.awk.update(dt); } catch (err) { console.warn('awk', err); } try { this.trv.update(dt); } catch (err) { if (!this._tErr) { this._tErr = 1; console.warn('travel', err); } } try { this.hunt.update(dt); } catch (err) { if (!this._hErr) { this._hErr = 1; console.warn('hunt', err); } } if (this.preview) { this.preview.root.rotation.y += Math.sin(this.t * 0.7) * dt * 0.4; animChar(this.preview, { move: 0, wave: Math.sin(this.t * 0.5) > 0.7 }, this.t); } this.updateNpcs(dt); this.fishing.update(dt); fakeUpdate(this, dt); try { this.duel && this.duel.update(dt); } catch (err) { if (!this._dErr) { this._dErr = 1; console.warn('duel', err); } }
     for (const u of this.island.updaters) u(dt);
     if (this.island.boat) this.island.boat.position.y = -0.1 + Math.sin(this.t * 1.2) * 0.08;
     this.water.userData.mat.uniforms.t.value = this.t; this.water.position.set(Math.round(this.cam.position.x / 10) * 10, -1.0, Math.round(this.cam.position.z / 10) * 10);

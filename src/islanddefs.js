@@ -1,6 +1,7 @@
 import { addSecretIslands } from './secretdefs.js';
 // Data-driven islands (generated in 3D by genIsland). Enemy/boss looks are overrides on the base character.
 // skills: lunge | fan | slam | spin | beam | rain | blink   (each with a canon-flavoured name and colour)
+import { addAwakenIsland } from './awakenisle.js';
 const E = (name, look, hp, dmg, o = {}) => ({ name, look, hp, dmg, spd: o.spd || 2.8, reach: o.reach || 2.1, cd: o.cd || 1.6, xp: o.xp || Math.round(hp * 0.35), ber: o.ber || [Math.round(hp * 0.25), Math.round(hp * 0.45)], ranged: o.ranged, drop: o.drop, scale: o.scale });
 export const IDEFS = {
   orange: { theme: 'town', pal: { sky: [0x4aa0e0, 0xffe6c0], fog: 0xffe6c0, grass: 0x8fc05a }, roofs: [0xd0603a, 0xe0903a, 0xb04a3a], landmark: 'tent', giver: 'Boodle', drop: 'Buggy Nose Pin',
@@ -109,3 +110,4 @@ for (const [id, t] of Object.entries(TRAITS)) if (IDEFS[id]) { const L = IDEFS[i
 const MH = ['short', 'spiky', 'buzz', 'messy', 'slick']; let mi = 0;
 for (const d of Object.values(IDEFS)) for (const e of [d.e1, d.e2]) { if (!e) continue; const L = e.look; if (!L.hairS && !L.bald) L.hairS = MH[mi++ % MH.length]; if (!L.mouth) L.mouth = ['line', 'frown', 'grin'][mi % 3]; if (!L.brow) L.brow = 'angry'; }
 addSecretIslands(IDEFS, E); // 7 hidden islands (secretdefs.js)
+addAwakenIsland(IDEFS, E); // Awakening Isle + The Awakener (awakenisle.js)
