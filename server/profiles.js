@@ -61,6 +61,8 @@ export function githubStore({ token = process.env.GITHUB_TOKEN, repo = process.e
   };
 }
 
+// rebirth count is clamped server-side: whole number 0..999 and at most +1 per save (no skipping ahead)
+const rbOf = s => Math.max(0, Math.min(999, Math.floor(+((s && s.rebirth)) || 0)));
 export function makeProfiles(dir) {
   const store = process.env.PROFILE_STORE === 'github' ? githubStore() : fileStore(dir);
   console.log('[saves] store =', store.name);
@@ -90,7 +92,7 @@ export function makeProfiles(dir) {
           const pin = String(m.pin || ''); if (!/^\d{4}$/.test(pin) || !norm(m.name) || !m.race) return send(res, 400, { err: 'Need name, race and a 4-digit PIN' });
           const key = keyOf(m.name, m.race, pin); const rec = await read(key);
           if (rec) return send(res, 200, { key, exists: true, ts: rec.ts, save: rec.save });
-          if (m.create && m.create.save) { await write(key, { ts: +m.create.ts || Date.now(), save: m.create.save, made: Date.now() }); return send(res, 200, { key, exists: false, created: true }); }
+          if (m.create && m.create.save) { if (typeof m.create.save === 'object') m.create.save.rebirth = rbOf(m.create.save); await write(key, { ts: +m.create.ts || Date.now(), save: m.create.save, made: Date.now() }); return send(res, 200, { key, exists: false, created: true }); }
           return send(res, 200, { key, exists: false });
         }
         if (u === '/api/profile/save') { // {key, ts, save} - newest wins
@@ -98,6 +100,7 @@ export function makeProfiles(dir) {
           const key = String(m.key || ''); if (!/^[0-9a-f]{64}$/.test(key) || !m.save || typeof m.save !== 'object') return send(res, 400, { err: 'bad save' });
           const rec = await read(key); const ts = +m.ts || Date.now();
           if (rec && rec.ts > ts) return send(res, 200, { ok: false, newer: true, ts: rec.ts, save: rec.save });
+          m.save.rebirth = Math.min(rbOf(m.save), rec ? rbOf(rec.save) + 1 : 999);
           await write(key, { ts, save: m.save, made: rec ? rec.made : Date.now() }); return send(res, 200, { ok: true, ts });
         }
         if (u === '/api/profile/load') { const key = String(m.key || ''); if (!/^[0-9a-f]{64}$/.test(key)) return send(res, 400, { err: 'bad key' }); const rec = await read(key); return send(res, 200, rec ? { ts: rec.ts, save: rec.save } : { none: true }); }

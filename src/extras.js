@@ -7,6 +7,7 @@ import * as ST from './state.js';
 import { HAKI_COLORS, hakiColorOf, fpHaki, syncAvatar, syncFpAura, updateFx, conqFx, AURA_FAMILY, _fxCount } from './bodyfx.js';
 import { makeAvatar } from './models.js';
 import { installSecrets, tickSecrets } from './secrets.js';
+import { installRebirth } from './rebirth.js';
 const fmt = n => Math.round(n).toLocaleString('en-US');
 const CSS = `
 #conqFlash{position:fixed;inset:0;pointer-events:none;z-index:40;opacity:0;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 30%,rgba(60,0,10,.55) 70%,rgba(0,0,0,.85) 100%)}
@@ -27,6 +28,7 @@ export function installExtras(g) { if (g._extras) return; g._extras = true; cons
   // Armament colour shop in Bag → Haki
   const ih = ui.invHtml.bind(ui); ui.invHtml = (tab) => { let h = ih(tab); if ((tab || ui.invTab) === 'haki') h += hakiShopHtml(g.save); return h; };
   const act = ui.act.bind(ui); ui.act = (cmd, btn) => { const [a, b] = String(cmd).split(':'); if (a === 'hkc') return hakiColorAct(g, b); return act(cmd, btn); };
+  installRebirth(g); // ⟳ rebirth: completion tracking, tougher world, HUD badge
   installSecrets(g); // secret islands' clues, fake-wall hidden shops, secret quests, index hints
   // per-frame: own fx, first-person coat + fist aura, third-person body / preview / crewmates
   let visKey = JSON.stringify(visCos(g.save)), visT = 0;

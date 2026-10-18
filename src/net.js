@@ -118,7 +118,7 @@ export class Net {
       if (drain && Math.random() < dt * 6) g.fx.burst(R.position.clone().add(new B.Vector3((Math.random() - 0.5), 0.9, (Math.random() - 0.5))), 2, 0xcfefff, { speed: 0.6, up: 2.2, size: 0.12, life: 0.9, grav: -1 });
       animChar(p.av, p.anim, g.t);
       v.copy(R.position); v.y += p.av.height + 0.4; v.project(g.cam); if (v.z > 1 || g.cut) { p.tag.style.display = 'none'; continue; }
-      p.tag.style.display = 'block'; p.tag.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px,${(-v.y * 0.5 + 0.5) * innerHeight}px) translate(-50%,-100%)`; p.tag.firstChild.textContent = `${STYLES[p.st] && p.st !== 'brawler' ? STYLES[p.st].icon + ' ' : ''}${p.name} Lv.${p.lvl}${p.m & 2 ? ' 🌊' : ''}${p.m & 4 ? ' ⚖' : ''}`; p.tag.classList.toggle('drain', !!(p.m & 2)); p.tag.querySelector('b').style.width = (p.hp * 100) + '%';
+      p.tag.style.display = 'block'; p.tag.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px,${(-v.y * 0.5 + 0.5) * innerHeight}px) translate(-50%,-100%)`; p.tag.firstChild.textContent = `${STYLES[p.st] && p.st !== 'brawler' ? STYLES[p.st].icon + ' ' : ''}${p.name} Lv.${p.lvl}${p.cos && p.cos.rb ? ' ⟳' + p.cos.rb : ''}${p.m & 2 ? ' 🌊' : ''}${p.m & 4 ? ' ⚖' : ''}`; p.tag.classList.toggle('drain', !!(p.m & 2)); p.tag.querySelector('b').style.width = (p.hp * 100) + '%';
     }
   }
 }
