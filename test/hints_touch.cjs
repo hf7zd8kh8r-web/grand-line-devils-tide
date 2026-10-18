@@ -44,9 +44,9 @@ const SH = __dirname + '/../shots/hints/';
   await p.evaluate(() => __g.ui.close(true));
   // 5. Mysterious Swordsman riddle -> Sword Index link
   const ms = await p.evaluate(async () => { const g = __g.game, S = g.save; S.lvl = 120; const isl = Object.entries(__g.QUESTS || {}).find(([i, L]) => L.some(q => q.secret && q.sword)); const id = isl ? isl[0] : 'loguetown'; S.unlocked = [...new Set([...(S.unlocked || []), id])]; g.loadIsland(id, false); await new Promise(r => setTimeout(r, 600));
-    const n = (g.island.npcs || []).find(n => n.name === 'Mysterious Swordsman'); if (!n) return { err: 'no swordsman on ' + id, npcs: g.island.npcs.map(n => n.name).slice(0, 12) }; g.ui.open('quest', n); const a = document.querySelector('#panel .riddle a[data-do]'); if (a) a.id = 'tRid'; return { id, riddle: (document.querySelector('#panel .riddle') || {}).textContent, link: !!a }; });
+    const n = (g.island.npcs || []).find(n => n.name === 'Mysterious Swordsman'); if (!n) return { err: 'no swordsman on ' + id, npcs: g.island.npcs.map(n => n.name).slice(0, 12) }; g.ui.open('quest', n); const a = document.querySelector('#panel .riddle [data-do]'); if (a) a.id = 'tRid'; return { id, riddle: (document.querySelector('#panel .riddle') || {}).textContent, link: !!a }; });
   ok('Mysterious Swordsman shows riddle + link', ms.link, ms);
-  if (ms.link) { await p.waitForTimeout(600); r = await tap('#tRid'); ok('riddle link tap opens Sword Index', (await p.evaluate(() => __g.ui.modal)) === 'swx', r); await p.screenshot({ path: SH + 'riddle_link.png' }); }
+  if (ms.link) { await p.waitForTimeout(600); r = await tap('#tRid'); ok('riddle link tap opens Sword Index', (await p.evaluate(() => __g.ui.modal)) === 'swx', { ...r, now: await p.evaluate(() => [__g.ui.modal, __g.ui._arg && __g.ui._arg.name, Math.round(performance.now() - __g.ui._openT), !!document.querySelector('#tRid')]) }); await p.screenshot({ path: SH + 'riddle_link.png' }); }
   await p.evaluate(() => __g.ui.close(true)); await p.waitForTimeout(300);
   // 6. Tavern rumor
   const rum = await p.evaluate(() => { const g = __g.game; g._rumT = 0; g.rumorTick(); const L = [...document.querySelectorAll('#chat .chatl')]; const e = L.find(e => /Tavern Rumor/.test(e.textContent)); if (!e) return { err: 'no rumor', modal: __g.ui.modal, cut: !!g.cut };
