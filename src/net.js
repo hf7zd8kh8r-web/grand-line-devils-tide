@@ -1,3 +1,4 @@
+import * as FS from './fruitshop.js';
 import { remoteAwake } from './awaken.js';
 import { makeMount, animMount, emitTrail } from './travel.js';
 // Co-op multiplayer client (WebSocket relay in server/server.js)
@@ -56,7 +57,7 @@ export class Net {
     else if (m.t === 'sail') { const p = this.peers.get(m.id); if (!p) return; p.sailing = { to: m.to, t: performance.now() }; this.dropAvatar(p); p.island = '~sea';
       if (g.ui.onCrewSail) g.ui.onCrewSail(p, m.to);
       if (m.from === g.island.id && this.g.running && !this.g.cut) this.sailInvite(p, m.to); }
-    else if (m.t === 'shop') { const p = this.peers.get(m.id); const S = g.save; const key = m.i + ':' + m.w; S.fsold = S.fsold || {}; const sold = S.fsold[key] = S.fsold[key] || []; if (!sold.includes(m.s)) sold.push(m.s);
+    else if (m.t === 'shop') { const p = this.peers.get(m.id); const S = g.save; const key = m.i + ':' + m.w; S.fsold = S.fsold || {}; const sold = S.fsold[key] = S.fsold[key] || []; const mine = FS.stockFor(m.i, m.w, (S.fsRoll || {})[key] || 0)[m.s]; if (mine && mine.id === m.f && !sold.includes(m.s)) sold.push(m.s);
       if (m.i === g.island.id && p) g.ui.toast(`🍎 ${p.name} bought the ${(FRUITS[m.f] ? FRUITS[m.f].name : m.f)} from the Fruit Dealer!`, 'quest'); if (g.ui.modal === 'shop') g.ui.open('shop', 'rot'); }
     else if (m.t === 'duel') { if (this.g.duel) this.g.duel.onNet(m); }
     else if (m.t === 'tr') this.onTrade(m);

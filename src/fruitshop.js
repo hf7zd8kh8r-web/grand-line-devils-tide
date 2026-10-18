@@ -11,11 +11,16 @@ const rngOf = (seed) => { let x = seed || 1; return () => { x ^= x << 13; x >>>=
 export const windowId = (now = Date.now()) => Math.floor(now / PERIOD);
 export const msLeft = (now = Date.now()) => PERIOD - (now % PERIOD);
 export function rollRarity(r) { let x = r() * 100; for (let i = 0; i < WEIGHTS.length; i++) { if (x < WEIGHTS[i]) return i; x -= WEIGHTS[i]; } return 0; }
+export const RARE_MIN = 6; // Mythical+ = announced server-wide as RARE STOCK
 export function stockFor(island, w = windowId(), nonce = 0) {
-  const r = rngOf(hash(island + ':' + w + (nonce ? ':r' + nonce : ''))); const out = [];
-  for (let i = 0; i < SLOTS; i++) { const rar = rollRarity(r); const pool = Object.keys(FRUITS).filter(k => FRUITS[k].rar === rar); const id = pool[Math.floor(r() * pool.length)]; out.push({ slot: i, id, rar, price: Math.round(PRICE[rar] * (0.9 + r() * 0.2) / 10) * 10 }); }
+  const r = rngOf(hash(island + ':' + w + (nonce ? ':r' + nonce : ''))); const out = []; const shared = nonce ? stockFor(island, w, 0) : null;
+  for (let i = 0; i < SLOTS; i++) { if (shared && shared[i].rar >= RARE_MIN) { r(); r(); r(); out.push({ ...shared[i] }); continue; } // announced rare slots are shared: a personal reroll never hides them
+    const rar = rollRarity(r); const pool = Object.keys(FRUITS).filter(k => FRUITS[k].rar === rar); const id = pool[Math.floor(r() * pool.length)]; out.push({ slot: i, id, rar, price: Math.round(PRICE[rar] * (0.9 + r() * 0.2) / 10) * 10 }); }
   return out;
 }
+// announced rare slots for an island/window (shared stock, identical for every client)
+export const rareSlots = (island, w = windowId()) => stockFor(island, w, 0).filter(o => o.rar >= RARE_MIN);
+export const isShared = (island, w, o) => { const s = stockFor(island, w, 0)[o.slot]; return !!s && s.id === o.id; };
 // Personal Restock Now: base = 250×level (min 500), doubles each use in the same window.
 export const rerollPrice = (lvl, uses = 0) => Math.round(Math.max(500, 250 * Math.max(1, lvl | 0)) * Math.pow(2, uses | 0) / 10) * 10;
 export const fmtLeft = (ms) => { const s = Math.ceil(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
