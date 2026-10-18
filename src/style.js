@@ -39,6 +39,23 @@ export const COSMETICS = {
   gloves: { name: 'Fighting Gloves', slot: 'neck', price: 2500, icon: '🥊', o: { gloves: 0x2a2a2a } },
   horns: { name: 'Oni Horns', slot: 'extra', price: 35000, icon: '👹', o: { horns: true } },
 };
+// bought wearables (Bag -> Gear, up to 3) are drawn on the character too, not just stats
+export const WEAR_LOOK = {
+  strawhat: { hat: 'straw' }, bandana: { hat: 'bandana', hatC: 0x1a1a1a }, sandals: { sandals: true, belt: 0x8a5a2a },
+  marinecoat: { cape: 0xffffff, epaulets: 0xe0c040 }, clownnose: { clown: true }, catglasses: { glasses: 'shades', shadeC: 0xe0902a },
+  chefsuit: { hat: 'chef', apron: 0xffffff, shirt: 0xf4f4f4, tie: 0x1a1a1a }, sharkvest: { vest: 0x2a5a8a, necklace: 0xf4f0e0 },
+  cowboy: { hat: 'cowboy', hatC: 0xe0702a, necklace: 0xc02020 }, sandcape: { cape: 0xd8c39a, fur: 0x6a4a2a },
+  skywings: { wings: true, wingC: 0xffffff }, cp9mask: { mask: 0xf0f0f0, tie: 0x1a1a1a },
+  captaincoat: { cape: 0x1a1a1a, epaulets: 0xc9a23a, collarUp: 0x1a1a1a }, kujaear: { earrings: 0xe0c040, necklace: 0xe0c040 },
+  admiralcoat: { cape: 0xffffff, collarUp: 0xffffff, epaulets: 0xc9a23a }, karate: { longSleeve: true, shirt: 0xf4f4f4, pants: 0xf4f4f4, sash: 0x1a1a1a },
+  pinkcoat: { fur: 0xe8608a, cape: 0xe8608a }, minkvest: { vest: 0x7a5a3a, gloves: 0x3a2a1a },
+  yonkocoat: { cape: 0x1a1a1a, collarUp: 0x1a1a1a, epaulets: 0xc9a23a, sash: 0xc02020 }, kimono: { longSleeve: true, sash: 0x2a2a2a, collar: 0xf0f0f0, shirt: 0x6a3a9a },
+  visor: { glasses: 'shades', shadeC: 0x2ad0ff },
+};
+// everything visible about a player, in one small object that is saved, rendered and sent to crewmates:
+// equipped cosmetics by slot + wear: [wearables] + aw: awakened fruit + hk: armament colour while Haki is on + rb: rebirths
+export const VIS_HOOKS = [];
+export function visCos(S) { const o = { ...(S.cosEq || {}) }; const w = (S.eq && S.eq.wear) || []; if (w.length) o.wear = w.slice(0, 3); for (const f of VIS_HOOKS) try { f(S, o); } catch (_) {} return o; }
 export function defaultLook(faction, race) {
   const L = { skin: 1, hairS: 'spiky', hairC: 0, eye: 0, mouth: 'grin', brow: 'normal', outfit: faction === 'Marine' ? 'jacket' : 'vest', top: faction === 'Marine' ? 3 : 0, pants: faction === 'Marine' ? 2 : 1, hat: faction === 'Marine' ? 'none' : 'none' };
   if (race === 'Mink') L.hairC = 3; if (race === 'Skypiean') L.hairC = 2; if (race === 'Lunarian') L.hairC = 11; if (race === 'Fish-Man') L.hairC = 7;
@@ -55,7 +72,9 @@ export function lookOverrides(look, race, faction, cosEq = {}) {
   if (L.outfit === 'kimono') { o.longSleeve = true; o.sash = 0x2a2a2a; o.collar = 0xf0f0f0; }
   if (race === 'Fish-Man') { o.skin = 0x5fa8c9; o.fin = true; } if (race === 'Mink') { o.mink = true; o.skin = 0xe9c38a; } if (race === 'Skypiean') { o.wings = true; o.wingC = 0xffffff; }
   if (race === 'Lunarian') { o.wings = true; o.wingC = 0x1a1a1a; o.skin = 0x9a6a50; } if (race === 'Giant') o.scale = 1.3;
-  for (const id of Object.values(cosEq)) { const c = COSMETICS[id]; if (!c) continue; for (const [k, v] of Object.entries(c.o)) o[k] = v === 'top' ? top : v; }
+  for (const id of Object.values(cosEq || {})) { if (typeof id !== 'string') continue; const c = COSMETICS[id]; if (!c) continue; for (const [k, v] of Object.entries(c.o)) o[k] = v === 'top' ? top : v; }
+  if (Array.isArray(cosEq && cosEq.wear)) for (const id of cosEq.wear) { const w = WEAR_LOOK[id]; if (w) Object.assign(o, w); }
+  if (cosEq && cosEq.aw === 'nika') { o.hair = 0xf4f4f4; o.shirt = 0xf8f8f8; if (o.coat) o.coat = 0xf8f8f8; if (o.cape) o.cape = 0xf8f8f8; o.pants = 0xe8e8ec; o.scarf = 0xffffff; o.eye = 0xd02020; o.hairS = o.hairS === 'bald' ? 'wild' : o.hairS; }
   for (const k of Object.keys(o)) if (o[k] === undefined) delete o[k];
   return o;
 }

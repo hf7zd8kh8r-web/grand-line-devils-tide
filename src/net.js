@@ -3,6 +3,7 @@ import { makeMount, animMount, emitTrail } from './travel.js';
 // Co-op multiplayer client (WebSocket relay in server/server.js)
 import { THREE, setOutlinesVisible } from './engine.js';
 import { makeChar, animChar, makeAvatar } from './models.js';
+import { visCos } from './style.js';
 import { STYLES } from './styles.js';
 import { islandById, FRUITS } from './data.js';
 import * as ST from './state.js';
@@ -25,7 +26,7 @@ export class Net {
     const u = new URL(location.href); u.searchParams.set('room', this.room); u.searchParams.delete('skip'); u.searchParams.delete('anytap'); history.replaceState(null, '', u.toString());
     let ws; try { ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${encodeURIComponent(this.room)}`); } catch (e) { this.status = 'offline'; this.g.ui.netStatus(); return; }
     this.ws = ws; const S = this.g.save; if (this.g.hunt) this.g.hunt.net = null;
-    ws.onopen = () => { ws.send(JSON.stringify({ t: 'hello', name: S.name, faction: S.faction, race: S.race, lvl: S.lvl, island: S.island, look: S.look, cos: S.cosEq, st: (S.eq && S.eq.style) || 'brawler' })); };
+    ws.onopen = () => { ws.send(JSON.stringify({ t: 'hello', name: S.name, faction: S.faction, race: S.race, lvl: S.lvl, island: S.island, look: S.look, cos: visCos(S), st: (S.eq && S.eq.style) || 'brawler' })); };
     ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { return; } this.on(m); };
     ws.onclose = () => { if (this.ws !== ws) return; const was = this.status; this.clearPeers(); if (!this.manual && (was === 'online' || was === 'reconnecting' || was === 'gone')) { this.reconnect(); return; } this.status = was === 'online' ? 'lost' : 'offline'; this.g.ui.netStatus(); };
     ws.onerror = () => {};
@@ -64,7 +65,7 @@ export class Net {
   dropAvatar(p) { if (p.av) { p.av.root.removeFromParent(); p.av = null; } if (p.tag) { p.tag.remove(); p.tag = null; } if (p.mount) { p.mount.removeFromParent(); p.mount = null; p.tvK = 0; } }
   hit(e, dmg) { if (!this.ws || e.ext || e.temp) return; const i = this.g.enemies.indexOf(e); if (i >= 0) this.send({ t: 'hit', i: this.g.island.id, e: i, d: Math.round(dmg) }); }
   fx(k, c, pos) { this.send({ t: 'fx', k, c, p: pos ? [pos.x, pos.y, pos.z] : [0, 0, 0] }); }
-  lookChanged() { const S = this.g.save; this.send({ t: 'look', look: S.look, cos: S.cosEq }); }
+  lookChanged() { const S = this.g.save; this.send({ t: 'look', look: S.look, cos: visCos(S) }); }
   chat(msg) { this.send({ t: 'chat', msg }); this.g.ui.chat('You', msg); }
   // ---------- sailing together ----------
   sailStart(to, from) { this.send({ t: 'sail', to, from }); }

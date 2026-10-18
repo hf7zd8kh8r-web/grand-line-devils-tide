@@ -8,7 +8,7 @@ import { FX, DmgNums } from './fx.js';
 import { ViewModel } from './viewmodel.js';
 import { IN, consume, pollKeys } from './input.js';
 import * as ST from './state.js';
-import { defaultLook, lookOverrides, randomLook } from './style.js';
+import { defaultLook, lookOverrides, randomLook, visCos } from './style.js';
 import * as FS from './fruitshop.js';
 import * as QH from './quests.js';
 import { makeDevilFruit } from './fruitart.js';
@@ -77,11 +77,11 @@ export class Game {
     this.running = true;
   }
   showPreview(on) { if (this.preview) { this.scene.remove(this.preview.root); this.preview.root.traverse(o => o.geometry && o.geometry.dispose()); this.preview = null; } this.vm.root.visible = !on && !this.seat; if (!on) return;
-    const S = this.save; const c = makeAvatar(S.faction, S.race, S.look, S.cosEq); const fw = this.fwdFlat(V()); const P = this.p.pos.clone().addScaledVector(fw, (innerWidth > innerHeight ? 2.7 : 4.6) * (S.race === 'Giant' ? 1.4 : 1));
+    const S = this.save; const c = makeAvatar(S.faction, S.race, S.look, visCos(S)); const fw = this.fwdFlat(V()); const P = this.p.pos.clone().addScaledVector(fw, (innerWidth > innerHeight ? 2.7 : 4.6) * (S.race === 'Giant' ? 1.4 : 1));
     const rt = new B.Vector3(-fw.z, 0, fw.x); if (innerWidth > innerHeight) P.addScaledVector(rt, -0.9); P.y = this.groundAt(P.x, P.z); c.root.position.copy(P); c.root.rotation.y = Math.atan2(-fw.x, -fw.z); this.scene.add(c.root); setOutlinesVisible(c.root); this.preview = c; this.p.pitch = innerWidth > innerHeight ? -0.12 : -0.3; }
   sitAt() { const T = this.table; if (!T) return; const taken = s => [...this.net.peers.values()].some(q => q.island === this.island.id && (q.m & 4) && Math.hypot(q.tgt.x - s.x, q.tgt.z - s.z) < 0.6); const s = (T.seats || [T.seatB]).find(x => !taken(x)) || T.seatB; this.seat = s; const dx = T.sp.x - s.x, dz = T.sp.z - s.z; this.p.yaw = Math.atan2(-dx, -dz); this.p.pitch = -0.2; this.vm.root.visible = false; this.p.pos.set(s.x, this.groundAt(s.x, s.z), s.z); }
   standUp() { if (!this.seat) return; const T = this.table; this.seat = null; this.vm.root.visible = true; if (T) { const dx = this.p.pos.x - T.sp.x, dz = this.p.pos.z - T.sp.z, l = Math.hypot(dx, dz) || 1; this.p.pos.x += dx / l * 0.9; this.p.pos.z += dz / l * 0.9; } }
-  rebuildArms() { const S = this.save; const o = lookOverrides(S.look, S.race, S.faction, S.cosEq); const bare = (o.open || o.sleeveless) && !o.coat && !o.longSleeve;
+  rebuildArms() { const S = this.save; const o = lookOverrides(S.look, S.race, S.faction, visCos(S)); const bare = (o.open || o.sleeveless) && !o.coat && !o.longSleeve;
     const sleeve = o.coat || (bare ? o.skin : o.shirt); const cuff = o.coat ? new B.Color(o.coat).multiplyScalar(0.75).getHex() : bare ? (o.gloves || o.skin) : (S.faction === 'Marine' ? 0x2a5bb8 : new B.Color(o.shirt).multiplyScalar(0.7).getHex());
     const z = S.tf && ZOAN[S.eq.fruit]; const fur = z ? z[1] : 0; const tint = (c, k) => z ? new B.Color(c).lerp(new B.Color(fur), k).getHex() : c;
     this.vm.build(tint(o.skin, S.tf === 2 ? 0.85 : 0.45), tint(sleeve, S.tf === 2 ? 0.9 : 0.25), tint(cuff, S.tf === 2 ? 0.9 : 0.3)); if (this.running) this.refreshEquip(); }

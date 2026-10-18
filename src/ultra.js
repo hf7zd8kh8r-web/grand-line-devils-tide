@@ -4,13 +4,14 @@
 import { THREE, setOutlinesVisible } from './engine.js';
 import { audio } from './audio.js';
 import { makeAvatar, animChar } from './models.js';
+import { visCos } from './style.js';
 import { V, G, M, R, group, mesh, outline, run, after, busy, freeze, pull, chain, zone, word, puff, star, boom, wave, fist, arm, setArm, flame, crystal, note, dragon, wolf, drum, club, eq, waveLine, setWave } from './skills.js';
 const B = THREE; const ease = t => 1 - Math.pow(1 - t, 3); const clamp01 = x => Math.max(0, Math.min(1, x));
 const SKIN = 0xf6cfa8;
 function reach(c, d, max, rad = 1.4) { const g = c.g; const e0 = c.eye(); if (c.local) { const h = g.rayEnemy(e0, d, max, rad); if (h) return Math.max(5, h.d); } for (let t = 2; t < max; t += 0.5) { const q = e0.clone().addScaledVector(d, t); if (q.y < g.groundAt(q.x, q.z) + 0.3) return Math.max(5, t); } return max; }
 const near = (c, at, r, n) => c.inR(at, r).sort((a, b) => a.c.root.position.distanceTo(at) - b.c.root.position.distanceTo(at)).slice(0, n);
 // player body for cutscene specials (the first-person view model is hidden while the camera orbits)
-function showBody(c, P0) { if (!c.local) return null; try { const g = c.g, S = g.save; const av = makeAvatar(S.faction, S.race, S.look, S.cosEq); av.root.position.copy(P0); av.root.rotation.y = c.yaw() + Math.PI; g.scene.add(av.root); setOutlinesVisible(av.root);
+function showBody(c, P0) { if (!c.local) return null; try { const g = c.g, S = g.save; const av = makeAvatar(S.faction, S.race, S.look, visCos(S)); av.root.position.copy(P0); av.root.rotation.y = c.yaw() + Math.PI; g.scene.add(av.root); setOutlinesVisible(av.root);
   return { av, tick(st = {}) { try { animChar(av, { move: 0, phase: 0, attack: 0, aim: false, block: false, sit: false, swim: false, ...st }, g.t); } catch (e) { /* keep cutscene alive */ } }, dispose() { g.scene.remove(av.root); av.root.traverse(q => { if (q.geometry && !q.userData.shared) q.geometry.dispose(); }); } }; } catch (e) { return null; } }
 
 // ======================= NIKA =======================

@@ -2,14 +2,15 @@
 import { THREE as B, setOutlinesVisible } from './engine.js';
 import { makeAvatar, animChar } from './models.js';
 import { FRUITS } from './data.js';
+import { visCos } from './style.js';
 import { IN } from './input.js';
 const KEY = 'gldt_cam';
 export class ThirdPerson {
   constructor(g) { this.g = g; this.on = localStorage.getItem(KEY) === 'tp'; document.body.classList.toggle('tpcam', this.on); this.body = null; this.key = ''; this.dist = 3.4; this.atk = 0; this.cast = 0; this.camP = new B.Vector3(); }
   toggle(v) { this.on = v ?? !this.on; localStorage.setItem(KEY, this.on ? 'tp' : 'fp'); if (!this.on) this.drop(); this.g.vm.root.visible = !this.on && !this.g.seat; document.body.classList.toggle('tpcam', this.on); this.g.ui.toast(this.on ? '🎥 Third-person view (V to switch)' : '👁 First-person view', 'blk'); }
   drop() { if (!this.body) return; this.g.scene.remove(this.body.root); this.body.root.traverse(o => { if (o.geometry && !o.userData.shared) o.geometry.dispose(); }); this.body = null; this.key = ''; }
-  ensure() { const S = this.g.save; const k = JSON.stringify([S.faction, S.race, S.look, S.cosEq, S.slot, S.eq.sword, S.eq.gun, S.eq.fruit, S.tf, (S.t2 || {})[S.eq.sword]]); if (this.body && k === this.key) return; this.drop(); this.key = k;
-    const c = makeAvatar(S.faction, S.race, S.look, S.cosEq); this.g.scene.add(c.root); setOutlinesVisible(c.root); this.body = c; const vm = this.g.vm; const hand = c.bones.foreR, handL = c.bones.foreL; const fy = hand.position.y;
+  ensure() { const S = this.g.save; const k = JSON.stringify([S.faction, S.race, S.look, visCos(S), S.slot, S.eq.sword, S.eq.gun, S.eq.fruit, S.tf, (S.t2 || {})[S.eq.sword]]); if (this.body && k === this.key) return; this.drop(); this.key = k;
+    const c = makeAvatar(S.faction, S.race, S.look, visCos(S)); this.g.scene.add(c.root); setOutlinesVisible(c.root); this.body = c; const vm = this.g.vm; const hand = c.bones.foreR, handL = c.bones.foreL; const fy = hand.position.y;
     const grab = (src, bone, ry) => { if (!src || !src.children.length) return; const w = src.clone(true); w.visible = true; w.traverse(o => { o.visible = true; if (o.geometry) o.userData.shared = true; }); const h = new B.Group(); h.position.set(0, fy * 1.0, 0.04); h.rotation.set(Math.PI / 2, ry, 0); h.add(w); w.rotation.set(-Math.PI / 2, Math.PI, 0); w.scale.setScalar(1.0); bone.add(h); };
     if (S.slot === 'sword') { grab(vm.sword, hand, 0); if (vm.swordL && vm.swordL.children.length) grab(vm.swordL, handL, 0); }
     if (S.slot === 'gun') grab(vm.gun, hand, 0);

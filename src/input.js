@@ -11,8 +11,16 @@ addEventListener('keydown', e => {
   if (['Space', 'Tab'].includes(e.code)) e.preventDefault();
   if (a === 'block') IN.held.block = true; if (a === 'jump') IN.held.jump = true;
 });
-addEventListener('keyup', e => { keys[e.code] = false; if (KEYMAP[e.code] === 'block') IN.held.block = false; if (KEYMAP[e.code] === 'jump') IN.held.jump = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; IN.held = {}; });
+addEventListener('keyup', e => { keys[e.code] = false; if (KEYMAP[e.code] === 'block') IN.held.block = false; if (KEYMAP[e.code] === 'jump') IN.held.jump = false;
+  if (e.key === 'Meta' || e.code === 'MetaLeft' || e.code === 'MetaRight') clearKeys(); // macOS swallows keyups of keys pressed with Cmd held
+}, true);
+// anything that can eat a keyup (tab switch, focus change, pointer-lock exit, context menu) forgets every held key
+export function clearKeys() { for (const k in keys) keys[k] = false; IN.held = {}; IN.mx = IN.mz = 0; IN.sprint = false; }
+IN.clearKeys = clearKeys;
+for (const ev of ['blur', 'pagehide', 'contextmenu']) addEventListener(ev, clearKeys);
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearKeys(); });
+document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement) clearKeys(); });
+addEventListener('focusin', e => { if (e.target && e.target.tagName === 'INPUT') clearKeys(); });
 export function pollKeys() {
   if (isTouch && !keys.KeyW && !keys.KeyA && !keys.KeyS && !keys.KeyD) return;
   IN.mz = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
@@ -57,10 +65,19 @@ export function initTouch(root) {
       let dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY; if (lookSkip) { lookSkip = false; return; }
       const m = Math.hypot(dx, dy); if (m > 70) { dx *= 70 / m; dy *= 70 / m; } IN.lookX += dx * 0.0055 * IN.sens; IN.lookY += dy * 0.0055 * IN.sens * (IN.invY ? -1 : 1); }
   });
+  const relJoy = () => { joyId = null; IN.mx = IN.mz = 0; IN.sprint = false; joy.classList.remove('act'); joy.style.left = ''; joy.style.top = ''; knob.style.transform = ''; };
+  const relBtns = pid => root.querySelectorAll('[data-act]').forEach(b => { if (b._pid != null && (pid === undefined || b._pid === pid)) { IN.held[b.dataset.act] = false; b.classList.remove('on'); b._pid = null; } });
   const up = e => {
-    if (e.pointerId === joyId) { joyId = null; IN.mx = IN.mz = 0; IN.sprint = false; joy.classList.remove('act'); joy.style.left = ''; joy.style.top = ''; knob.style.transform = ''; }
+    if (e.pointerType === 'mouse') return;
+    if (e.pointerId === joyId) relJoy();
     if (e.pointerId === lookId) lookId = null;
-    root.querySelectorAll('[data-act]').forEach(b => { if (b._pid === e.pointerId) { IN.held[b.dataset.act] = false; b.classList.remove('on'); b._pid = null; } });
+    relBtns(e.pointerId);
   };
-  root.addEventListener('pointerup', up); root.addEventListener('pointercancel', up);
+  // window + capture phase so no UI handler calling stopPropagation (or a finger lifting off-screen / over a panel) can swallow the release
+  for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, up, true);
+  root.addEventListener('lostpointercapture', e => { if (e.pointerId === joyId) relJoy(); });
+  // safety net: the TouchEvent list is the ground truth of fingers on glass. When it says no finger is down, nothing may stay held.
+  const sync = e => { if (!e.touches || e.touches.length) return; if (joyId !== null) relJoy(); lookId = null; relBtns(); };
+  for (const ev of ['touchend', 'touchcancel']) addEventListener(ev, sync, { capture: true, passive: true });
+  IN._joyActive = () => joyId !== null;
 }
