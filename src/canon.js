@@ -7,6 +7,7 @@ import { THREE } from './engine.js';
 import { audio } from './audio.js';
 import { V, G, M, R, group, mesh, outline, run, after, busy, pull, chain, zone, word, puff, star, boom, wave, fist, flame, crystal, rock, dragon, note } from './skills.js';
 import { spike, showBody } from './ultra.js';
+import { spGravity } from './gravity.js';
 const B = THREE; const ease = t => 1 - Math.pow(1 - t, 3); const clamp01 = x => Math.max(0, Math.min(1, x)); const hex = c => '#' + new B.Color(c).getHexString();
 const em = (c, k = 0.3) => new B.Color(c).multiplyScalar(k).getHex();
 // ---------------- meshes ----------------
@@ -354,7 +355,7 @@ const SP = {
   buddha: (c, P) => spGiant(c, P, { col: 0xffd060, tint: 0xffe080, mk: () => palm(0xffe080, { glow: 0xffb020 }), hits: 7, word: 'THOUSAND PALMS!!' }),
   kitsune: (c, P) => spSummon(c, P, { heads: 9, col: 0xff7ab0, c2: 0xb07aff, el: 'fire', rain: true, word: 'NINE-FOLD BLAZE!!' }),
   orochi: (c, P) => spSummon(c, P, { heads: 8, col: 0x6a8a3a, c2: 0xc0ff60, word: 'YAMATA NO OROCHI!!' }),
-  zushi: (c, P) => spMeteor(c, P, { col: 0x8a5aff, c2: 0xb08aff, el: 'dust', mk: () => rock(0x4a3a5a, 0x8a5aff, 1), s: 2, rate: 4, noLook: true, big: () => rock(0x4a3a5a, 0x8a5aff, 1), word: 'METEOR FALL!!' }),
+  zushi: (c, P) => spGravity(c, P),
   onyudo: (c, P) => spGiant(c, P, { col: 0x9a9ab0, tint: 0x9a9ab0, mk: () => fist(0x9a9ab0), scale: 7, hits: 4, word: 'SKY-PIERCING MONK!!' }),
   pegasus: (c, P) => spMeteor(c, P, { col: 0x9ad4ff, c2: 0xfff27a, mk: () => mesh(G.star(), M.glow(0xfff27a, 1), null), s: 2.5, rate: 9, noLook: true, word: 'PEGASUS METEOR!!', big: () => bird(0xffffff, 0x9ad4ff, 1) }),
   kumo: (c, P) => spSummon(c, P, { heads: 8, col: 0x3a2a3a, c2: 0xc02a5a, el: 'fire', rain: true, word: 'WEB OF FLAMES!!' }),

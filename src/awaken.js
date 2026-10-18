@@ -1,6 +1,7 @@
 // Awakening: Legendary+ fruits get a DIFFERENT awakened kit (4 new moves + awakened special) with its own mastery ('aw:<fruit>'),
 // a base/awakened hotbar toggle (Y / ✦ button), an awakening transformation cutscene and a persistent aura. Self-contained:
 // installs by wrapping ui.currentMoves / ui.updateMoves / g.move / g.special so the shared casting code stays untouched.
+import { moonDrop, asteroid } from './gravity.js';
 import { THREE } from './engine.js';
 import { FRUITS } from './data.js';
 import * as ST from './state.js';
@@ -65,8 +66,9 @@ const ARCH = {
       if (t > 0.35 && t < 0.95) pull(c, end, 6, 40, 1 / 60);
       if (t >= 0.97 && !gr.userData.sl) { gr.userData.sl = 1; const p = c.P().addScaledVector(c.flat(), 3); boom(c, p.setY(g.groundAt(p.x, p.z) + 0.3), col2(c), 4.5); c.hitR(p, 6, 0.8, { kb: 12, up: 6 }); c.shake(0.5); } }); },
   meteor(c) { const g = c.g; const tgt = c.ground(tgtOf(c, 32)); let n = 0; const h = group(); const isRock = /magu|gura|shiro|zushi|bisu|brachio/.test(c.fruit);
-    run(g, h, 1.8, (t) => { while (n < Math.floor(t * 12)) { n++; const p = tgt.clone().add(V(R(6), 0, R(6))); const m = isRock ? rock(0x4a2a1a, c.col, 1 + Math.random()) : flame(c.col, col2(c), 1.4); const st = p.clone().add(V(R(4), 26, R(4)));
-      run(g, m, 0.55, (u) => { m.position.lerpVectors(st, p, u * u); m.lookAt(p); if (u >= 1) { boom(c, p.clone().setY(g.groundAt(p.x, p.z) + 0.3), c.col, 2.6, { dust: n % 3 === 0 }); c.hitR(p, 3.2, 0.32, { kb: 5, up: 3 }); c.shake(0.18); } }); } }); },
+    const foes = c.local ? g.enemies.filter(e => !e.dead && e.c.root.position.distanceTo(tgt) < 14) : []; if (c.fruit === 'zushi') { run(g, h, 1.8, (t) => { while (n < Math.floor(t * 12)) { n++; const e = foes.length ? foes[n % foes.length] : null; asteroid(c, e, c.ground(tgt.clone().add(V(R(5), 0, R(5)))), { s: 1 + Math.random(), h: 40, dur: 0.55, r: 4.2, mul: 0.34 }); } }); return; }
+    run(g, h, 1.8, (t) => { while (n < Math.floor(t * 12)) { n++; const fe = foes.length && n % 2 ? foes[n % foes.length] : null; const p = fe ? c.ground(fe.c.root.position.clone().add(V(R(1), 0, R(1)))) : tgt.clone().add(V(R(6), 0, R(6))); const m = isRock ? rock(0x4a2a1a, c.col, 1 + Math.random()) : flame(c.col, col2(c), 1.4); const st = p.clone().add(V(R(4), 26, R(4)));
+      run(g, m, 0.55, (u) => { m.position.lerpVectors(st, p, u * u); m.lookAt(p); if (u >= 1) { boom(c, p.clone().setY(g.groundAt(p.x, p.z) + 0.3), c.col, 2.6, { dust: n % 3 === 0 }); c.hitR(c.ground(p.clone()), 4, 0.32, { kb: 5, up: 3 }); c.shake(0.18); } }); } }); },
   freeze(c) { const g = c.g; const p0 = c.ground(c.P()); const gr = group(); gr.position.copy(p0).setY(p0.y + 0.08); const m = M.glow(c.col, 0.6); const d = mesh(G.disk(), m, gr); const cr = []; for (let i = 0; i < 14; i++) { const a = i / 14 * 6.28, r = 3 + Math.random() * 5; const k = crystal(c.col, 1.6 + Math.random()); k.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); k.rotation.x = -Math.PI / 2 + R(0.4); gr.add(k); cr.push(k); }
     c.hitR(p0, 10, 0.7, { kb: 1, freeze: 3.2 }); c.shake(0.35); word(g, p0.clone().addScaledVector(c.flat(), 7).add(V(0, 3, 0)), 'FREEZE!', '#dff6ff', 2.6, 0.8, '#123a5a');
     run(g, gr, 2.4, (t) => { const k = Math.min(1, t * 5); d.scale.set(10 * k, 1, 10 * k); m.opacity = 0.55 * (1 - t * t); cr.forEach((x, i) => x.scale.setScalar(Math.max(0.001, Math.min(1, t * 6 - i * 0.05) * (t > 0.85 ? (1 - t) / 0.15 : 1)))); }); },
@@ -110,6 +112,7 @@ export function remoteAwake(g, peer, k, at) { const [, id, si] = k.split(':'); c
   try { if (si === 's') A.sp[1].forEach((a, j) => setTimeout(() => castArch(c, a), j * 600)); else castArch(c, A.mv[+si][1]); } catch (_) {} }
 export function castAwakeSpecial(g) { const S = g.save, id = S.eq.fruit, A = AWK[id], f = FRUITS[id]; const dmg = dmgFor(g, 4, A.sp[1]); const O = { mast: 'aw:' + id, mastName: '✦ Awakened ' + f.short, col: A.a, cls: 'fruit' };
   const c = pvpCap(ctxFor(g, { fruit: id, dmg, col: A.a, O, rar: f.rar })); audio.sfx('special'); g.speedLines && g.speedLines(1); g.ui.letterbox && g.ui.letterbox(true); g.ui.specialCard && g.ui.specialCard(A.sp[0], hex(A.a), '✦ AWAKENED SPECIAL');
+  if (id === 'zushi') { g.ui.letterbox && g.ui.letterbox(false); g.ui.specialCard && g.ui.specialCard(null); moonDrop(g, c); g.net && g.net.fx('aw:' + id + ':s', A.a, g.p.pos.clone().setY(g.p.pos.y + 1)); return; }
   skyFlash(g, A.a, 2.6); A.sp[1].forEach((a, j) => { const h = group(); run(g, h, 0.15 + j * 0.65, t => { if (t >= 1) try { castArch(c, a); } catch (e) { console.warn('aw sp', e); } }); });
   const h = group(); run(g, h, 2.6, t => { if (t >= 1) { g.ui.letterbox && g.ui.letterbox(false); g.ui.specialCard && g.ui.specialCard(null); } }); g.net && g.net.fx('aw:' + id + ':s', A.a, g.p.pos.clone().setY(g.p.pos.y + 1)); }
 // PvP guard: duel opponents (players / player stand-ins, s.type 'duel_*') take at most 6% of their max HP per awakened hit

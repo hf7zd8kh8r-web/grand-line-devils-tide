@@ -142,7 +142,8 @@ export function castSpecial(g, sp) {
   const ground = (c) => { c.y = g.groundAt(c.x, c.z); return c; };
   g.cut = { sky: true, update: (dt) => { t += dt; const k = Math.min(1, t / 0.9) ** 0.5; const back = Math.max(0, (t - (D - 0.6)) / 0.6);
     // camera: Godly/Mythical swing up and back; Ultra orbits the player
-    let camT; if (ultra) { const a = t * 0.9 + g.p.yaw; const cr = usp ? 14 : 11; camT = P0.clone().add(new B.Vector3(Math.sin(a) * cr, (usp ? 7 : 6) + Math.sin(t) * 2, Math.cos(a) * cr)); } else camT = P0.clone().add(new B.Vector3(0, 16, 9).applyAxisAngle(new B.Vector3(0, 1, 0), g.p.yaw + Math.PI));
+    let camT; if (ultra) { const a = t * 0.9 + g.p.yaw; const cr = usp ? 14 : 11; camT = P0.clone().add(new B.Vector3(Math.sin(a) * cr, (usp ? 7 : 6) + Math.sin(t) * 2, Math.cos(a) * cr)); } else if (usp) { const a = g.p.yaw + Math.PI + 0.75 + t * 0.22; camT = P0.clone().add(new B.Vector3(Math.sin(a) * 15, 10 + Math.sin(t * 0.9) * 2.5, Math.cos(a) * 15)); } else camT = P0.clone().add(new B.Vector3(0, 16, 9).applyAxisAngle(new B.Vector3(0, 1, 0), g.p.yaw + Math.PI));
+    { const fv = t < 1.1 ? 72 - 14 * Math.min(1, t / 0.6) : 58 + 22 * Math.min(1, (t - 1.1) / 0.25) - 8 * Math.min(1, Math.max(0, t - 1.4) / 2); const f2 = 72 + (fv - 72) * (1 - back); if (Math.abs(g.cam.fov - f2) > 0.05) { g.cam.fov = f2; g.cam.updateProjectionMatrix(); } }
     const pos = start.clone().lerp(camT, k * (1 - back)); g.cam.position.copy(pos); look.position.copy(pos); look.lookAt(usp && usp.look ? usp.look : ultra ? P0.clone().setY(P0.y + 1.5) : P0.clone().add(g.fwdFlat(V()).multiplyScalar(6))); g.cam.quaternion.copy(startQ.clone().slerp(look.quaternion, k * (1 - back)));
     sky.top.value.copy(c0).lerp(new B.Color(ultra ? 0x05030a : 0x1a1530), Math.min(1, t * 2) * (1 - back)); sky.bot.value.copy(c1).lerp(new B.Color(col).multiplyScalar(0.4), Math.min(1, t * 2) * (1 - back));
     if (body) body.tick({ aim: t > 1.1 && t < D - 0.6 });
@@ -177,7 +178,7 @@ export function castSpecial(g, sp) {
       if (style === 'cannon') while (drops < T * 7) { drops++; const side = drops % 4; const a = g.p.yaw + side * Math.PI / 2 + 0.4; const from = P0.clone().add(new B.Vector3(Math.sin(a) * 30, 18, Math.cos(a) * 30)); const rr = Math.random() * 14; const ta = Math.random() * 6.283; const c = ground(P0.clone().add(new B.Vector3(Math.cos(ta) * rr, 0, Math.sin(ta) * rr)));
         g.fx.beam(from, c, 0x3a3a3a, 0.35, 0.3); g.fx.orb(c.clone().setY(c.y + 0.5), 0xff8a3a, 2.4, 0.4); g.fx.burst(c, 14, 0x9a8a7a, { speed: 5, up: 5, size: 0.8, life: 0.7 }); hit(c, 3.5, 0.7, { kb: 6, up: 4 }); }
       if (style !== 'nova' && style !== 'meteor') g.fx.shake = Math.max(g.fx.shake, 0.35); }
-    if (t >= D) { if (body) body.dispose(); g.cut = null; g.hideVM = false; g.ui.letterbox(false); g.ui.specialCard(null); sky.top.value.copy(c0); sky.bot.value.copy(c1); }
+    if (t >= D) { if (body) body.dispose(); g.cam.fov = 72; g.cam.updateProjectionMatrix(); g.cut = null; g.hideVM = false; g.ui.letterbox(false); g.ui.specialCard(null); sky.top.value.copy(c0); sky.bot.value.copy(c1); }
   } };
 }
 

@@ -115,7 +115,7 @@ function loop(now) {
   if (mode === 'cover' || mode === 'burst') { cover.update(dt); cover.render(); }
   else if (mode === 'loading') { renderer.clear(); }
   else if (mode === 'create' && creator) { creator.update(dt); creator.render(); }
-  else if (mode === 'game') { game.update(dt); game.render(); if (!document.hidden) qTick(raw); }
+  else if (mode === 'game') { game.update(window.__hold ? 1e-5 : dt); game.render(); if (!document.hidden) qTick(raw); }
   else if (mode === 'sail' && sail) { sail.update(dt); if (sail) sail.render(renderer); }
 }
 requestAnimationFrame(loop);
