@@ -34,7 +34,7 @@ const SQ = [...fs.readFileSync(__dirname + '/../src/islands.js', 'utf8').match(/
   const t3 = await p.evaluate(() => document.body.innerText); ok('Kokuto Yoru in index', /Kokuto Yoru/.test(t3) && /Mihawk/.test(t3));
   const total = await p.evaluate(() => document.body.innerText.match(/(\d+) swords · you own/)); ok('55 swords', total && +total[1] === 55, total && total[1]);
   // count across seas
-  let sum = 0; for (const s of [1, 2, 3]) { await p.evaluate(s => __g.game.ui.open('swx', s), s); sum += await p.evaluate(() => [...document.querySelectorAll('.dexc.swc')].length - [...document.querySelectorAll('h3')].filter(h => /Tier II/.test(h.textContent)).reduce((a, h) => a + h.nextElementSibling.children.length, 0)); }
+  let sum = 0; for (const s of [1, 2, 3]) { await p.evaluate(s => __g.game.ui.open('swx', s), s); sum += await p.evaluate(() => [...document.querySelectorAll('.dexc.swc')].filter(c => !/Secret Island #|Hidden Shop #/.test(c.textContent)).length - [...document.querySelectorAll('h3')].filter(h => /Tier II/.test(h.textContent)).reduce((a, h) => a + h.nextElementSibling.children.length, 0)); }
   ok('all 55 placed in a sea group', sum === 55, sum);
   // shop no longer gives free boss-drop blades
   const free = await p.evaluate(() => { const L = []; for (const l of [60, 114, 250, 300, 380]) { const h = __g.game.ui.autoShop('auto:weapons:' + l); for (const it of (h.items || h)) if (Array.isArray(it) && ['ame', 'murakumo', 'shodai', 'gryphon'].includes(it[1])) L.push(it[1]); } return L; });
