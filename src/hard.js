@@ -7,11 +7,16 @@ import { audio } from './audio.js';
 const V = (x = 0, y = 0, z = 0) => new B.Vector3(x, y, z);
 export const BOSS_FRUIT = { Higuma: 'bane', 'Axe-Hand Morgan': 'kilo', Buggy: 'bara', Kuro: 'noro', 'Don Krieg': 'bomu', Arlong: 'sui', Smoker: 'moku', 'Mr. 5': 'bomu', Crocodile: 'suna', Enel: 'goro', 'Rob Lucci': 'raijin', Spandam: 'ton', 'Gecko Moria': 'kage', Sentomaru: 'bari', 'Boa Hancock': 'mero', Magellan: 'doku', Akainu: 'magu', 'Hody Jones': 'sui', 'Caesar Clown': 'gasu', Doflamingo: 'ito', Jack: 'brachio', Katakuri: 'mochi', Kaido: 'seiryu', Kizaru: 'pika', 'Mirror Doppelgänger': 'mira', 'Echo of the Pirate King': 'gura', 'Awakening Guardian': 'zushi' };
 export const bossFruitOf = e => e && e.boss ? (e.fruitId || BOSS_FRUIT[e.def.name] || null) : null;
+// ---- per-hit damage (fixes 1-tap bug): island defs already scale def.dmg with the island (~4.5-6% of an on-level player's HP),
+// so level only adds a little on top, and every base hit is capped vs a reference player HP at the enemy's level. ----
+export const refHP = L => 100 + 14 * Math.max(1, L || 1);
+export function eDmg(e) { const L = e.lvl || 1; const raw = e.def.dmg * (1 + Math.min(12, Math.max(0, L - 1)) * 0.015);
+  const rb = 1 + 0.2 * Math.max(0, (e._rb || 1) - 1); return Math.min(raw, (e.boss ? 0.07 : 0.06) * refHP(L) * rb) * (e.dmgMul || 1); }
 // ---- spawn-time scaling ----
 export function onSpawn(g, e) {
   const L = e.lvl || 1; e.poiseN = 0; e.armorT = 0; e.blockT = 0; e.invT = 0;
   if (e.boss) { const k = 1.3 + Math.min(1, L / 400) * 0.45; e.hp = e.max = Math.round(e.max * k); e.dmgMul = L < 120 ? 0.95 : 1.0; e.phase = 1; e.spCd = 9; e.fruitId = BOSS_FRUIT[e.def.name] || null; return e; }
-  const sea = 1.25 + Math.min(1, L / 300) * 0.55; e.dmgMul = 1.15 + Math.min(1, L / 300) * 0.35; e.spdMul = 1.12;
+  const sea = 1.25 + Math.min(1, L / 300) * 0.55; e.dmgMul = 1.25 + Math.min(1, L / 300) * 0.2; e.spdMul = 1.12;
   if (!e.temp && !e.duelFoe && !e.s.noElite && Math.random() < 0.14) { e.elite = true; e.dmgMul *= 1.55; e.spdMul = 1.25; e.c.root.scale.multiplyScalar(1.16);
     const ring = new B.Mesh(new B.RingGeometry(0.62, 0.8, 28), new B.MeshBasicMaterial({ color: 0xffc23a, transparent: true, opacity: 0.8, side: B.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; ring.userData.eliteRing = true; e.c.root.add(ring); }
   e.hp = e.max = Math.round(e.max * sea * (e.elite ? 2.4 : 1) * (e.s.quest ? 1.15 : 1)); return e;
@@ -53,7 +58,7 @@ export function tick(g, e, dt, dist) {
 // heavy telegraphed grunt hit / counter: returns true when handled
 export function strike(g, e, dist) {
   if (e.heavy) { e.heavy = false; const P = e.c.root.position; g.fx.ring(P.clone().setY(P.y + 0.2), 0xffffff, 3.4, 0.35); g.fx.burst(P.clone().setY(P.y + 0.3), 18, 0xc9a87a, { speed: 7, up: 3, size: 0.4, life: 0.5 }); g.fx.shake = Math.max(g.fx.shake, 0.3);
-    if (dist < 3.4) g.hurtPlayer(e.def.dmg * (1 + (e.lvl - 1) * 0.1) * (e.dmgMul || 1) * 1.8, P, { kb: 7 }); e.state = 'chase'; e.cd = e.def.cd; e.anim.attack = 1; return true; }
+    if (dist < 3.4) g.hurtPlayer(eDmg(e) * (e.elite ? 1.15 : 1.6), P, { kb: 7 }); e.state = 'chase'; e.cd = e.def.cd; e.anim.attack = 1; return true; }
   return false;
 }
 // ---- bosses ----
@@ -62,7 +67,7 @@ function telegraph(g, at, r, dur, col = 0xff3020) { const q = at.clone(); q.y = 
   const fill = new B.Mesh(new B.CircleGeometry(1, 40), new B.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, depthWrite: false, side: B.DoubleSide })); fill.position.z = 0.01;
   const edge = new B.Mesh(new B.RingGeometry(0.93, 1, 48), new B.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false, side: B.DoubleSide })); edge.position.z = 0.02; base.add(fill, edge);
   g.fx.add(base, dur, t => { fill.scale.setScalar(Math.max(0.01, t)); edge.material.color.setHex(Math.sin(t * 40) > 0 ? 0xffffff : col); base.material.opacity = 0.18 + t * 0.12; if (t >= 1) base.traverse(m => { m.geometry && m.geometry.dispose(); if (m !== base) m.material.dispose(); }); }); return q; }
-function bossDmg(e) { return e.def.dmg * (1 + (e.lvl - 1) * 0.1) * (e.dmgMul || 1); }
+function bossDmg(e) { return eDmg(e); }
 function peerOf(g, e, tgt) { const R = e.c.root; const d = tgt.clone().sub(R.position).setY(0).normalize(); return { yaw: Math.atan2(-d.x, -d.z), av: { root: R }, name: e.def.name }; }
 export function phaseCheck(g, e) {
   const fr = e.hp / e.max; const want = fr < 0.33 ? 3 : fr < 0.66 ? 2 : 1;
@@ -90,7 +95,7 @@ function bossTick(g, e, dt, dist) {
   if (e.skillCd <= 0 && dist < 22) { e.skillCd = (e.phase === 3 ? 3.6 : e.phase === 2 ? 4.4 : 5.2) + Math.random() * 1.5; bossMove(g, e, id); }
 }
 export function bossMove(g, e, id, idx) {
-  const f = FRUITS[id], R = e.c.root, P = g.p; if (idx == null) idx = Math.floor(Math.random() * f.moves.length); const mv = f.moves[idx]; const D = bossDmg(e) * (0.9 + (mv.dmg || 2) * 0.22);
+  const f = FRUITS[id], R = e.c.root, P = g.p; if (idx == null) idx = Math.floor(Math.random() * f.moves.length); const mv = f.moves[idx]; const D = bossDmg(e) * (1.6 + Math.min(4, mv.dmg || 2) * 0.15);
   const wind = e.phase === 3 ? 0.9 : 1.15; const tgt = telegraph(g, P.pos, 3.2, wind); const col = f.col[0]; let t = 0, fired = false;
   g.ui.toast(`${e.def.name}: "${mv.name}!"`, 'boss'); g.ui.moveName(mv.name, col); e.state = 'skill'; e.atk = wind + 0.5; e.yaw = Math.atan2(P.pos.x - R.position.x, P.pos.z - R.position.z);
   e.skillUpd = dt => { t += dt; e.anim.windup = t < wind; if (t < wind && Math.random() < 0.6) g.fx.burst(g.chest(e, V()), 2, col, { speed: 2, size: 0.4, life: 0.3, grav: -2 });
@@ -106,5 +111,5 @@ export function bossSpecial(g, e, id) {
     if (t < W && Math.random() < 0.9) { const a = Math.random() * 6.283; g.fx.burst(c0.clone().add(V(Math.cos(a) * r * 0.9, 0.5, Math.sin(a) * r * 0.9)), 2, col, { speed: 1, up: 6, size: 0.5, life: 0.5, grav: -4 }); }
     if (fired === 0 && t >= W) { fired = 1; e.anim.attack = 1; const n = f.moves.length; for (let k = 0; k < 2; k++) { const a = k * 3.1 + Math.random(); const q = c0.clone().add(V(Math.cos(a) * 5, 0, Math.sin(a) * 5)); setTimeout(() => { try { remoteMove(g, peerOf(g, e, q), `mv:${id}:${n - 1 - k}`, g.chest(e, V())); } catch (er) { } }, k * 260); }
       for (let i = 0; i < 4; i++) g.fx.shock(c0.clone().setY(c0.y + 0.4 + i * 0.3), i % 2 ? col2 : col, r * (0.6 + i * 0.25), 0.5 + i * 0.2, 3); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; g.fx.pillar(V(c0.x + Math.cos(a) * r * 0.75, g.groundAt(c0.x + Math.cos(a) * r * 0.75, c0.z + Math.sin(a) * r * 0.75), c0.z + Math.sin(a) * r * 0.75), i % 2 ? col : col2, 1.4, 14, 0.9); }
-      g.fx.shake = 1.2; audio.sfx('boom'); if (P.pos.distanceTo(c0) < r) g.hurtPlayer(bossDmg(e) * 2.4, c0, { kb: 16 }); else g.ui.toast('Dodged the special!', 'blk'); } };
+      g.fx.shake = 1.2; audio.sfx('boom'); if (P.pos.distanceTo(c0) < r) g.hurtPlayer(bossDmg(e) * 4, c0, { kb: 16 }); else g.ui.toast('Dodged the special!', 'blk'); } };
 }

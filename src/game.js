@@ -282,6 +282,7 @@ export class Game {
       const fp = this.eyePos().clone().addScaledVector(this.fwd(V()), 0.9).add(new B.Vector3(0, -0.2, 0)); this.fx.sparks(fp, 14, 0xfff0b0, { speed: 9, dir: tmp2.clone().multiplyScalar(-1) }); this.fx.shock(fp, 0x7ad8ff, 0.42, 0.28, 0.9); this.fx.shock(fp.clone().addScaledVector(tmp, 0.05), 0xffffff, 0.25, 0.18, 0.7);
       this.vm.blockHit(); audio.sfx('block'); this.camPunch(0.012, 0, (Math.random() - 0.5) * 0.02); p.guard = (p.guard ?? 100) - (14 + dmg / Math.max(1, this.st.maxHp) * 160);
       if (p.guard <= 0) { p.guard = 0; p.gbreakT = 1.1; this.vm.guardBreak(); audio.sfx('guardbreak'); this.ui.banner('GUARD BREAK!', 'Staggered'); this.camPunch(0.05, 4, 0.04); d = dmg * this.st.def * 0.6; p.stagger = 0.6; } else this.ui.toast('Blocked!', 'blk'); } } else if (from) audio.sfx('hurt');
+    if (!(this.duel && this.duel.on)) d = Math.min(d, this.st.maxHp * 0.4); // hard cap: no single hit over 40% max HP outside duels
     d = Math.round(d); this.save.hp -= d; p.hurtT = 0.35; this.fx.shake = Math.min(1, this.fx.shake + 0.25); this.ui.hurt();
     if (from && o.kb) { // own vector (never alias the shared tmp scratch vector), capped, and replaces rather than stacks
       const k = new B.Vector3(p.pos.x - from.x, 0, p.pos.z - from.z); if (k.lengthSq() < 1e-6) this.fwdFlat(k).multiplyScalar(-1); k.normalize();
@@ -538,7 +539,7 @@ export class Game {
   flashMat(e) { const m = e.c.material; if (e.flash > 0) { m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.12 * Math.min(1, e.flash / 0.09); } else if (e.state === 'windup' || e.state === 'skill') { m.emissive.setHex(0xff2010); m.emissiveIntensity = 0.35 + Math.sin(this.t * 30) * 0.25; } else { m.emissiveIntensity = 0; } }
   enemyStrike(e, dist) {
     if (HD.strike(this, e, dist)) return; const def = e.def; e.state = 'chase'; e.cd = def.cd * (0.8 + Math.random() * 0.5) / (e.phase2 ? 1.3 : 1); e.anim.attack = 1;
-    const lvlMul = 1 + (e.lvl - 1) * 0.1; const dmg = def.dmg * lvlMul * (e.dmgMul || 1);
+    const dmg = HD.eDmg(e);
     if (def.ranged) { const o = this.chest(e, V()); const d = this.eyePos().clone().add(new B.Vector3(0, -0.4, 0)).sub(o).normalize(); this.projectile({ pos: o, vel: d.multiplyScalar(26), r: 0.6, dmg, life: 2, player: false, col: 0xffe080, size: 0.1 }); this.fx.burst(o, 5, 0xffb040, { speed: 2, size: 0.2, life: 0.2, grav: 0 }); return; }
     if (dist <= def.reach + 0.4) this.hurtPlayer(dmg, e.c.root.position, { kb: e.boss ? 6 : 3 });
     if (e.boss) this.fx.burst(this.chest(e, V()), 8, 0xffffff, { speed: 4, size: 0.3, life: 0.3 });
@@ -550,7 +551,7 @@ export class Game {
     if (e.s.type === 'higuma') {
       if (pick < 0.5 && dist > 4) { // lunge slash
         e.atk = 0.9; let t = 0; const dir = new B.Vector3(this.p.pos.x - R.position.x, 0, this.p.pos.z - R.position.z).normalize(); this.ui.toast('Higuma: "Bandit Rush!"', 'boss'); let hit = false;
-        e.skillUpd = (dt) => { t += dt; if (t > 0.35 && t < 0.75) { R.position.addScaledVector(dir, 20 * dt); this.fx.burst(this.chest(e, V()), 2, 0xcccccc, { speed: 1, size: 0.3, life: 0.3, grav: 0 }); if (!hit && R.position.distanceTo(this.p.pos) < 2.2) { hit = true; this.hurtPlayer(def.dmg * 1.8, R.position, { kb: 8 }); } } };
+        e.skillUpd = (dt) => { t += dt; if (t > 0.35 && t < 0.75) { R.position.addScaledVector(dir, 20 * dt); this.fx.burst(this.chest(e, V()), 2, 0xcccccc, { speed: 1, size: 0.3, life: 0.3, grav: 0 }); if (!hit && R.position.distanceTo(this.p.pos) < 2.2) { hit = true; this.hurtPlayer(HD.eDmg(e) * 1.6, R.position, { kb: 8 }); } } };
       } else { // knife fan
         e.atk = 0.8; this.ui.toast('Higuma throws knives!', 'boss'); let fired = false;
         e.skillUpd = () => { if (!fired && e.atk < 0.4) { fired = true; e.anim.attack = 1; const o = this.chest(e, V()); const base = Math.atan2(this.p.pos.x - o.x, this.p.pos.z - o.z);
@@ -561,16 +562,16 @@ export class Game {
         e.atk = 1.2; this.ui.toast('Morgan: "AXE SLAM!"', 'boss'); let slam = false;
         const ring = this.fx.ring(R.position.clone().setY(R.position.y + 0.15), 0xff3020, 0.01, 1.0, true, 0.6); ring.scale.setScalar(7);
         e.skillUpd = () => { e.anim.windup = true; if (!slam && e.atk < 0.35) { slam = true; e.anim.attack = 1; this.fx.shake = 0.8; this.fx.ring(R.position.clone().setY(R.position.y + 0.2), 0xffffff, 8, 0.5); this.fx.burst(R.position.clone().setY(R.position.y + 0.3), 40, 0xc9a87a, { speed: 9, up: 4, size: 0.5, life: 0.8 });
-          if (R.position.distanceTo(this.p.pos) < 7.5 && this.p.ground) this.hurtPlayer(def.dmg * 1.6, R.position, { kb: 10 }); else if (!this.p.ground) this.ui.toast('Jumped over the shockwave!', 'blk'); } };
+          if (R.position.distanceTo(this.p.pos) < 7.5 && this.p.ground) this.hurtPlayer(HD.eDmg(e) * 1.5, R.position, { kb: 10 }); else if (!this.p.ground) this.ui.toast('Jumped over the shockwave!', 'blk'); } };
       } else { // spin
         e.atk = 2.2; this.ui.toast('Morgan: "Axe Whirlwind!"', 'boss'); let tick = 0;
         e.skillUpd = (dt) => { R.rotation.y += dt * 18; tick -= dt; const dir = tmp2.copy(this.p.pos).sub(R.position).setY(0).normalize(); R.position.addScaledVector(dir, 3.2 * dt); this.fx.burst(this.chest(e, V()), 3, 0xdfe6ee, { speed: 6, size: 0.25, life: 0.25, grav: 0, spread: 2 });
-          if (tick <= 0 && R.position.distanceTo(this.p.pos) < 3.6) { tick = 0.45; this.hurtPlayer(def.dmg * 0.6, R.position, { kb: 6 }); } };
+          if (tick <= 0 && R.position.distanceTo(this.p.pos) < 3.6) { tick = 0.45; this.hurtPlayer(HD.eDmg(e) * 0.6, R.position, { kb: 6 }); } };
       }
     }
   }
   genSkill(e, type, name, col, dist) {
-    const R = e.c.root, def = e.def; const D = def.dmg * (1 + (e.lvl - 1) * 0.1) * (e.dmgMul || 1); this.ui.toast(`${def.name}: "${name}!"`, 'boss'); this.ui.moveName(name, col);
+    const R = e.c.root, def = e.def; const D = HD.eDmg(e); this.ui.toast(`${def.name}: "${name}!"`, 'boss'); this.ui.moveName(name, col);
     const P = this.p; let t = 0;
     if (type === 'lunge') { e.atk = 0.95; const dir = new B.Vector3(P.pos.x - R.position.x, 0, P.pos.z - R.position.z).normalize(); let hit = false;
       e.skillUpd = (dt) => { t += dt; if (t > 0.4 && t < 0.8) { R.position.addScaledVector(dir, 24 * dt); this.fx.burst(this.chest(e, V()), 3, col, { speed: 1, size: 0.5, life: 0.3, grav: 0 }); if (!hit && R.position.distanceTo(P.pos) < 2.4) { hit = true; this.hurtPlayer(D * 1.8, R.position, { kb: 9 }); } } }; }
