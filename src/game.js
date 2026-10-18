@@ -271,6 +271,7 @@ export class Game {
     this.addBerries(r.ber); this.addXp(r.xp); this.ui.updateQuest(); ST.save(S);
   }
   hurtPlayer(dmg, from, o = {}) {
+    if (this.duel && this.duel.on && !this.duel.live()) return;
     const p = this.p; if (p.iframe > 0 || this.cut || this.dead) return;
     if (styleOf(this.save).id === 'kenbun' && Math.random() < 0.15) { this.ui.toast('Read it! (Kenbunshoku Dodge)', 'mast'); p.iframe = 0.3; return; }
     if (this.save.haki && this.save.haki.ken && Math.random() < (hk(this.save, 'ken', 1) ? 0.35 : 0.25)) { this.ui.toast(hk(this.save, 'ken', 3) ? 'Dodged! Future Sight: next hit x2' : 'Dodged! (Observation Haki)', 'mast'); p.iframe = 0.3; if (hk(this.save, 'ken', 3)) p.fsight = 1; return; }
@@ -321,7 +322,7 @@ export class Game {
   rankCheck() { const S = this.save; const fr = ST.factionRank(S); if (S.rankT == null) { S.rankT = fr.tier; return; } if (fr.tier > S.rankT) { S.rankT = fr.tier; const ber = 5000 * fr.tier * fr.tier; this.addBerries(ber); this.st = ST.stats(S); this.ui.banner(fr.marine ? 'PROMOTED!' : 'BOUNTY RAISED!', `${fr.title} · ${fr.perk} · +฿${ber.toLocaleString()}`); this.ui.updateHud(); ST.save(S); } }
   baseDmg() { return (7 + this.save.lvl * 1.3) * this.st.dmg * (this.fed && this.fed.t > 0 ? this.fed.mul : 1) * (hasRole(this.save, 'musician') ? 1.08 : 1); }
   attack() {
-    const S = this.save, p = this.p; if (p.atkCd > 0) return; p._atkT = this.t;
+    const S = this.save, p = this.p; if (p.atkCd > 0) return; if (this.duel && this.duel.on && !this.duel.live()) return; p._atkT = this.t;
     const slot = S.slot; this.net.fx('atk', 0);
     if (slot === 'fist' || slot === 'fruit') {
       p.combo = p.comboT > 0 ? (p.combo % 4) + 1 : 1; p.comboT = 0.8; p.atkCd = p.combo === 4 ? 0.42 : 0.26; if (slot !== 'fruit') this.vm.doPunch(); S.stats.punches++;
@@ -364,6 +365,7 @@ export class Game {
   specialWindowOld() { const p = this.p, S = this.save; if (this.enemies.some(e => e.boss && !e.dead && e.aggro && e.c.root.position.distanceTo(p.pos) < 40)) return 'boss';
     if (S.hp < this.st.maxHp * 0.35) return 'clutch'; if (this.enemies.filter(e => !e.dead && e.c.root.position.distanceTo(p.pos) < 15).length >= 3) return 'crowd'; return null; }
   special() {
+    if (this.duel && this.duel.on && !this.duel.live()) return;
     if (this.seaDrain()) { this.ui.toast('🌊 The sea drains your Devil Fruit power!', 'blk'); return; }
     const S = this.save; const f = S.eq.fruit && FRUITS[S.eq.fruit];
     if (!f || !f.special) { this.ui.toast('Only Legendary+ fruits have a Special', 'blk'); return; }

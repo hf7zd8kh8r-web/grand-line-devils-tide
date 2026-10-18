@@ -82,7 +82,7 @@ export class Duel {
 
   begin(vs) {
     if (this.on) return; const g = this.g, S = g.save;
-    this.on = true; this.phase = 'intro'; this.t = 0; this.vs = vs; this.peer = vs.kind === 'peer' ? vs.id : null;
+    this.on = true; this._hold = null; this.phase = 'intro'; this.t = 0; this.vs = vs; this.peer = vs.kind === 'peer' ? vs.id : null;
     this.load = vs.load || loadout(vs.fake || vs); this.rw = rewardOf(S.lvl, vs.lvl); this._usedMove = false;
     this.saved = { x: g.p.pos.x, y: g.p.pos.y, z: g.p.pos.z, yaw: g.p.yaw, pitch: g.p.pitch, hp: S.hp };
     g.island.group.visible = false;
@@ -168,12 +168,13 @@ export class Duel {
       return;
     }
     if (this.phase === 'count') {
+      if (!this._hold) this._hold = g.p.pos.clone(); g.p.pos.copy(this._hold); g.p.vy = 0; g.p.lunge = null; g.p.kb = null;
       this._cd -= dt;
       if (this._cd <= 0) {
         this.count--; this._cd = 0.85;
         if (this.count >= 1) this.showCount(String(this.count));
-        else if (this.count === 0) this.showCount('FIGHT!');
-        else { this.hideCount(); this.phase = 'fight'; this.showHud(true); }
+        else if (this.count === 0) { this.showCount('FIGHT!'); this.startFight(); }
+        else this.hideCount();
       }
       return;
     }
@@ -205,6 +206,9 @@ export class Duel {
     if (me) me.style.width = Math.max(0, this.g.save.hp / this.g.st.maxHp * 100) + '%';
     if (fo && this.foe) fo.style.width = Math.max(0, this.foe.hp / this.foe.max * 100) + '%';
   }
+  // fighters are frozen (no AI, input or damage either way) until the countdown hits FIGHT!
+  live() { return this.on && this.phase === 'fight'; }
+  startFight() { const g = this.g, e = this.foe; this._hold = null; this.phase = 'fight'; this.showHud(true); setTimeout(() => this.hideCount(), 850); g.projs = g.projs.filter(p => { if (!p.player) { p.mesh && g.scene.remove(p.mesh); return false; } return true; }); if (e) { e.state = 'chase'; e.skillUpd = null; e.atk = 0; e.cd = 0.9; e.skillCd = 1.2; e.vel.set(0, 0, 0); } }
   forfeit() { if (this.on && this.phase !== 'end') this.finish('lose', 'forfeit'); }
   playerDown() { if (!this.on) return false; this.g.dead = false; this.g.save.hp = Math.max(1, Math.round(this.g.st.maxHp * 0.2)); this.finish('lose', 'ko'); return true; }
   foeDown() { if (!this.on || !this.foe) return; this.foe.dead = true; this.foe.deadT = 0.01; this.foe.aggro = false; this.g.ui.bossBar(null); }

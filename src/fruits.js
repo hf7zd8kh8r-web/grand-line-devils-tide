@@ -84,6 +84,7 @@ export function fruitBasic(g, id, combo) {
   for (const e of g.enemiesInCone(reach, 0.5)) g.damageEnemy(e, dmg, { ...O, kb: big ? 9 : 3.5 });
 }
 export function castMove(g, m) {
+  if (g.duel && g.duel.on && !g.duel.live()) return;
   g._lastCastT = g.t;
   const S = g.save, p = g.p; let { dmg, key } = fd(g, m); if (m.src === 'fruit' && S.awake && S.awake[S.eq.fruit]) dmg *= 1.5; const col = m.src === 'fruit' ? fcol(S.eq.fruit) : m.src === 'sword' ? 0xdff0ff : m.src === 'gun' ? 0xffb04a : styleOf(S).col;
   const eye = () => g.eyePos().clone(); const fw = () => g.fwd(V()); const fl = () => g.fwdFlat(V());
