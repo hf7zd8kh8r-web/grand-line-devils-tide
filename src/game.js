@@ -249,7 +249,7 @@ export class Game {
     if (!gath && this.gather) this.clearGather();
     if (this.gather) for (const it of this.gather) { if (it.got) continue; it.m.rotation.y += dt * 2; it.m.position.y = it.y + 0.9 + Math.sin(this.t * 3 + it.x) * 0.15;
       if (Math.hypot(it.x - this.p.pos.x, it.z - this.p.pos.z) < 1.7 && Math.abs(this.p.pos.y - it.y) < 2.5) { it.got = true; it.m.visible = false; this.questEvent('gather'); if (!S.quests.some(q => q.type === 'gather')) { this.clearGather(); break; } } } }
-  rumorTick() { if (this.t < (this._rumT ?? (this._rumT = this.t + 75))) return; this._rumT = this.t + 150 + Math.random() * 60; if (this.cut || this.ui.modal) return; const r = rumorFor(this.save, this.island.id); if (r) this.ui.chat('🍺 Tavern Rumor', `${r.text} (${r.label} · ⚔ Sword Index in your Bag)`); }
+  rumorTick() { if (this.t < (this._rumT ?? (this._rumT = this.t + 75))) return; this._rumT = this.t + 150 + Math.random() * 60; if (this.cut || this.ui.modal) return; const r = rumorFor(this.save, this.island.id); if (r) { const sea = (islandById(this.island.id) || {}).sea || 1; this.ui.chat('🍺 Tavern Rumor', `${r.text} <small class="dim">(${r.label})</small> <a class="clk" data-do="swx:${sea}">⚔ Open Sword Index</a>`, 16000); } }
   // Kokuto Yoru Secret Trial: Mihawk waits at Marineford while the trial is active
   mihawkTick(list) { if (this.island.id !== 'marineford' || !list.some(q => q.id === 'sec_yoru') || this.t < (this._mhT || 0)) return; this._mhT = this.t + 8;
     if (this.enemies.some(e => e.s.type === 'mihawk' && !e.dead)) return; const p = this.p.pos; const a = Math.atan2(p.z, p.x) + 0.6; const pos = V().set(p.x + Math.cos(a) * 14, 0, p.z + Math.sin(a) * 14);

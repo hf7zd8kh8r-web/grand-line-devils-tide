@@ -134,12 +134,12 @@ export class UI {
   toggle(id) { if (this.modal === id) this.close(); else this.open(id); }
   _rz() { if (this._rzOn) return; this._rzOn = 1; let t; const f = () => { clearTimeout(t); t = setTimeout(() => { this._chartDraw && this._chartDraw(); }, 180); }; addEventListener('resize', f); addEventListener('orientationchange', f); }
   open(id, arg) { window.__audio && window.__audio.sfx('open', { gap: 200 }); this._rz(); this._openT = performance.now(); IN.resetTouch && IN.resetTouch();
-    const wasOpen = !!this.modal; this.close(true); this.modal = id; const P = $('#panel'); P.style.display = 'flex'; P.className = 'panel p-' + id + (wasOpen ? '' : ' pin');
+    const wasOpen = !!this.modal; const keepY = wasOpen && this.modal === id && String(this._arg) === String(arg) ? ((document.querySelector('#panel .pbox') || {}).scrollTop || 0) : 0; this._arg = arg; this.close(true); this.modal = id; const P = $('#panel'); P.style.display = 'flex'; P.className = 'panel p-' + id + (wasOpen ? '' : ' pin');
     if (document.pointerLockElement) document.exitPointerLock();
     const fns = { inv: () => this.invHtml(arg), map: () => this.mapHtml(), pause: () => this.pauseHtml(), shop: () => this.shopHtml(arg), quest: () => this.questHtml(arg), board: () => this.boardHtml(arg), duel: () => this.g.duel.cardHtml(), dock: () => this.dockHtml(arg), trader: () => this.traderHtml(arg), roller: () => this.g.roller.html(), player: () => this.playerHtml(arg), ptrade: () => this.ptradeHtml(), style: () => this.styleHtml(arg), dex: () => this.dexHtml(arg), swx: () => swordIndexHtml(this.g.save, arg || this.g.island.sea || 1, (S, k, id) => moveListHtml(S, k, id)), dojo: () => this.dojoHtml(arg), awk: () => this.g.awk.html() };
     let body; try { const f = fns[id]; if (!f) throw new Error('no panel ' + id); body = f(); if (!body || typeof body !== 'string') throw new Error('empty'); }
     catch (err) { console.warn('panel', id, err); body = id === 'quest' && arg ? `<h2>${(arg.name || 'Villager')}</h2><p class="say">“Ahoy there, pirate! Fine weather for sailing, isn't it?”</p>` : `<h2>Oops</h2><p>Couldn't open this panel (${String(err && err.message || err).replace(/[<>]/g, '').slice(0, 80)}). Try again — your save is safe.</p>`; }
-    P.innerHTML = `<div class="pbox"><button class="x" data-close>✕</button>${body}</div>`;
+    P.innerHTML = `<div class="pbox"><button class="x" data-close>✕</button>${body}</div>`; if (keepY) { P.classList.remove('pin'); P.querySelector('.pbox').scrollTop = keepY; } // re-render in place (e.g. 🔍 Reveal hint) keeps your scroll spot instead of jumping to the top
     P.querySelector('[data-close]').onclick = () => { if (performance.now() - (this._openT || 0) < 550) return; this.close(); };
     P.oninput = (e) => { const r = e.target.closest && e.target.closest('[data-vol]'); const A = window.__audio; if (r && A) { A.set[r.dataset.vol] = r.value / 100; A.save(); if (r.dataset.vol === 'sfx') A.sfx('punch', { gap: 150 }); } };
     this._openT = performance.now(); P.onclick = (e) => { if (performance.now() - this._openT < 550) return; /* ghost click from the tap that opened it */ if (e.target === P) this.close(); const b = e.target.closest('[data-do]'); if (b && !b.disabled) this.act(b.dataset.do, b); };
@@ -218,7 +218,7 @@ export class UI {
     const bossN = list.find(q => (q.target || '').endsWith('_boss') || /Defeat /.test(q.text));
     const line = (n.name === 'Mysterious Swordsman' ? ['...You want a legendary blade? Prove yourself. Only the strongest finish my trials.', 'Hmph. Not bad.'] : LINES[n.name] || [bossN ? `Please help us! ${bossN.text.replace('Defeat ', '')} has taken over this island!` : 'Hello there!', 'Thank you, hero! You saved us.'])[open ? 0 : 1];
     const rum = n.name === 'Mysterious Swordsman' ? (() => { const sq = (QUESTS[this.g.island.id] || []).filter(q => q.secret && q.sword && !S.inv.swords.includes(q.sword)); return sq.length ? `🗝 ${swordSource(sq[0].sword).riddle}` : ''; })() : ((n.name.length + this.g.island.id.length + (S.stats.kills || 0)) % 3 === 0 ? (r => r ? `🍺 I heard a rumor… “${r.text}”` : '')(rumorFor(S, this.g.island.id)) : '');
-    return `<h2>${n.name}</h2><p class="say">“${line}”</p>${rum ? `<p class="dim riddle">${rum} <a data-do="swx">⚔ Sword Index</a></p>` : ''}<button class="go big2" data-do="openboard">📋 Open Quest Board</button><h3>${n.name}'s jobs</h3><div class="qboard">` + mine.map(q => {
+    return `<h2>${n.name}</h2><p class="say">“${line}”</p>${rum ? `<p class="dim riddle">${rum} <a data-do="swx:${(islandById(this.g.island.id) || {}).sea || 1}">⚔ Sword Index</a></p>` : ''}<button class="go big2" data-do="openboard">📋 Open Quest Board</button><h3>${n.name}'s jobs</h3><div class="qboard">` + mine.map(q => {
       const lock = S.lvl < (q.lvl || 0); const act = QH.isActive(S, q.id); const done = QH.hasDone(S, q.id); const cd = QH.cdLeft(S, q.id); const rw = QH.rewardOf(S, q);
       let btn = lock ? `<button disabled>Lv.${q.lvl}</button>` : act ? `<button data-do="qdrop:${q.id}">Abandon</button>` : (done && cd > 0) ? `<button disabled>${QH.fmtCd(cd)}</button>` : S.quests.length >= QH.MAX_ACTIVE ? `<button disabled>Full</button>` : `<button class="go" data-do="qtake:${q.id}">${done ? 'Repeat' : 'Accept'}</button>`;
       return `<div class="qcard ${lock ? 'lock' : ''} ${done ? 'done' : ''} ${act ? 'on' : ''}"><b>Lv.${q.lvl} · ${q.text}</b><span>${rw.xp} XP · ฿${fmt(rw.ber)}${done ? ' · repeatable' : ''}</span>${btn}</div>`;
@@ -287,7 +287,9 @@ export class UI {
       <h3>Your offer</h3><div class="tpick"><button data-do="tit:none" class="${!T.mine.it ? 'on' : ''}">— no item —</button>${pick}</div>
       <div class="seg">${[1000, 10000, 100000, 1000000].map(v => `<button data-do="tber:${v}">+฿${fmt(v)}</button>`).join('')}<button data-do="tber:0">฿0</button></div>
       <p><button class="go" data-do="tok" ${T.accMe ? 'disabled' : ''}>${T.accMe ? 'Waiting for them…' : 'Accept trade'}</button> <button data-do="tx">Cancel</button></p>`; }
-  chat(name, msg) { const el = h(`<div class="chatl"><b>${name}:</b> ${msg}</div>`); $('#chat').appendChild(el); setTimeout(() => el.remove(), 9000); while ($('#chat').children.length > 4) $('#chat').firstChild.remove(); }
+  chat(name, msg, life = 9000) { const el = h(`<div class="chatl"><b>${name}:</b> ${msg}</div>`); $('#chat').appendChild(el); setTimeout(() => el.remove(), life);
+    el.querySelectorAll('[data-do]').forEach(a => { el.classList.add('tap'); const go = e => { e.stopPropagation(); e.preventDefault(); if (performance.now() - (a._t || 0) < 700) return; a._t = performance.now(); this.act(a.dataset.do, a); }; // tappable chat links (tavern rumors): pointerup for iOS + click fallback
+      a.addEventListener('pointerdown', e => e.stopPropagation()); a.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') go(e); }); a.addEventListener('click', go); }); while ($('#chat').children.length > 4) $('#chat').firstChild.remove(); }
   fishBtn(label) { const b = $('#fishBtn'); b.textContent = label || 'FISH'; b.classList.toggle('reel', !!label); }
   biteFx(on) { $('#bite').style.display = on ? 'block' : 'none'; }
   chestPopup(r) { const el = $('#chest'); el.innerHTML = `<div class="cbx"><div class="chesticon"></div><small>TREASURE CHEST!</small><b style="color:${r.col}">${r.txt}</b><span>${r.sub}</span></div>`; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); }
@@ -342,8 +344,8 @@ export class UI {
     if (a === 'fcook') { const r = cookFish(this.g, b); if (r) this.toast(`🍳 Cooked ${b}: +${r.heal} HP${r.fed ? ` · Well Fed +${r.fed}% DMG` : ''}`, 'item'); this.updateHud(); this.open('inv', 'fish'); }
     if (a === 'stab') this.open('style', b);
     if (a === 'dex') this.open('dex', b);
-    if (a === 'swx') this.open('swx', b);
-    if (a === 'swhint') { const S = this.g.save; S.swHint = S.swHint || {}; S.swHint[b] = 1; ST.save(S); this.open('swx', (islandById(swordSource(b).island) || {}).sea || 1); }
+    if (a === 'swx') this.open('swx', +b || 1);
+    if (a === 'swhint') { const S = this.g.save; S.swHint = S.swHint || {}; S.swHint[b] = 1; ST.save(S); this.open('swx', this.modal === 'swx' && this._arg ? this._arg : (islandById(swordSource(b).island) || {}).sea || 1); }
     if (a === 'dojo') this.open('dojo', b);
     if (a === 'ptr') { if (g.net.trade) { this.open('ptrade'); return; } g.net.tradeReq(+b); return; }
     if (a === 'tit') { const T = g.net.trade; if (!T) return; g.net.tradeSet(b === 'none' ? null : { k: b, id: c }); return; }
