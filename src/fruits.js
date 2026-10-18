@@ -6,6 +6,7 @@ import * as ST from './state.js';
 import { STYLES, styleOf } from './styles.js';
 import { weaponMove } from './canonw.js';
 import { kitMoves, SW_UNLOCK } from './swordkits.js';
+import { m1Cast } from './m1.js';
 import { after } from './skills.js';
 import { basicShape, basicFist, cleanup as fxClean, fruitMove, ultraSpecial, ultraStyleOf, specialBody, spShape, canonSpecial } from './themed.js';
 const B = THREE; const V = () => new B.Vector3();
@@ -55,6 +56,7 @@ export function fruitBasic(g, id, combo) {
   const tf = S.tf ? (S.tf === 2 ? 1.35 : 1.15) : 1; // Zoan transform boosts claws
   const dmg = g.baseDmg() * (1 + f.rar * 0.18) * 0.95 * ST.mastMul(S, key) * (big ? 1.8 : 1) * (kind === 'claw' ? tf : 1);
   const O = { mast: key, mastName: f.short, col, cls: 'fruit' };
+  { const hand0 = (g.vm && g.vm.handWorld && !(g.tpv && g.tpv.on && !g.tpv.close) && g.vm.handWorld(g.vm.cp ? g.vm.cp.side : 1, g.cam)) || g.eyePos().clone().addScaledVector(g.fwd(V()), 1.1).add(new B.Vector3(0, -0.25, 0)); try { if (m1Cast(g, id, combo, dmg, O, col, hand0)) return; } catch (err) { console.warn('m1', id, err); } }
   if (g.vm && g.vm.doPose) g.vm.doPose({ stretch: 'stretch', bolt: 'jab', slash: 'chop', claw: 'claw', pulse: 'palm' }[kind] || 'jab', { big, str: big ? 1 : 0.7 });
   const hand = (g.vm && g.vm.handWorld && !(g.tpv && g.tpv.on && !g.tpv.close) && g.vm.handWorld(g.vm.cp ? g.vm.cp.side : 1, g.cam)) || g.eyePos().clone().addScaledVector(g.fwd(V()), 1.1).add(new B.Vector3(0, -0.25, 0));
   if (kind === 'stretch') { const reach = big ? 7 : 5.2; const tip = g.eyePos().clone().addScaledVector(g.fwd(V()), reach);
