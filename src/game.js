@@ -2,6 +2,7 @@ import { THREE, renderer, Builder, mat, WORLD_MAT, qv, setOutlinesVisible, clamp
 import { makeWater, makeSky } from './world.js';
 import { BUILDERS } from './islands.js';
 import { makeChar, animChar, makeShip, makeBoatSmall, LOOKS, makeAvatar } from './models.js';
+import { SW_DROPS, rumorFor } from './swordindex.js';
 import { ENEMIES, FRUITS, SWORDS, GUNS, QUESTS, RACES, islandById, swordDmg, ISLANDS, RARITY } from './data.js';
 import { FX, DmgNums } from './fx.js';
 import { ViewModel } from './viewmodel.js';
@@ -210,6 +211,7 @@ export class Game {
     this.addXp(Math.round(d.xp * (1 + (e.lvl - 1) * 0.1) * nb * fm.xp));
     if (d.drop && Math.random() < (e.boss ? 1 : (S.quest && S.quest.type === 'mat' ? 0.6 : 0.35))) { S.inv.mats[d.drop] = (S.inv.mats[d.drop] || 0) + 1; this.ui.toast(`Got ${d.drop}`, 'item'); this.questEvent('mat', d.drop); }
     if (e.s.type === 'higuma' && !S.inv.fruits.includes('gomu') && S.eq.fruit !== 'gomu' && Math.random() < 0.35) { S.inv.fruits.push('gomu'); this.ui.toast('Higuma dropped a strange swirly fruit! (Gum-Gum)', 'rare'); }
+    for (const [sw, [bt, ch]] of Object.entries(SW_DROPS)) if (e.s.type === bt && !S.inv.swords.includes(sw) && S.eq.sword !== sw && Math.random() < ch) { S.inv.swords.push(sw); setTimeout(() => this.ui.banner(SWORDS[sw].name.toUpperCase(), `Rare blade dropped by ${d.name}!`), 2600); }
     if (e.s.type === 'morgan' && !S.inv.swords.includes('marine')) { S.inv.swords.push('marine'); this.ui.toast('Got Marine Saber from Morgan\'s armory!', 'rare'); }
     if (['zou_boss', 'wci_boss', 'wano_boss', 'egghead_boss'].includes(e.s.type) && Math.random() < 0.3) { const k = 'Road Poneglyph: ' + islandById(e.s.type.split('_')[0]).name; if (!S.inv.mats[k]) { S.inv.mats[k] = 1; this.ui.toast(`📜 Found a ${k} rubbing!`, 'rare'); const n = Object.keys(S.inv.mats).filter(x => x.startsWith('Road Poneglyph')).length; if (n >= 4 && !(S.secrets || {}).laughtale) { S.secrets = S.secrets || {}; S.secrets.laughtale = 1; setTimeout(() => this.ui.banner('LAUGH TALE REVEALED', 'All four Road Poneglyphs point to the final island…'), 2600); } } }
     if (e.boss && e.lvl >= 200 && Math.random() < 0.04) { const ul = ['nika', 'seiryu', 'sound', 'makami']; const u = ul[Math.floor(Math.random() * 4)]; S.inv.fruits.push(u); this.ui.banner('ULTRA FRUIT!!', `${FRUITS[u].name} dropped!`); }
@@ -237,11 +239,18 @@ export class Game {
     let timerLeft = null;
     for (const q of list) { if (q.time && q.until) { const left = q.until - this.t; if (left <= 0) { if (q.type === 'talk') { QH.dropQuest(S, q.id); this.ui.toast('⏱ Too slow! Ask again to retry the rush', 'blk'); this.ui.updateQuest(); continue; } q.have = 0; q.until = 0; this.ui.toast('⏱ Too slow! The ambush regrouped — try again', 'blk'); } else timerLeft = timerLeft == null ? left : Math.min(timerLeft, left); } }
     this.ui.questTimer(timerLeft);
+    this.mihawkTick(list);
     const gath = list.find(q => q.type === 'gather' && (QUESTS[this.island.id] || []).some(x => x.id === q.id));
     if (gath && !this.gather) this.spawnGather(gath);
     if (!gath && this.gather) this.clearGather();
     if (this.gather) for (const it of this.gather) { if (it.got) continue; it.m.rotation.y += dt * 2; it.m.position.y = it.y + 0.9 + Math.sin(this.t * 3 + it.x) * 0.15;
       if (Math.hypot(it.x - this.p.pos.x, it.z - this.p.pos.z) < 1.7 && Math.abs(this.p.pos.y - it.y) < 2.5) { it.got = true; it.m.visible = false; this.questEvent('gather'); if (!S.quests.some(q => q.type === 'gather')) { this.clearGather(); break; } } } }
+  rumorTick() { if (this.t < (this._rumT ?? (this._rumT = this.t + 75))) return; this._rumT = this.t + 150 + Math.random() * 60; if (this.cut || this.ui.modal) return; const r = rumorFor(this.save, this.island.id); if (r) this.ui.chat('🍺 Tavern Rumor', `${r.text} (${r.label} · ⚔ Sword Index in your Bag)`); }
+  // Kokuto Yoru Secret Trial: Mihawk waits at Marineford while the trial is active
+  mihawkTick(list) { if (this.island.id !== 'marineford' || !list.some(q => q.id === 'sec_yoru') || this.t < (this._mhT || 0)) return; this._mhT = this.t + 8;
+    if (this.enemies.some(e => e.s.type === 'mihawk' && !e.dead)) return; const p = this.p.pos; const a = Math.atan2(p.z, p.x) + 0.6; const pos = V().set(p.x + Math.cos(a) * 14, 0, p.z + Math.sin(a) * 14);
+    const e = this.spawnEnemy({ type: 'mihawk', x: pos.x, z: pos.z, lvl: 400, boss: true, arena: { x: pos.x, z: pos.z, r: 16 } }); e.temp = true; this.fx.ring(pos.clone().setY(this.island.hf(pos.x, pos.z) + 0.1), 0x3aff8a, 16, 1.2); this.fx.burst(pos.clone().setY(this.island.hf(pos.x, pos.z) + 1.5), 40, 0x3aff8a, { speed: 6, up: 5, life: 1 });
+    this.ui.banner('DRACULE MIHAWK', "The World's Strongest Swordsman accepts your challenge!"); this.ui.chat('⚔ Dracule Mihawk', ENEMIES.mihawk.taunt); }
   spawnGather(q) { const I = this.island; const r = rng(q.id.length * 977 + (this.save.stats.created % 1000)); this.gather = []; const left = q.n - q.have; let tries = 0;
     while (this.gather.length < left && tries++ < 400) { const a = r() * Math.PI * 2, d = 6 + r() * I.R * 0.7; const x = Math.cos(a) * d, z = Math.sin(a) * d; const y = I.hf(x, z); if (y < 0.4) continue;
       if (I.colliders.some(c => Math.hypot(c.x - x, c.z - z) < (c.r || Math.max(c.hw || 1, c.hd || 1)) + 1)) continue; if (this.gather.some(o => Math.hypot(o.x - x, o.z - z) < 8)) continue;
@@ -441,7 +450,7 @@ export class Game {
     this.net.update(dt);
     this.amb.update(dt); this.events.update(dt); this.crew.update(dt); this._rk = (this._rk || 0) - dt; if (this._rk <= 0) { this._rk = 2; this.rankCheck(); checkAch(this); } this._clk = (this._clk || 0) - dt; if (this._clk <= 0) { this._clk = 1; const ck = document.getElementById('clock'); if (ck) { const nt = this.amb.isNight(); ck.textContent = `${nt ? '🌙' : '☀️'} ${this.amb.clock()}${nt ? ' · Night +20% ฿/XP' : ''}${this.amb.stormT > 0 ? ' · ⛈ Storm' : ''}`; ck.classList.toggle('night', nt); } }
     if (this.fed && this.fed.t > 0) { this.fed.t -= dt; if (this.fed.t <= 0) { this.fed = null; this.ui.toast('Well Fed buff wore off', 'blk'); } }
-    this.updateEnemies(dt); this.updateProjs(dt); this.questTick(dt); this.stockTick(); try { this.trv.update(dt); } catch (err) { if (!this._tErr) { this._tErr = 1; console.warn('travel', err); } } try { this.hunt.update(dt); } catch (err) { if (!this._hErr) { this._hErr = 1; console.warn('hunt', err); } } if (this.preview) { this.preview.root.rotation.y += Math.sin(this.t * 0.7) * dt * 0.4; animChar(this.preview, { move: 0, wave: Math.sin(this.t * 0.5) > 0.7 }, this.t); } this.updateNpcs(dt); this.fishing.update(dt); fakeUpdate(this, dt); try { this.duel && this.duel.update(dt); } catch (err) { if (!this._dErr) { this._dErr = 1; console.warn('duel', err); } }
+    this.updateEnemies(dt); this.updateProjs(dt); this.questTick(dt); this.stockTick(); this.rumorTick(); try { this.trv.update(dt); } catch (err) { if (!this._tErr) { this._tErr = 1; console.warn('travel', err); } } try { this.hunt.update(dt); } catch (err) { if (!this._hErr) { this._hErr = 1; console.warn('hunt', err); } } if (this.preview) { this.preview.root.rotation.y += Math.sin(this.t * 0.7) * dt * 0.4; animChar(this.preview, { move: 0, wave: Math.sin(this.t * 0.5) > 0.7 }, this.t); } this.updateNpcs(dt); this.fishing.update(dt); fakeUpdate(this, dt); try { this.duel && this.duel.update(dt); } catch (err) { if (!this._dErr) { this._dErr = 1; console.warn('duel', err); } }
     for (const u of this.island.updaters) u(dt);
     if (this.island.boat) this.island.boat.position.y = -0.1 + Math.sin(this.t * 1.2) * 0.08;
     this.water.userData.mat.uniforms.t.value = this.t; this.water.position.set(Math.round(this.cam.position.x / 10) * 10, -1.0, Math.round(this.cam.position.z / 10) * 10);

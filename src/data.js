@@ -216,7 +216,7 @@ export const SWORD_LIST = [
   ['soulsolid', 'Soul Solid', 4, 170, 95], ['durandal', 'Durandal', 4, 200, 120], ['sakura', 'Sakura Fubuki', 3, 210, 300], ['oni', 'Oni Kiri', 4, 230, 300], ['tenseiken', 'Tenseiken', 3, 240, 380],
   ['murakumo', 'Murakumo-giri', 5, 260, 300], ['laser', 'Seraphim Edge', 4, 270, 380], ['kogarasu', 'Kogarasu Maru', 4, 280, 380], ['shodai', 'Shodai Kitetsu', 5, 300, 380], ['gryphon', 'Gryphon', 5, 310, 380],
   // 15 secret legendary blades (extremely hard quest chains)
-  ['wado', 'Wado Ichimonji', 5, 120, 12, 1], ['enma', 'Enma', 6, 340, 300, 1], ['yoru', 'Yoru', 7, 400, 300, 1], ['ameno', 'Ama no Murakumo', 6, 360, 380, 1], ['ryuma', "Ryuma's Shusui", 6, 330, 95, 1],
+  ['wado', 'Wado Ichimonji', 5, 120, 12, 1], ['enma', 'Enma', 6, 340, 300, 1], ['yoru', 'Kokuto Yoru', 7, 400, 350, 1], ['ameno', 'Ama no Murakumo', 6, 360, 380, 1], ['ryuma', "Ryuma's Shusui", 6, 330, 95, 1],
   ['kitetsu1', 'Kitetsu the First', 6, 350, 380, 1], ['ameoden', "Oden's Ame no Habakiri", 7, 390, 300, 1], ['kashu', 'Kashu', 6, 300, 250, 1], ['kokuto', 'Black Blade Kokuto', 7, 380, 250, 1], ['wazamono', 'Hundred Wazamono', 6, 320, 165, 1],
   ['sutra', 'Sutra Saber', 6, 310, 200, 1], ['gods', "God's Valley Edge", 7, 420, 380, 1], ['sorrow', 'Sea-King Fang', 6, 290, 120, 1], ['shiro', 'White Hunter Blade', 6, 260, 100, 1], ['sanbon', 'Three Sword Style', 7, 450, 1, 1],
 ];
@@ -229,6 +229,7 @@ for (const [id, name, rar, dmg, lvl, secret] of SWORD_LIST) {
 SWORDS.wado.quest = 'Defeat Axe-Hand Morgan (Coby\'s quest) to earn it';
 SWORDS.sanbon.quest = 'Forge at the Loguetown swordsmith with Wado Ichimonji + Sandai Kitetsu + Shusui';
 SWORDS.sanbon.santoryu = true;
+SWORDS.yoru.moves[0].name = 'Kokuto: Kogatana'; SWORDS.yoru.moves[1].name = 'Kokuto: Juji';
 // canon/iconic names (ids kept for saves)
 const SWORD_NAMES = {"buggyknife": "Buggy's Clown Daggers", "kurocl": "Nekote (Kuro's Cat Claws)", "pearl": "Cabaji's Acrobat Sword", "peacemaker": "Ohm's Eisen Whip", "jitte": "Nanashaku Jitte", "kanshou": "Brook's Cane Sword", "pacifista": "Sentomaru's Battle Axe", "kujabow": "Kuja Warrior Scimitar", "seastone": "Hannyabal's Halberd", "saberhq": "Momonga's Katana", "bisento": "Vista's Twin Flower Swords", "coral": "Hody's Coral Trident", "iceblade": "Aokiji's Ice Saber", "gladius": "Rebecca's Gladius", "kirin": "Kyros' Gladiator Sword", "tusk": "Jack's Twin Scimitars", "mink": "Inuarashi's Sword", "candy": "Katakuri's Mogura", "ame": "Kin'emon's Katana", "shusui": "Kaku's Twin Swords", "sakura": "Kikunojo's Katana", "oni": "Fujitora's Shikomizue", "tenseiken": "Ashura Doji's Nodachi", "murakumo": "Murakumogiri", "kogarasu": "King's Katana", "kitetsu1": "Raiu (Shiryu)", "kashu": "Ushimaru's Blade", "kokuto": "Shark Cutter (Bastille)", "wazamono": "Rayleigh's Saber", "sutra": "Mihawk's Cross Knife", "gods": "Xebec's Blade (God Valley)", "sorrow": "Kage Giri (Moria's Scissors)", "shiro": "Ace (Roger's Black Blade)"};
 for (const [id, n] of Object.entries(SWORD_NAMES)) if (SWORDS[id]) SWORDS[id].name = n;
@@ -250,5 +251,5 @@ export const WEAR_LIST = [
 for (const [id, name, rar, stat, lvl] of WEAR_LIST) ACCESSORIES[id] = { name, rar, stat, price: ACCESSORIES[id]?.price ?? Math.round(600 * Math.pow(1.042, lvl) * (1 + rar)), minLvl: lvl };
 
 // Tier II upgrades (quest: reach sword mastery 60, bring a boss trophy + Berries to any weapon dealer)
-export const T2 = { wado: 'Wado Ichimonji · Black Blade', sandai: 'Sandai Kitetsu · Cursed', shusui: 'Shusui · Black Blade', kikoku: 'Kikoku · Night Terror', enma: 'Enma · Hell Flame', yoru: 'Yoru · Supreme', murakumo: 'Murakumo-giri · Emperor', ame: 'Ame no Habakiri · Oden', durandal: 'Durandal · Holy', sanbon: 'Three Sword Style · King of Hell', napoleon: 'Napoleon · Big Mom', kirin: 'Kirin Blade · Thunder' };
+export const T2 = { wado: 'Wado Ichimonji · Black Blade', sandai: 'Sandai Kitetsu · Cursed', shusui: 'Shusui · Black Blade', kikoku: 'Kikoku · Night Terror', enma: 'Enma · Hell Flame', yoru: 'Kokuto Yoru · Supreme', murakumo: 'Murakumo-giri · Emperor', ame: 'Ame no Habakiri · Oden', durandal: 'Durandal · Holy', sanbon: 'Three Sword Style · King of Hell', napoleon: 'Napoleon · Big Mom', kirin: 'Kirin Blade · Thunder' };
 export const swordDmg = (S, id) => SWORDS[id].dmg * ((S.t2 || {})[id] ? 1.35 : 1);

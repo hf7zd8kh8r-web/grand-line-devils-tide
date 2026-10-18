@@ -310,11 +310,15 @@ export function genIsland(id) {
   return I;
 }
 for (const id of Object.keys(IDEFS)) BUILDERS[id] = () => genIsland(id);
+// Dracule Mihawk: the Kokuto Yoru challenge (appears at Marineford only while his Secret Trial is active)
+ENEMIES.mihawk = { name: 'Dracule Mihawk', title: "World's Strongest Swordsman", bounty: 'Former Warlord · 3,590,000,000', hp: 70000, dmg: 320, look: 'gen', spd: 3.8, reach: 3.6, cd: 1.1, xp: 60000, ber: [90000, 120000], boss: true, drop: "Mihawk's Hat Feather (Boss)", scale: 1.2,
+  lookO: { body: 'lanky', hat: 'cowboy', hatC: 0x111111, shirt: 0x8a1a2a, coat: 0x111111, pants: 0x1a1a1a, hair: 0x111111, weapon: 'katana' },
+  taunt: 'You wish to challenge the world\'s strongest? Then show me your resolve.', skills: [['fan', 'Kokuto: Kogatana', 0x3aff8a], ['lunge', 'Black Blade Flash', 0x3aff8a], ['beam', "World's Strongest Slash", 0x3aff8a], ['spin', 'Kokuto: Juji', 0x3aff8a]] };
 // Secret legendary sword quests (extremely hard): given by the Mysterious Swordsman on certain islands
 export const SECRET_Q = [
   ['loguetown', 'ryuma', 'loguetown_boss', 5, 100], ['loguetown', 'shiro', 'loguetown_e2', 60, 100], ['thriller', 'sorrow', 'thriller_boss', 4, 120], ['amazon', 'wazamono', 'amazon_boss', 5, 165],
   ['marineford', 'sutra', 'marineford_boss', 4, 200], ['punk', 'kashu', 'punk_boss', 5, 250], ['dressrosa', 'kokuto', 'dressrosa_boss', 6, 250], ['zou', 'enma', 'zou_boss', 6, 300],
-  ['wci', 'ameoden', 'wci_boss', 6, 300], ['wano', 'yoru', 'wano_boss', 8, 300], ['wano', 'kitetsu1', 'wano_e2', 120, 380], ['egghead', 'ameno', 'egghead_boss', 6, 380], ['egghead', 'gods', 'egghead_boss', 12, 380],
+  ['wci', 'ameoden', 'wci_boss', 6, 300], ['marineford', 'yoru', 'mihawk', 1, 350], ['wano', 'kitetsu1', 'wano_e2', 120, 380], ['egghead', 'ameno', 'egghead_boss', 6, 380], ['egghead', 'gods', 'egghead_boss', 12, 380],
 ];
 for (const [isl, sw, target, n, lvl] of SECRET_Q) { (QUESTS[isl] = QUESTS[isl] || []).push({ id: 'sec_' + sw, giver: 'Mysterious Swordsman', lvl, text: `Secret Trial: defeat ${target.endsWith('boss') ? ENEMIES[target].name : ENEMIES[target].name + 's'} ${n}×`, type: 'kill', target, n, xp: lvl * 300, ber: lvl * 400, sword: sw, secret: true }); }
 const _gen = genIsland;
