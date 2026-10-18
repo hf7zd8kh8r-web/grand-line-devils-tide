@@ -5,6 +5,7 @@ import { FRUITS, SWORDS, GUNS, ACCESSORIES, RARITY, RCOL, ISLANDS, SEAS, QUESTS,
 import { fruitIcon } from './icons.js';
 import * as FS from './fruitshop.js';
 import * as QH from './quests.js';
+import { compassTarget, bearing } from './compass.js';
 import { MAX_CREW , STABLE_URL, validCode } from './net.js';
 import { achHtml, drawStatCharts, exportStats } from './achievements.js';
 import { crewTabHtml, hire, dismiss } from './crew.js';
@@ -113,7 +114,11 @@ export class UI {
     if (this.modal === 'map' && this.mapDirty) this.renderMap();
     if (this._mapT === undefined) this._mapT = 0; this._mapT += dt; if (this._mapT > 0.2) { this._mapT = 0; this.compass(); }
   }
-  compass() { const g = this.g; let a = (-g.p.yaw * 180 / Math.PI) % 360; const el = $('#compass'); el.style.backgroundPositionX = (-a * 2) + 'px'; }
+  compass() { const g = this.g; let a = (-g.p.yaw * 180 / Math.PI) % 360; const el = $('#compass'); el.style.backgroundPositionX = (-a * 2) + 'px';
+    let mk = this._cmk; if (!mk) { mk = this._cmk = document.createElement('div'); mk.id = 'cmpT'; mk.innerHTML = '<i></i><b></b>'; el.appendChild(mk); }
+    let t = null; try { t = compassTarget(g); } catch (e) { t = null; } if (!t) { mk.style.display = 'none'; return; } mk.style.display = '';
+    const b = bearing(g, t), half = el.clientWidth / 2 - 8, x = Math.max(-half, Math.min(half, b * 2)); const off = Math.abs(b * 2) > half; const d = Math.round(Math.hypot(t.x - g.p.pos.x, t.z - g.p.pos.z));
+    mk.style.transform = `translateX(${x.toFixed(0)}px)`; mk.className = off ? (b > 0 ? 'off r' : 'off l') : ''; mk.firstChild.textContent = off ? (b > 0 ? '▶' : '◀') : '▼'; mk.lastChild.textContent = `${t.label} · ${d}m`; }
   promptFruit(id) { const el = $('#prompt'); el.style.display = 'block'; el.innerHTML = isTouch ? `<b>Pick up</b> 🍎 Devil Fruit` : `<kbd>E</kbd> Pick up the <b>Devil Fruit</b>`; const b = $('#actBtn'); b.style.display = ''; b.textContent = 'GRAB'; this._grab = true; }
   prompt(name) { if (this._grab) { this._grab = false; $('#actBtn').textContent = 'TALK'; } const el = $('#prompt'); if (name) { el.style.display = 'block'; el.innerHTML = isTouch ? `<b>Talk</b> ${name}` : `<kbd>E</kbd> Talk to <b>${name}</b>`; } else el.style.display = 'none'; $('#actBtn').style.display = name ? '' : 'none'; const w = !name && this.g.fishing && (this.g.fishing.state !== 'idle' || (this._fw = (this._fw || 0) + 1) % 10 === 0 ? (this._nw = this.g.fishing.state !== 'idle' || !!this.g.fishing.nearWater()) : this._nw); $('#fishBtn').style.display = w ? '' : 'none'; if (!isTouch && w && !name && this.g.fishing.state === 'idle') { el.style.display = 'block'; el.innerHTML = '<kbd>F</kbd> Fish'; } const S = this.g.save; $('#hakiBtn').style.display = S.lvl >= HAKI.buso ? '' : 'none'; $('#hakiBtn').classList.toggle('on2', !!(S.haki && S.haki.buso)); $('#conqBtn').style.display = S.lvl >= HAKI.conq ? '' : 'none'; }
   toast(msg, cls = '') { const el = h(`<div class="toast ${cls}">${msg}</div>`); $('#toasts').appendChild(el); setTimeout(() => el.classList.add('out'), 1800); setTimeout(() => el.remove(), 2300); const all = $('#toasts').children; if (all.length > 4) all[0].remove(); }

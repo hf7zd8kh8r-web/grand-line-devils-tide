@@ -1,5 +1,6 @@
 // Player duels vs fake AI (and real players who accept). Arena + countdown + rewards. Keep hooks in game/ui tiny.
 import { THREE, Builder, mat, WORLD_MAT, setOutlinesVisible, damp } from './engine.js';
+import * as HD from './hard.js';
 import { FRUITS, SWORDS, GUNS } from './data.js';
 import { STYLES } from './styles.js';
 import { makeAvatar } from './models.js';
@@ -103,8 +104,8 @@ export class Duel {
     const ax = this.arena.cx, az = this.arena.cz, fy = this.arena.floorY;
     c.root.position.set(ax, fy, az - 7); c.root.rotation.y = 0; g.scene.add(c.root); setOutlinesVisible(c.root);
     const stars = DIFF(g.save.lvl, vs.lvl).stars;
-    const hp = Math.round((150 + vs.lvl * 24) * (0.9 + stars * 0.08));
-    const dmg = Math.round(11 + vs.lvl * 1.15);
+    const hp = Math.round((150 + vs.lvl * 24) * (0.9 + stars * 0.08) * 1.35);
+    const dmg = Math.round((11 + vs.lvl * 1.15) * 1.25);
     const skills = [];
     if (fr) for (const m of fr.moves.slice(0, 4)) skills.push([KIND_MAP[m.k] || 'lunge', m.name, fr.col[0]]);
     if (L.sword && SWORDS[L.sword]) skills.push(['lunge', SWORDS[L.sword].name + ' Slash', 0xbfe0ff]);
@@ -119,14 +120,21 @@ export class Duel {
     const g = this.g, R = e.c.root, P = g.p.pos;
     tmp.set(P.x - R.position.x, 0, P.z - R.position.z); const dist = Math.max(0.001, tmp.length()); tmp.multiplyScalar(1 / dist);
     e.flash -= dt; e.hitT -= dt; e.cd -= dt; e.skillCd -= dt;
-    if (e.hitT > 0 && Math.random() < dt * 1.2) { R.position.x += -tmp.z * 3.2; R.position.z += tmp.x * 3.2; e.hitT = 0; g.fx.burst(R.position.clone().setY(R.position.y + 1), 5, 0xffffff, { speed: 4, life: 0.25 }); }
+    e.invT = (e.invT || 0) - dt; e.blockT = (e.blockT || 0) - dt; e.dodgeCd = (e.dodgeCd || 0) - dt;
+    // reads your attacks: side-dash with i-frames, or guard, then punish
+    const swing = g.t - (g.p._atkT || -9) < 0.12 || (g._lastCastT && g.t - g._lastCastT < 0.12); const read = Math.min(0.35, (e._rep || 0) * 0.08);
+    if (swing && dist < 6 && e.state !== 'skill' && e.dodgeCd <= 0 && e.invT <= 0 && e.blockT <= 0) { e.dodgeCd = 0.5; const r = Math.random();
+      if (r < 0.3 + read) { const s = Math.random() < 0.5 ? 1 : -1; R.position.x += -tmp.z * 3.4 * s - tmp.x * 0.8; R.position.z += tmp.x * 3.4 * s - tmp.z * 0.8; e.invT = 0.4; e.dodgeCd = 1.6; e.hitT = 0; g.fx.burst(R.position.clone().setY(R.position.y + 1), 10, 0xffffff, { speed: 5, life: 0.3 }); e._punish = 0.35; }
+      else if (r < 0.55 + read * 1.5) { e.blockT = 0.65; e.dodgeCd = 1.2; e._punish = 0.5; } }
+    if (e._punish > 0) { e._punish -= dt; if (e._punish <= 0 && e.state === 'chase' && dist < 3.2) { e.state = 'windup'; e.atk = 0.16; e.cd = 0; } }
+    e.anim.block = e.blockT > 0;
     if (e.state === 'skill') { e.atk -= dt; if (e.skillUpd) e.skillUpd(dt); if (e.atk <= 0) { e.state = 'chase'; e.skillUpd = null; } }
     else if (e.state === 'windup') {
       e.atk -= dt; if (e.atk <= 0) { e.state = 'chase'; e.cd = e.def.cd * (0.7 + Math.random() * 0.45); e.anim.attack = 1;
         if (dist <= e.def.reach + 0.55) { let dmg = e.def.dmg * (1 + (e.lvl - 1) * 0.08); if (IN.held && IN.held.block) dmg *= 0.22; g.hurtPlayer(Math.round(dmg), R.position, { kb: 4 }); } }
     } else {
       e.yaw = Math.atan2(tmp.x, tmp.z); let moving = 0;
-      if (e.skillCd <= 0 && dist < 20) { e.skillCd = 3.0 + Math.random() * 2.0; g.bossSkill(e, dist); this._usedMove = true; }
+      if (e.skillCd <= 0 && dist < 20) { e.skillCd = 2.3 + Math.random() * 1.4; if (this.load && FRUITS[this.load.fruit] && Math.random() < 0.75) HD.bossMove(g, e, this.load.fruit); else g.bossSkill(e, dist); this._usedMove = true; }
       else if (dist > 2.05) moving = dist > 9 ? 1.4 : 1;
       else if (e.cd <= 0) { e.state = 'windup'; e.atk = 0.4; }
       if (moving) { R.position.addScaledVector(new B.Vector3(Math.sin(e.yaw), 0, Math.cos(e.yaw)), e.def.spd * moving * dt); e.anim.phase += dt * 8; e.anim.move = 1; } else e.anim.move = 0;

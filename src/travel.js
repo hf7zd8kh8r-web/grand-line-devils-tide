@@ -42,7 +42,7 @@ export const TRAVEL_MUL = id => id === 'pika' || id === 'seiryu' ? 1.6 : Math.ma
 export const TRAVEL_CD = 5, TRAVEL_MIN_E = 30;
 export const travelOf = id => TRAVEL[id] ? { name: TRAVEL[id][0], kind: TRAVEL[id][1], col: TRAVEL[id][2], col2: TRAVEL[id][3], spd: +(BOAT_MAX * TRAVEL_MUL(id)).toFixed(1), dur: Math.round(TRAVEL[id][5] * 0.6), mount: TRAVEL[id][6] } : null;
 // no flying over a boss fight or a duel
-export function travelBlock(g) { if (g.duel && g.duel.on) return '⚔ No flying during a duel!'; const P = g.p.pos; if ((g.enemies || []).some(e => e.boss && !e.dead && e.aggro && e.c.root.position.distanceTo(P) < 50)) return '👑 No flying during a boss fight!'; return ''; }
+export function travelBlock(g) { if (g.duel && g.duel.on) return '⚔ No flying during a duel!'; const P = g.p.pos; if ((g.enemies || []).some(e => e.boss && !e.dead && ((e.aggro && e.c.root.position.distanceTo(P) < 50) || (e.s.arena && e.c.root.position.distanceTo(P) < e.s.arena.r + 8)))) return '👑 No flying during a boss fight!'; return ''; }
 const KIND_TXT = { fly: 'flies', hover: 'floats over the sea', path: 'builds a path over the sea', blink: 'flash-dashes', bounce: 'launches in arcs' };
 export const travelLabel = id => { const t = travelOf(id); return t ? `${t.name} (${KIND_TXT[t.kind]})` : ''; };
 const WL = -0.95;
