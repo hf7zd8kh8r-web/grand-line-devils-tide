@@ -58,7 +58,7 @@ export class Game {
     this.fx = new FX(this.scene, this.cam); this.nums = new DmgNums(document.getElementById('nums'));
     this.vm = new ViewModel(); this.vm.onKick = (a, f, r) => this.camPunch(a, f, r); this.tpv = new ThirdPerson(this);
     this.enemies = []; this.npcs = []; this.projs = []; this.island = null; this.cut = null; this.t = 0; this.paused = false;
-    this.p = { pos: V(), vy: 0, yaw: Math.PI, pitch: 0, ground: true, dash: 0, dashCd: 0, dashDir: V(), iframe: 0, atkCd: 0, combo: 0, comboT: 0, phase: 0, moving: false, cds: {}, special: 0, regen: 0, hurtT: 0, swim: false, stun: 0 };
+    this.p = { pos: V(), vy: 0, yaw: Math.PI, pitch: 0, ground: true, dash: 0, dashCd: 0, dashDir: V(), iframe: 0, atkCd: 0, combo: 0, comboT: 0, phase: 0, moving: false, cds: {}, special: (() => { try { return Math.min(100, +sessionStorage.getItem('gldt_sp') || 0); } catch (_) { return 0; } })(), regen: 0, hurtT: 0, swim: false, stun: 0 };
     this.shadowGeo = new B.CircleGeometry(0.5, 12); this.shadowMat = new B.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
     this.blobs = new B.InstancedMesh(this.shadowGeo, this.shadowMat, 64); this.blobs.frustumCulled = false; this.scene.add(this.blobs);
     this.bars = document.getElementById('bars'); this.fishing = new Fishing(this); this.net = new Net(this); this.hunt = new FruitHunt(this); this.trv = new Travel(this); this.roller = new Roller(this); this.duel = new Duel(this); this.anim = (c, st) => animChar(c, st, this.t);
@@ -192,14 +192,17 @@ export class Game {
     this.nums.spawn(this.chest(e, V()).add(new B.Vector3(0, 0.5, 0)), dmg, crit ? 'crit' : (o.cls || ''));
     { const hp0 = this.chest(e, V()); const el = o.el || (o.mast && o.mast.startsWith('fr:') ? elementOf(o.mast.slice(3), elementFromColor(o.col || 0xffe6a0)) : elementFromColor(o.col || 0xffe6a0)); const pw = (o.kb ?? 3) / 3.5 + (crit ? 0.6 : 0); const dirv = tmp.clone(); dirv.y = 0.3;
       if (o.remote) this.fx.burst(hp0, 6, o.col || 0xffe6a0, { speed: 5, size: 0.25, life: 0.35 }); else { this.fx.impact(hp0.addScaledVector(dirv, -0.3), el, pw, dirv); audio.sfx(o.snd || (o.mast && o.mast.startsWith('fr:') ? 'heavy' : 'punch'), { vol: Math.min(1.2, 0.6 + pw * 0.3) }); if (crit) { this.speedLines(0.7); this.camPunch(0.02, 3); } } e.kbPose = Math.min(1, 0.4 + pw * 0.4); }
-    this.save.stats.dmg += dmg; this.p.special = Math.min(100, this.p.special + dmg * 0.04);
+    this.save.stats.dmg += dmg; if (!o.remote) this.addSpecial(dmg * (e.duelFoe ? 0.05 : 0.006));
     if (o.mast) { const killing = e.hp <= 0; const amt = 1 + (killing ? (e.boss ? 40 : 5) : 0); let up = false; for (let i = 0; i < amt; i++) if (ST.addMastery(this.save, o.mast, 1)) up = true;
       if (up) { const L = ST.mastery(this.save, o.mast).lvl; this.ui.toast(`${o.mastName || 'Mastery'} up! Lv ${L}`, 'mast'); if ([10, 25, 50].includes(L) || Object.values(SP_REQ).includes(L)) { this.ui.toast(`🔓 New move unlocked at mastery ${L}!`, 'rare'); this.ui.updateMoves(); } } }
     if (o.mast && !this.cut) this.hitstop = Math.max(this.hitstop || 0, e.hp <= 0 ? 0.07 : 0.03);
     if (e.hp <= 0) { if (e.duelFoe && this.duel) { this.duel.foeDown(); return; } if (!this.cut) this.fx.shake = Math.min(1, this.fx.shake + (e.boss ? 0.6 : 0.15)); this.killEnemy(e); }
   }
+  // Special meter: fills from defeats (bosses/strong foes much more), a little from damage; not while a special is resolving; kept per session
+  addSpecial(v) { if (this.cut || this.t < (this._spNoFill || 0)) return; const p = this.p; const was = p.special; p.special = Math.min(100, p.special + v); if (was < 100 && p.special >= 100) { this.ui.toast('✦ SPECIAL READY!', 'rare'); audio.sfx('level', { vol: 0.5 }); } try { sessionStorage.setItem('gldt_sp', p.special.toFixed(1)); } catch (_) {} }
+  spentSpecial() { this.p.special = 0; this._spNoFill = this.t + 6; try { sessionStorage.setItem('gldt_sp', '0'); } catch (_) {} }
   killEnemy(e) {
-    e.dead = true; e.deadT = 0; e.hp = 0; const S = this.save; const d = e.def;
+    e.dead = true; e.deadT = 0; e.hp = 0; const S = this.save; const d = e.def; this.addSpecial(e.boss ? 60 : e.lvl >= S.lvl + 3 ? 20 : 11);
     S.stats.kills++; S.kills[e.s.type] = (S.kills[e.s.type] || 0) + 1; if (e.boss && !e.ext) S.stats.bosses++;
     const nb = this.amb && this.amb.isNight() ? 1.2 : 1; const fm = this.factionMul ? this.factionMul() : { ber: 1, xp: 1 };
     const ber = Math.round((d.ber[0] + Math.random() * (d.ber[1] - d.ber[0])) * (1 + (e.lvl - 1) * 0.08) * nb * fm.ber);
@@ -344,7 +347,8 @@ export class Game {
     p.cds[cdKey] = m.cd; p.cdMax = p.cdMax || {}; p.cdMax[cdKey] = m.cd;
     castMove(this, m); const fc = S.eq.fruit && FRUITS[S.eq.fruit]; this.net.fx('move', fc && m.src === 'fruit' ? fc.col[0] : 0xffffff, this.p.pos.clone().setY(this.p.pos.y + 1));
   }
-  specialWindow() { const p = this.p, S = this.save; if (this.enemies.some(e => e.boss && !e.dead && e.aggro && e.c.root.position.distanceTo(p.pos) < 40)) return 'boss';
+  specialWindow() { return this.p.special >= 100 ? 'meter' : null; }
+  specialWindowOld() { const p = this.p, S = this.save; if (this.enemies.some(e => e.boss && !e.dead && e.aggro && e.c.root.position.distanceTo(p.pos) < 40)) return 'boss';
     if (S.hp < this.st.maxHp * 0.35) return 'clutch'; if (this.enemies.filter(e => !e.dead && e.c.root.position.distanceTo(p.pos) < 15).length >= 3) return 'crowd'; return null; }
   special() {
     if (this.seaDrain()) { this.ui.toast('🌊 The sea drains your Devil Fruit power!', 'blk'); return; }
@@ -352,9 +356,8 @@ export class Game {
     if (!f || !f.special) { this.ui.toast('Only Legendary+ fruits have a Special', 'blk'); return; }
     if (S.slot !== 'fruit') { this.ui.toast('Switch to your fruit to use its Special', 'blk'); return; }
     { const need = SP_REQ[f.rar] || 50, have = ST.mastery(S, 'fr:' + S.eq.fruit).lvl; if (have < need) { this.ui.toast(`🔒 ${f.special.name} needs ${f.short} mastery ${need} (you have ${have})`, 'blk'); return; } }
-    if (this.p.special < 100) { this.ui.toast('Special gauge not full - deal damage to charge it!', 'blk'); return; }
-    const why = this.specialWindow(); if (!why) { this.ui.toast('Specials only work at special times: in a BOSS fight, below 35% HP, or with 3+ enemies around you', 'blk'); return; }
-    this.p.special = 0; S.stats.specials = (S.stats.specials || 0) + 1; castSpecial(this, f.special);
+    if (this.p.special < 100) { this.ui.toast(`Special meter ${Math.floor(this.p.special)}% - defeat enemies to fill it!`, 'blk'); return; }
+    this.spentSpecial(); S.stats.specials = (S.stats.specials || 0) + 1; castSpecial(this, f.special);
   }
   // ---------------- interact ----------------
   nearestNpc() { let b = null, bd = this.table ? 3.4 : 3.2; for (const n of this.npcs) { const d = n.c.root.position.distanceTo(this.p.pos); if (d < bd) { bd = d; b = n; } } for (const o of this.fakes || []) { const d = o.c.root.position.distanceTo(this.p.pos); if (d < bd) { bd = d; b = { name: o.f.name, role: 'player', fake: o.f, c: o.c, sit: o.sit }; } } return b; }

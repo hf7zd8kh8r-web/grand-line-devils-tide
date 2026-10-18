@@ -36,8 +36,13 @@ export const TRAVEL = {
   soru: ['Zeus Ride', 'fly', 0x5a6a8a, 0xffe23a, 36, 36, 'zeus'],
   zushi: ['Meteor Ride', 'fly', 0x8a3aff, 0x2a1a4a, 35, 30, 'rock'],
 };
-export const travelOf = id => TRAVEL[id] ? { name: TRAVEL[id][0], kind: TRAVEL[id][1], col: TRAVEL[id][2], col2: TRAVEL[id][3], spd: TRAVEL[id][4], dur: TRAVEL[id][5], mount: TRAVEL[id][6] } : null;
 export const BOAT_MAX = 10.5 * 1.6 * 1.3; // fastest ship at full sail (u/s), for reference/tests
+// balance: travel is only ~1.2-1.5x the best ship (Light / Azure Dragon ~1.6x), energy 60% of the table, slower refill, cooldown after landing
+export const TRAVEL_MUL = id => id === 'pika' || id === 'seiryu' ? 1.6 : Math.max(1.2, Math.min(1.5, 1.2 + (TRAVEL[id][4] - 27) / (46 - 27) * 0.3));
+export const TRAVEL_CD = 5, TRAVEL_MIN_E = 30;
+export const travelOf = id => TRAVEL[id] ? { name: TRAVEL[id][0], kind: TRAVEL[id][1], col: TRAVEL[id][2], col2: TRAVEL[id][3], spd: +(BOAT_MAX * TRAVEL_MUL(id)).toFixed(1), dur: Math.round(TRAVEL[id][5] * 0.6), mount: TRAVEL[id][6] } : null;
+// no flying over a boss fight or a duel
+export function travelBlock(g) { if (g.duel && g.duel.on) return '⚔ No flying during a duel!'; const P = g.p.pos; if ((g.enemies || []).some(e => e.boss && !e.dead && e.aggro && e.c.root.position.distanceTo(P) < 50)) return '👑 No flying during a boss fight!'; return ''; }
 const KIND_TXT = { fly: 'flies', hover: 'floats over the sea', path: 'builds a path over the sea', blink: 'flash-dashes', bounce: 'launches in arcs' };
 export const travelLabel = id => { const t = travelOf(id); return t ? `${t.name} (${KIND_TXT[t.kind]})` : ''; };
 const WL = -0.95;
@@ -82,13 +87,15 @@ export class Travel {
     if (!t) { g.ui.toast(`🕊 Your fruit has no travel move (try Flame, Phoenix, Ice, Smoke…)`, 'blk'); return false; }
     if (g.dead || g.cut || g.seat) return false;
     if (g.seaDrain && g.seaDrain()) { g.ui.toast('🌊 Powers are sealed in the sea — get to shore first!', 'blk'); return false; }
-    if (this.E < 15) { g.ui.toast('🕊 Not enough travel energy — rest a moment', 'blk'); return false; }
+    { const why = travelBlock(g); if (why) { g.ui.toast(why, 'blk'); return false; } }
+    if (g.t < (this.cdUntil || 0)) { g.ui.toast(`🕊 Travel cooling down (${Math.ceil(this.cdUntil - g.t)}s)`, 'blk'); return false; }
+    if (this.E < TRAVEL_MIN_E) { g.ui.toast('🕊 Not enough travel energy — rest a moment', 'blk'); return false; }
     if (S.tf) g.transform(0);
     this.on = true; this.id = S.eq.fruit; this.t = t; this.isl = g.island; this.hopT = 0; this.bounceT = 0; this.lastTile = null; this.alt = Math.max(p.pos.y, WL) + (t.kind === 'fly' ? 3 : t.kind === 'hover' ? 1.6 : t.kind === 'path' ? 0 : 0.5);
     p.vy = 0; p.kb = null; p.lunge = null; p.dash = 0; this.mount = makeMount(this.id); g.scene.add(this.mount); document.body.classList.add('traveling'); this.labels(true);
     g.fx.burst(p.pos.clone().setY(p.pos.y + 0.8), 18, t.col, { speed: 4, up: 3, size: 0.4, life: 0.6 });
     g.ui.toast(`🕊 ${t.name}! ${t.kind === 'fly' ? (IN_TOUCH() ? '▲/▼ to climb' : 'Space up · C down') : ''} · fly past the island edge to reach other islands`, 'item'); return true; }
-  stop(why) { const g = this.g, p = g.p; if (!this.on) return; this.on = false; document.body.classList.remove('traveling'); this.labels(false); if (this.mount) { g.scene.remove(this.mount); this.mount.traverse(o => { o.geometry && o.geometry.dispose(); o.material && o.material.dispose(); }); this.mount = null; }
+  stop(why) { const g = this.g, p = g.p; if (!this.on) return; this.on = false; this.cdUntil = g.t + TRAVEL_CD; document.body.classList.remove('traveling'); this.labels(false); if (this.mount) { g.scene.remove(this.mount); this.mount.traverse(o => { o.geometry && o.geometry.dispose(); o.material && o.material.dispose(); }); this.mount = null; }
     p.vy = Math.min(0, p.vy || 0); p.kb = null; p.lunge = null; p.dash = 0; this.pick.classList.remove('open'); this.picked = false;
     const gh = g.groundAt(p.pos.x, p.pos.z); const overSea = gh < WL - 0.3;
     if (why === 'empty') { g.ui.toast(overSea ? '🕊 Out of energy — you dropped into the sea!' : '🕊 Out of travel energy', 'blk'); if (overSea) { p.pos.y = Math.min(p.pos.y, WL + 6); clearTimeout(this._rt); this._rt = setTimeout(() => { if (!this.on && g.p.swim && g.island === this.isl) g.toShore(true); }, 1600); } } }
@@ -110,9 +117,11 @@ export class Travel {
   update(dt) { const g = this.g, S = g.save, p = g.p; if (!S) return; const t = travelOf(S.eq.fruit);
     { const bt = document.getElementById('trvBtn'); if (bt) { const show = !!t && S.slot === 'fruit'; if (bt.style.display !== (show ? '' : 'none')) bt.style.display = show ? '' : 'none'; bt.classList.toggle('on', this.on); } }
     for (const m of this.tiles) if (m.visible) { const a = g.t - m.userData.t; if (a > m.userData.life) m.visible = false; else if (a > m.userData.life - 1.5) m.material.opacity = 0.9 * (m.userData.life - a) / 1.5; }
+    if (!this._guard) { this._guard = 1; for (const k of ['attack', 'move', 'special']) { const f = g[k].bind(g); g[k] = (...a) => { if (this.on) { if (g.t - (this._gT || -9) > 1.5) { this._gT = g.t; g.ui.toast('🕊 Land first to attack (press 🕊 / B)', 'blk'); } return; } return f(...a); }; } }
     if (this.on && (g.island !== this.isl || g.dead || g.cut || S.eq.fruit !== this.id || S.slot !== 'fruit')) this.stop('off');
+    if (this.on) { const why = travelBlock(g); if (why) { g.ui.toast(why, 'blk'); this.stop('off'); } }
     if (this.on) { this.E -= dt * 100 / this.t.dur; if (this.E <= 0) { this.E = 0; this.stop('empty'); } }
-    else this.E = Math.min(100, this.E + dt * (p.ground ? 14 : 6));
+    else this.E = Math.min(100, this.E + dt * (p.ground ? 6 : 2.5));
     this.bar.classList.toggle('show', !!t && (this.on || this.E < 99.5)); this.bar.classList.toggle('low', this.E < 25);
     if (t) { this.bar.firstChild.textContent = `🕊 ${t.name}`; this.bar.lastChild.firstChild.style.width = this.E.toFixed(1) + '%'; }
     if (!this.on) return;
@@ -125,7 +134,7 @@ export class Travel {
     this.pick.innerHTML = `<h3>🕊 ${this.t.name}</h3><p>Fly on to another island — much faster than sailing!</p>${rows || '<p>No other islands to fly to yet</p>'}<button data-fly="x" class="cancel">Keep exploring</button>`; this.pick.classList.add('open'); }
   // cross to another island: same arrival as a voyage, but a short flight instead of a sail
   flyTo(id) { const g = this.g, S = g.save, I = islandById(id); if (!I || !BUILDERS[id]) { g.ui.toast('Coming in a future update', 'blk'); return false; } const gate = flyGate(S, I); if (gate) { g.ui.toast(gate, 'blk'); return false; }
-    const t = travelOf(S.eq.fruit); if (!t) { g.ui.toast('Your fruit has no travel move', 'blk'); return false; } if (g.island && g.island.id === id) return false;
+    const t = travelOf(S.eq.fruit); if (!t) { g.ui.toast('Your fruit has no travel move', 'blk'); return false; } if (g.island && g.island.id === id) return false; { const why = travelBlock(g); if (why) { g.ui.toast(why, 'blk'); return false; } }
     const from = g.island.id, A = islandById(from); const md = A ? Math.hypot(A.x - I.x, A.y - I.y) : 20; const sec = Math.max(1.6, Math.min(5, (170 + md * 4) / t.spd * 0.35)); // a ship takes (170+md*4)/~11 s
     this.stop('off'); this.E = Math.max(10, this.E - 25); const ov = document.createElement('div'); ov.id = 'tvFly'; ov.style.setProperty('--c', '#' + t.col.toString(16).padStart(6, '0')); ov.innerHTML = `<div><b>🕊 ${t.name}</b><span>Flying to ${I.name}…</span><i><u style="animation-duration:${sec}s"></u></i></div>`; document.body.appendChild(ov);
     this.flying = id; S.stats.flights = (S.stats.flights || 0) + 1; return new Promise(res => setTimeout(() => { ov.remove(); this.flying = null; g.loadIsland(id, true); g.ui.toast(`🕊 Landed on ${I.name} by ${t.name}`, 'quest'); res(true); }, sec * 1000)); }

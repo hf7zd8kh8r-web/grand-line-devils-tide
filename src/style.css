@@ -502,3 +502,12 @@ span[style*="--c:#ff3df7"]{background:none;-webkit-text-fill-color:initial;color
 @keyframes jpGlint{0%,85%,100%{text-shadow:0 2px 0 #3a0000,0 0 10px rgba(255,80,40,.7)}92%{text-shadow:0 2px 0 #3a0000,0 0 18px #fff,0 0 30px #ffd04a}}
 #cover .title{isolation:isolate}
 @media (orientation:portrait){#cover .t3{font-size:clamp(11px,3.4vw,20px);margin-top:8px}}
+/* Special meter above the hotbar */
+#spBar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 52px);width:min(240px,46vw);height:12px;border-radius:7px;background:rgba(0,0,0,.55);border:1.5px solid rgba(255,232,90,.55);overflow:hidden;z-index:5;pointer-events:none}
+#spBar i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#ff8a1a,#ffd23a,#fff6a0);transition:width .25s}
+#spBar b{position:absolute;inset:0;font:900 8.5px/12px sans-serif;letter-spacing:.12em;text-align:center;color:#fff;text-shadow:0 1px 2px #000}
+#spBar.ready{border-color:#fff3a0;box-shadow:0 0 10px #ffd23a,0 0 22px rgba(255,160,40,.8);animation:spReady 1s ease-in-out infinite}
+#spBar.ready i{background:linear-gradient(90deg,#ffd23a,#fff,#ffd23a);background-size:200% 100%;animation:spShine 1.2s linear infinite}
+@keyframes spReady{50%{box-shadow:0 0 16px #fff3a0,0 0 34px #ff9a1a}}@keyframes spShine{to{background-position:-200% 0}}
+#hud.touch #spBar{bottom:calc(max(6px,env(safe-area-inset-bottom)) + 50px)}
+body.cine #spBar{display:none!important}

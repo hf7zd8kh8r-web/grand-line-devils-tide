@@ -105,6 +105,7 @@ export class UI {
     const g = this.g, p = g.p; this.updateHud();
     document.querySelectorAll('#moves .mv[data-id]').forEach(el => { const id = el.dataset.id; const c = p.cds[id] || 0, mx = (p.cdMax && p.cdMax[id]) || 1; el.querySelector('.cd').style.height = (c / mx * 100) + '%'; });
     const sp = document.querySelector('#moves .spg'); if (sp) { sp.style.width = p.special + '%'; sp.parentElement.classList.toggle('ready', p.special >= 100 && !!this.g.specialWindow()); }
+    { let bar = this._spBar; if (!bar) { bar = this._spBar = document.createElement('div'); bar.id = 'spBar'; bar.innerHTML = '<i></i><b>SPECIAL</b>'; ($('#hud') || document.body).appendChild(bar); } const f0 = this.g.save.eq.fruit && FRUITS[this.g.save.eq.fruit]; const on = !!(f0 && f0.special); if (bar._on !== on) { bar._on = on; bar.style.display = on ? '' : 'none'; } if (on) { const k = Math.floor(p.special); if (bar._k !== k) { bar._k = k; bar.firstChild.style.width = k + '%'; const rd = k >= 100; bar.classList.toggle('ready', rd); bar.lastChild.textContent = rd ? '✦ SPECIAL READY ✦' : `SPECIAL ${k}%`; } } }
     $('#spBtn').classList.toggle('ready', p.special >= 100 && !!this.g.specialWindow()); $('#spBtn').style.setProperty('--k', p.special + '%');
     $('#vign').style.opacity = Math.max(0, p.hurtT * 2) + (g.save.hp / g.st.maxHp < 0.3 ? 0.35 : 0);
     if (this.bossShown && this.bossE) { const e = this.bossE; $('#bossFill').style.width = (e.hp / e.max * 100) + '%'; }
