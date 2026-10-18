@@ -4,6 +4,7 @@ import { makeMount, animMount, emitTrail } from './travel.js';
 import { THREE, setOutlinesVisible } from './engine.js';
 import { makeChar, animChar, makeAvatar } from './models.js';
 import { visCos } from './style.js';
+import { conqFx } from './bodyfx.js';
 import { STYLES } from './styles.js';
 import { islandById, FRUITS } from './data.js';
 import * as ST from './state.js';
@@ -60,7 +61,7 @@ export class Net {
     else if (m.t === 'duel') { if (this.g.duel) this.g.duel.onNet(m); }
     else if (m.t === 'tr') this.onTrade(m);
     else if (m.t && m.t.startsWith('sf')) g.hunt && g.hunt.onNet(m);
-    else if (m.t === 'fx') { const p = this.peers.get(m.id); if (!p || !p.av) return; const at = new B.Vector3(...m.p); if (m.k === 'atk') { p.atkT = 1; const st = STYLES[p.st]; if (st && st.id !== 'brawler' && (!p.w || p.w === 'fist')) { const R = p.av.root; const hp = R.position.clone().add(new B.Vector3(Math.sin(R.rotation.y) * 0.7, p.av.height * 0.62, Math.cos(R.rotation.y) * 0.7)); g.fx.burst(hp, 8, st.col, { speed: 3, size: 0.3, life: 0.3, grav: 0 }); } } else if (typeof m.k === 'string' && m.k.startsWith('mw:')) { if (p.island === undefined || p.island === g.island.id) remoteWeapon(g, p, m.k, at); } else if (typeof m.k === 'string' && m.k.startsWith('aw:')) { if (p.island === undefined || p.island === g.island.id) remoteAwake(g, p, m.k, at); } else if (typeof m.k === 'string' && m.k.startsWith('mv:')) { if (p.island === undefined || p.island === g.island.id) remoteMove(g, p, m.k, at); } else { g.fx.burst(at, 20, m.c, { speed: 6, size: 0.5, life: 0.5 }); g.fx.ring(at, m.c, 4, 0.4); p.atkT = 1; } }
+    else if (m.t === 'fx') { const p = this.peers.get(m.id); if (!p || !p.av) return; const at = new B.Vector3(...m.p); if (m.k === 'conq') { conqFx(g, at, 15); return; } if (m.k === 'atk') { p.atkT = 1; const st = STYLES[p.st]; if (st && st.id !== 'brawler' && (!p.w || p.w === 'fist')) { const R = p.av.root; const hp = R.position.clone().add(new B.Vector3(Math.sin(R.rotation.y) * 0.7, p.av.height * 0.62, Math.cos(R.rotation.y) * 0.7)); g.fx.burst(hp, 8, st.col, { speed: 3, size: 0.3, life: 0.3, grav: 0 }); } } else if (typeof m.k === 'string' && m.k.startsWith('mw:')) { if (p.island === undefined || p.island === g.island.id) remoteWeapon(g, p, m.k, at); } else if (typeof m.k === 'string' && m.k.startsWith('aw:')) { if (p.island === undefined || p.island === g.island.id) remoteAwake(g, p, m.k, at); } else if (typeof m.k === 'string' && m.k.startsWith('mv:')) { if (p.island === undefined || p.island === g.island.id) remoteMove(g, p, m.k, at); } else { g.fx.burst(at, 20, m.c, { speed: 6, size: 0.5, life: 0.5 }); g.fx.ring(at, m.c, 4, 0.4); p.atkT = 1; } }
   }
   dropAvatar(p) { if (p.av) { p.av.root.removeFromParent(); p.av = null; } if (p.tag) { p.tag.remove(); p.tag = null; } if (p.mount) { p.mount.removeFromParent(); p.mount = null; p.tvK = 0; } }
   hit(e, dmg) { if (!this.ws || e.ext || e.temp) return; const i = this.g.enemies.indexOf(e); if (i >= 0) this.send({ t: 'hit', i: this.g.island.id, e: i, d: Math.round(dmg) }); }

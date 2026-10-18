@@ -4,6 +4,7 @@ import { FRUITS, SWORDS, ACCESSORIES, RARITY, RCOL, islandById, ISLANDS } from '
 import { makeChar, makeAvatar } from './models.js';
 import { randomLook } from './style.js';
 import * as ST from './state.js';
+import { conqFx } from './bodyfx.js';
 const B = THREE; const V = () => new B.Vector3();
 export const HAKI = { buso: 15, ken: 30, conq: 60 };
 // Haki skill tree: 3 branches x 4 tiers. Points: 1 per 10 levels + 1 per different boss defeated.
@@ -26,8 +27,7 @@ export function conqueror(g) {
   const S = g.save, p = g.p; if (S.lvl < HAKI.conq) { g.ui.toast(`Conqueror's Haki awakens at level ${HAKI.conq}`, 'blk'); return; }
   if ((p.cds.conq || 0) > 0) { g.ui.toast(`Conqueror's Haki recharging (${Math.ceil(p.cds.conq)}s)`, 'blk'); return; }
   p.cds.conq = 40; p.cdMax = p.cdMax || {}; p.cdMax.conq = 40; g.ui.moveName("Conqueror's Haki", 0xff3a5a);
-  const c = p.pos.clone().setY(p.pos.y + 1); g.fx.ring(c, 0xff2a4a, 16, 0.8, true); g.fx.ring(c, 0x1a0a1a, 12, 0.7, true); g.fx.shake = 0.9;
-  for (let i = 0; i < 10; i++) { const a = Math.random() * 6.28; g.fx.beam(c, c.clone().add(new B.Vector3(Math.cos(a) * 9, (Math.random() - 0.3) * 5, Math.sin(a) * 9)), i % 2 ? 0xff2a4a : 0x2a0a2a, 0.15, 0.4); }
+  const c = p.pos.clone().setY(p.pos.y + 1); conqFx(g, c, hk(S, 'conq', 2) ? 22 : 15); g.net && g.net.send && g.net.send({ t: 'fx', k: 'conq', p: [c.x, c.y, c.z] }); // black lightning + red outlines + shockwave (bodyfx.js)
   const dom = hk(S, 'conq', 2); for (const e of g.enemiesInRadius(p.pos, dom ? 22 : 15)) { const weak = !e.boss && e.lvl < S.lvl; g.damageEnemy(e, weak ? e.max * 0.6 : e.max * 0.04, { kb: 6, stun: weak ? 3 : (dom ? 2 : 1), col: 0xff2a4a }); if (dom && e.boss) { e.state = 'hit'; e.hitT = 2; } if (weak && !e.dead) { e.state = 'hit'; e.hitT = 3; } }
 }
 // ---------- fishing ----------
