@@ -6,6 +6,7 @@ import { AWK, awakeOn } from './awaken.js';
 import * as ST from './state.js';
 import { HAKI_COLORS, hakiColorOf, fpHaki, syncAvatar, syncFpAura, updateFx, conqFx, AURA_FAMILY, _fxCount } from './bodyfx.js';
 import { makeAvatar } from './models.js';
+import { installSecrets, tickSecrets } from './secrets.js';
 const fmt = n => Math.round(n).toLocaleString('en-US');
 const CSS = `
 #conqFlash{position:fixed;inset:0;pointer-events:none;z-index:40;opacity:0;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 30%,rgba(60,0,10,.55) 70%,rgba(0,0,0,.85) 100%)}
@@ -26,10 +27,11 @@ export function installExtras(g) { if (g._extras) return; g._extras = true; cons
   // Armament colour shop in Bag → Haki
   const ih = ui.invHtml.bind(ui); ui.invHtml = (tab) => { let h = ih(tab); if ((tab || ui.invTab) === 'haki') h += hakiShopHtml(g.save); return h; };
   const act = ui.act.bind(ui); ui.act = (cmd, btn) => { const [a, b] = String(cmd).split(':'); if (a === 'hkc') return hakiColorAct(g, b); return act(cmd, btn); };
+  installSecrets(g); // secret islands' clues, fake-wall hidden shops, secret quests, index hints
   // per-frame: own fx, first-person coat + fist aura, third-person body / preview / crewmates
   let visKey = JSON.stringify(visCos(g.save)), visT = 0;
   const up = g.update.bind(g); g.update = (dt) => { up(dt); try { tick(g, dt); } catch (e) { if (!g._exErr) { g._exErr = 1; console.warn('extras', e); } } };
-  function tick(g, dt) { const S = g.save; if (!S) return; updateFx(dt); fpHaki(g);
+  function tick(g, dt) { const S = g.save; if (!S) return; updateFx(dt); fpHaki(g); try { tickSecrets(g, dt); } catch (e) { if (!tick._e) { tick._e = 1; console.warn(e); } }
     const aw = awakeOn(S) ? S.eq.fruit : ''; syncFpAura(g, aw, AWK);
     const vis = visCos(S); if (g.tpv && g.tpv.body) syncAvatar(g.tpv.body, vis, g.t, AWK); if (g.preview) syncAvatar(g.preview, vis, g.t, AWK);
     if (g.net && g.net.peers) for (const p of g.net.peers.values()) if (p.av) syncAvatar(p.av, p.cos, g.t, AWK);

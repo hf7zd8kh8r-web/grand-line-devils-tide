@@ -189,7 +189,7 @@ export class UI {
   styleHtml(tab = 'look') { const S = this.g.save; S.cos = S.cos || []; S.cosEq = S.cosEq || {};
     const tabs = `<div class="tabs"><button data-do="stab:look" class="${tab === 'look' ? 'on' : ''}">✂ Appearance</button><button data-do="stab:shop" class="${tab === 'shop' ? 'on' : ''}">🛍 Cosmetics Shop</button><button data-do="stab:mine" class="${tab === 'mine' ? 'on' : ''}">🎒 My Cosmetics (${S.cos.length})</button></div>`;
     if (tab === 'look') return `<h2>Wardrobe</h2>${tabs}<p class="dim">Restyle any time — free. Your crewmates see your new look.</p><div class="lrows" id="sRows">${rowsHtml(S.look)}</div>`;
-    const ids = Object.keys(COSMETICS).filter(id => tab === 'shop' ? true : S.cos.includes(id));
+    const ids = Object.keys(COSMETICS).filter(id => tab === 'shop' ? !COSMETICS[id].secret : S.cos.includes(id));
     const card = id => { const c = COSMETICS[id]; const own = S.cos.includes(id), on = S.cosEq[c.slot] === id;
       return `<div class="cos ${on ? 'on' : ''}"><div class="ce">${c.icon}</div><b>${c.name}</b><small>${c.slot}</small>${own ? `<button data-do="cosEq:${id}">${on ? 'Unequip' : 'Wear'}</button>` : `<button data-do="cosBuy:${id}" class="${S.ber < c.price ? 'poor' : ''}">฿${fmt(c.price)}</button>`}</div>`; };
     return `<h2>${tab === 'shop' ? 'Cosmetics Shop' : 'My Cosmetics'}</h2>${tabs}<p class="dim">Cosmetics are looks only (no stats). One per slot: hat · back · face · neck · extra. You have ฿${fmt(S.ber)}.</p><div class="cosgrid">${ids.length ? ids.map(card).join('') : '<p class="dim">Nothing yet — check the shop!</p>'}</div>`; }

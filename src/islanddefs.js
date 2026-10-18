@@ -1,3 +1,4 @@
+import { addSecretIslands } from './secretdefs.js';
 // Data-driven islands (generated in 3D by genIsland). Enemy/boss looks are overrides on the base character.
 // skills: lunge | fan | slam | spin | beam | rain | blink   (each with a canon-flavoured name and colour)
 const E = (name, look, hp, dmg, o = {}) => ({ name, look, hp, dmg, spd: o.spd || 2.8, reach: o.reach || 2.1, cd: o.cd || 1.6, xp: o.xp || Math.round(hp * 0.35), ber: o.ber || [Math.round(hp * 0.25), Math.round(hp * 0.45)], ranged: o.ranged, drop: o.drop, scale: o.scale });
@@ -107,3 +108,4 @@ for (const [id, t] of Object.entries(TRAITS)) if (IDEFS[id]) { const L = IDEFS[i
 // minions: give each a hairstyle/hat variety so crowds don't look cloned
 const MH = ['short', 'spiky', 'buzz', 'messy', 'slick']; let mi = 0;
 for (const d of Object.values(IDEFS)) for (const e of [d.e1, d.e2]) { if (!e) continue; const L = e.look; if (!L.hairS && !L.bald) L.hairS = MH[mi++ % MH.length]; if (!L.mouth) L.mouth = ['line', 'frown', 'grin'][mi % 3]; if (!L.brow) L.brow = 'angry'; }
+addSecretIslands(IDEFS, E); // 7 hidden islands (secretdefs.js)

@@ -100,6 +100,6 @@ export function randomLook(r, faction) {
   if (r() < 0.8) { const pool = STYLE_PRESETS.filter(p => !p.marine || faction === 'Marine'); const P = pick(pool); const L = { skin: Math.floor(r() * SKINS.length), hairS: P.hairS || pick(HAIRS.filter(h => h !== 'bald')), hairC: P.hairC ?? Math.floor(r() * HAIRC.length), eye: Math.floor(r() * EYEC.length), mouth: P.mouth || pick(MOUTHS), brow: P.brow || pick(BROWS)[0], outfit: P.outfit, top: (P.top + (r() < 0.3 ? Math.floor(r() * 3) : 0)) % CLOTH.length, pants: P.pants, hat: 'none' };
     const cos = {}; for (const [slot, id] of Object.entries(P.cos)) if (id !== 'none' && COSMETICS[id]) cos[slot] = id; return { look: L, cos }; }
   const L = { skin: Math.floor(r() * SKINS.length), hairS: pick(HAIRS.filter(h => h !== 'bald' || r() < 0.3)), hairC: Math.floor(r() * HAIRC.length), eye: Math.floor(r() * EYEC.length), mouth: pick(MOUTHS), brow: pick(BROWS)[0], outfit: pick(OUTFITS)[0], top: Math.floor(r() * CLOTH.length), pants: Math.floor(r() * CLOTH.length), hat: pick(['none', 'none', 'bandana', 'beanie']) };
-  const cos = {}; const ids = Object.keys(COSMETICS); for (let i = 0; i < 2; i++) if (r() < 0.6) { const id = pick(ids); cos[COSMETICS[id].slot] = id; }
+  const cos = {}; const ids = Object.keys(COSMETICS).filter(id => !COSMETICS[id].secret); for (let i = 0; i < 2; i++) if (r() < 0.6) { const id = pick(ids); cos[COSMETICS[id].slot] = id; }
   return { look: L, cos };
 }
