@@ -98,7 +98,7 @@ export class Game {
   refreshEquip() {
     { const st = styleOf(this.save); this.vm.setStyle && this.vm.setStyle(st.col, st.id !== 'brawler'); }
     const S = this.save; this.st = ST.stats(S);
-    this.vm.setSword(S.eq.sword ? { ...SWORDS[S.eq.sword], _id: S.eq.sword, _t2: !!(S.t2 || {})[S.eq.sword] } : null);
+    this.vm.setSword(S.eq.sword ? ((S.t2 || {})[S.eq.sword] ? { ...SWORDS[S.eq.sword], col: 0x1a1a22 } : SWORDS[S.eq.sword]) : null);
     if (S.slot === 'sword' && !S.eq.sword) S.slot = 'fist'; if (S.slot === 'gun' && !S.eq.gun) S.slot = 'fist'; if (S.slot === 'fruit' && !S.eq.fruit) S.slot = 'fist';
     this.vm.setMode(S.slot === 'fruit' ? 'fist' : S.slot);
     const f = S.eq.fruit && FRUITS[S.eq.fruit]; this.vm.tint(f && S.slot === 'fruit' ? f.col[0] : 0, S.slot === 'fruit' ? 0.2 : 0); this.vm.aura(f && S.slot === 'fruit' ? (f.glow || f.col[0]) : 0);
