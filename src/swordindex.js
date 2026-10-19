@@ -1,5 +1,6 @@
 // Sword Index: where/how to get all 55 swords (+ Tier II forms), secret-quest riddles + reveal hints + progress,
 // tavern rumors and NPC hints. Pure data + HTML helpers (UI in ui.js).
+import { swordIcon } from './swordlook.js';
 import { SWORDS, SWORD_LIST, ISLANDS, SEAS, RARITY, RCOL, ENEMIES, QUESTS, T2, islandById } from './data.js';
 import { SECRET_Q } from './islands.js';
 // boss-only drops (were price 0 and showed up free in shops)
@@ -52,7 +53,7 @@ export function swordIndexHtml(S, sea, moveList) { sea = +(sea || 1); const owne
     else body += `<small>${s.how}</small>${s.extra ? `<small class="dim">${s.extra}</small>` : ''}`;
     if (T2[id]) body += `<small style="color:#ffd04a">✨ Tier II: ${T2[id]} (Mastery 60 + boss trophy + ฿${Math.round(d.dmg * 2000).toLocaleString()} at a weapon dealer)${(S.t2 || {})[id] ? ' ✔' : ''}</small>`;
     body += moveList(S, 'sword', id);
-    return `<div class="dexc swc ${own ? 'own' : ''}" style="--rc:${RCOL[r]}"><div class="ic ic-sword" style="--rc:${RCOL[r]}"></div><div><b>${d.name}${own ? ' <i class="gold">✔ Owned</i>' : ''}</b>${body}</div></div>`; };
+    return `<div class="dexc swc ${own ? 'own' : ''}" style="--rc:${RCOL[r]}"><div class="ic ic-sword img" style="--rc:${RCOL[r]};background:url(${swordIcon(id, !!(S.t2 || {})[id])}) center/contain no-repeat,var(--rc)"></div><div><b>${d.name}${own ? ' <i class="gold">✔ Owned</i>' : ''}</b>${body}</div></div>`; };
   const groups = TYPES.map(([t, lab]) => { const L = t === 't2' ? all.filter(x => T2[x.id] && inSea(x)) : all.filter(x => x.s.type === t && inSea(x)); if (!L.length) return '';
     L.sort((a, b) => a.d.minLvl - b.d.minLvl); return `<h3>${lab} <small class="dim">(${L.length})</small></h3><div class="dexl">${t === 't2' ? L.map(x => card(x)).join('') : L.map(card).join('')}</div>`; }).join('');
   const nOwn = SW_IDS.filter(id => owned.has(id)).length;

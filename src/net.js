@@ -4,7 +4,15 @@ import { makeMount, animMount, emitTrail } from './travel.js';
 // Co-op multiplayer client (WebSocket relay in server/server.js)
 import { THREE, setOutlinesVisible } from './engine.js';
 import { makeChar, animChar, makeAvatar } from './models.js';
-import { visCos } from './style.js';
+import { visCos, VIS_HOOKS } from './style.js';
+import { buildSword, buildSheath, lookOf, SANBON } from './swordlook.js';
+import { toonMat } from './engine.js';
+// remote players see your equipped sword's own model (in hand when your sword slot is active, sheathed at the hip otherwise)
+VIS_HOOKS.push((S, o) => { const id = S.eq && S.eq.sword; if (id && lookOf(id)) { o.sw = id; if ((S.t2 || {})[id]) o.s2 = 1; } });
+let RSM = null; const rsMat = () => RSM || (RSM = toonMat());
+function armPeer(p) { const id = p.cos && p.cos.sw; if (!id || !lookOf(id) || !p.av) return; const t2 = !!p.cos.s2, c = p.av, hand = c.bones.foreR, fy = hand.position.y;
+  const w = buildSword(id === 'sanbon' ? SANBON[0] : id, id === 'sanbon' ? false : t2, rsMat()); if (w) { const h = new THREE.Group(); h.position.set(0, fy, 0.04); h.rotation.set(Math.PI / 2, 0, 0); w.rotation.set(-Math.PI / 2, Math.PI, 0); h.add(w); hand.add(h); p.swH = h; }
+  const sid = id === 'sanbon' ? SANBON[0] : id; const e = buildSheath(sid, t2, rsMat(), false), f = buildSheath(sid, t2, rsMat(), true); for (const x of [e, f]) if (x) { x.position.set(0.21, -0.02, 0.1); x.rotation.set(-0.55, 0.12, Math.PI); c.bones.hips.add(x); } p.swE = e; p.swF = f; setOutlinesVisible(c.root); }
 import { conqFx } from './bodyfx.js';
 import { STYLES } from './styles.js';
 import { islandById, FRUITS } from './data.js';
@@ -64,7 +72,7 @@ export class Net {
     else if (m.t && m.t.startsWith('sf')) g.hunt && g.hunt.onNet(m);
     else if (m.t === 'fx') { const p = this.peers.get(m.id); if (!p || !p.av) return; const at = new B.Vector3(...m.p); if (m.k === 'conq') { conqFx(g, at, 15); return; } if (m.k === 'atk') { p.atkT = 1; const st = STYLES[p.st]; if (st && st.id !== 'brawler' && (!p.w || p.w === 'fist')) { const R = p.av.root; const hp = R.position.clone().add(new B.Vector3(Math.sin(R.rotation.y) * 0.7, p.av.height * 0.62, Math.cos(R.rotation.y) * 0.7)); g.fx.burst(hp, 8, st.col, { speed: 3, size: 0.3, life: 0.3, grav: 0 }); } } else if (typeof m.k === 'string' && m.k.startsWith('mw:')) { if (p.island === undefined || p.island === g.island.id) remoteWeapon(g, p, m.k, at); } else if (typeof m.k === 'string' && m.k.startsWith('aw:')) { if (p.island === undefined || p.island === g.island.id) remoteAwake(g, p, m.k, at); } else if (typeof m.k === 'string' && m.k.startsWith('mv:')) { if (p.island === undefined || p.island === g.island.id) remoteMove(g, p, m.k, at); } else { g.fx.burst(at, 20, m.c, { speed: 6, size: 0.5, life: 0.5 }); g.fx.ring(at, m.c, 4, 0.4); p.atkT = 1; } }
   }
-  dropAvatar(p) { if (p.av) { p.av.root.removeFromParent(); p.av = null; } if (p.tag) { p.tag.remove(); p.tag = null; } if (p.mount) { p.mount.removeFromParent(); p.mount = null; p.tvK = 0; } }
+  dropAvatar(p) { if (p.av) { p.av.root.removeFromParent(); p.av = null; p.swH = p.swE = p.swF = null; } if (p.tag) { p.tag.remove(); p.tag = null; } if (p.mount) { p.mount.removeFromParent(); p.mount = null; p.tvK = 0; } }
   hit(e, dmg) { if (!this.ws || e.ext || e.temp) return; const i = this.g.enemies.indexOf(e); if (i >= 0) this.send({ t: 'hit', i: this.g.island.id, e: i, d: Math.round(dmg) }); }
   fx(k, c, pos) { this.send({ t: 'fx', k, c, p: pos ? [pos.x, pos.y, pos.z] : [0, 0, 0] }); }
   lookChanged() { const S = this.g.save; this.send({ t: 'look', look: S.look, cos: visCos(S) }); }
@@ -109,7 +117,8 @@ export class Net {
     for (const p of this.peers.values()) {
       const here = p.island === g.island.id && p.seen;
       if (!here) { this.dropAvatar(p); continue; }
-      if (!p.av) { p.av = makeAvatar(p.faction, p.race, p.look, p.cos); g.scene.add(p.av.root); setOutlinesVisible(p.av.root); p.anim = { phase: 0 }; p.tag = document.createElement('div'); p.tag.className = 'ebar ptag'; p.tag.innerHTML = '<span></span><i><b></b></i>'; g.bars.appendChild(p.tag); }
+      if (!p.av) { p.av = makeAvatar(p.faction, p.race, p.look, p.cos); g.scene.add(p.av.root); setOutlinesVisible(p.av.root); p.anim = { phase: 0 }; p.tag = document.createElement('div'); p.tag.className = 'ebar ptag'; p.tag.innerHTML = '<span></span><i><b></b></i>'; g.bars.appendChild(p.tag); try { armPeer(p); } catch (err) { console.warn('peer sword', err); } }
+      { const drawn = p.w === 'sword'; if (p.swH) p.swH.visible = drawn; if (p.swE) p.swE.visible = drawn; if (p.swF) p.swF.visible = !drawn || !p.swH; }
       const R = p.av.root; const before = R.position.clone(); R.position.lerp(p.tgt, Math.min(1, dt * 10)); R.rotation.y = p.yaw + Math.PI;
       const sp = before.distanceTo(R.position) / Math.max(dt, 1e-3); p.anim.move = Math.min(1, sp / 4); p.anim.phase += dt * sp * 1.8; p.atkT = Math.max(0, (p.atkT || 0) - dt * 3); p.anim.attack = p.atkT;
       const swim = p.m & 1, drain = p.m & 2, sit = p.m & 4; { if (p.baseS == null) p.baseS = R.scale.x; const ts = p.m & 16 ? 1.45 : p.m & 8 ? 1.12 : 1; R.scale.setScalar(p.baseS * ts); } if (swim) R.position.y = p.tgt.y - 0.9 + Math.sin(g.t * 2 + p.id) * 0.05; p.anim.sit = sit ? 1 : 0;

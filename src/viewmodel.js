@@ -1,4 +1,5 @@
 import { THREE, Builder, mat, toonMat } from './engine.js';
+import { buildSword, lookOf, auraOf, SANBON, tickSwordFx } from './swordlook.js';
 import { SWINGS, COMBO, swingPose, bladeQuat, Crescent, Sparks, placeArm, POSES, REST, CHARGE, eOut3, sstep, c01 } from './vmanim.js';
 const B = THREE;
 const box = (w, h, d) => new B.BoxGeometry(w, h, d);
@@ -73,6 +74,11 @@ export class ViewModel {
     const n = v.clone().project(this.cam); const dir = new B.Vector3(n.x, n.y, 0.5).unproject(mainCam).sub(mainCam.position).normalize(); return out.copy(mainCam.position).addScaledVector(dir, d * 1.0); }
   setSword(def) {
     this.sword.clear(); if (!def) return;
+    if (def._id && lookOf(def._id)) { // distinct procedural look per sword (swordlook.js); santoryu = Shusui / Sandai / Wado
+      const san = def.santoryu, au = san ? auraOf(def._id, def._t2) : null; const g = san ? buildSword(SANBON[0], false, this.mat, 'r', au) : buildSword(def._id, def._t2, this.mat);
+      this.sword.add(g); this.swordLen = g.userData.len; if (this.mouth) { this.mouth.removeFromParent(); this.mouth = null; } if (this.swordL) { this.swordL.removeFromParent(); this.swordL = null; }
+      if (san) { this.swordL = new B.Group(); this.swordL.add(buildSword(SANBON[1], false, this.mat, 'l', au)); this.swordL.rotation.x = Math.PI / 2; this.swPL.add(this.swordL); this.mouth = new B.Group(); this.mouth.add(buildSword(SANBON[2], false, this.mat, 'm', au)); this.mouth.rotation.x = Math.PI / 2; this.mouth.scale.setScalar(0.92); this.swPM.add(this.mouth); }
+      this.swordDef = def; return; }
     const b = new Builder(); const L = def.len || 1; const o = { ot: 0.005 }; const RX = Math.PI / 2;
     // wrapped handle (diamond ito pattern), tsuba, habaki, curved blade with hamon edge
     b.add(new B.CylinderGeometry(0.022, 0.024, 0.22, 8), def.grip || 0x1a1a2a, mat(0, 0, 0.04, RX), o);
@@ -168,7 +174,7 @@ export class ViewModel {
   blockHit() { this.bhit = 1; }
   guardBreak() { this.gbreak = 1; }
   update(dt, st) {
-    this.t += dt; if (!this.armR) return; this._aura(dt);
+    this.t += dt; if (!this.armR) return; this._aura(dt); tickSwordFx(this.t);
     const bob = st.moving ? Math.sin(st.phase) * 0.018 : Math.sin(this.t * 1.6) * 0.005; const bobx = st.moving ? Math.cos(st.phase * 0.5) * 0.015 : 0;
     this.kick = Math.max(0, (this.kick || 0) - dt * 3.4); if (this.leg) { const k = this.kick, e = k > 0.55 ? (1 - k) / 0.45 : k / 0.55; this.leg.visible = k > 0 && this.mode === 'fist'; this.leg.position.set(0.12, -0.95 + e * 0.62, -0.55 - e * 0.45); this.leg.rotation.set(-0.4 - e * 1.1, 0, 0.25 - e * 0.2); }
     if (this.fistGlowR) for (const [gl, A] of [[this.fistGlowR, this.armR], [this.fistGlowL, this.armL]]) { const on = this.styleCol != null && this.mode === 'fist'; gl.visible = on; if (on) { gl.material.color.setHex(this.styleCol); gl.material.opacity = 0.22 + this.punch * 0.45 + Math.sin(this.t * 6) * 0.06; gl.scale.setScalar(1 + this.punch * 0.4); } }

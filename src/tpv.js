@@ -1,4 +1,5 @@
 // Third-person (over-the-shoulder) camera + full player body with held weapon and fruit glow.
+import { buildSheath, SANBON } from './swordlook.js';
 import { THREE as B, setOutlinesVisible } from './engine.js';
 import { makeAvatar, animChar } from './models.js';
 import { FRUITS } from './data.js';
@@ -13,6 +14,9 @@ export class ThirdPerson {
     const c = makeAvatar(S.faction, S.race, S.look, visCos(S)); this.g.scene.add(c.root); setOutlinesVisible(c.root); this.body = c; const vm = this.g.vm; const hand = c.bones.foreR, handL = c.bones.foreL; const fy = hand.position.y;
     const grab = (src, bone, ry) => { if (!src || !src.children.length) return; const w = src.clone(true); w.visible = true; w.traverse(o => { o.visible = true; if (o.geometry) o.userData.shared = true; }); const h = new B.Group(); h.position.set(0, fy * 1.0, 0.04); h.rotation.set(Math.PI / 2, ry, 0); h.add(w); w.rotation.set(-Math.PI / 2, Math.PI, 0); w.scale.setScalar(1.0); bone.add(h); };
     if (S.slot === 'sword') { grab(vm.sword, hand, 0); if (vm.swordL && vm.swordL.children.length) grab(vm.swordL, handL, 0); }
+    if (S.slot === 'sword' && vm.mouth && vm.mouth.children.length) { const w = vm.mouth.children[0].clone(true); w.traverse(o => { o.visible = true; }); const h = new B.Group(); h.userData.mouthSword = 1; h.add(w); // three-sword style: blade held in the teeth, edge forward, sticking out to the right
+      h.position.set(0.02, (c.bones.head.userData.mouthY ?? 0.19), 0.3); h.rotation.set(0, Math.PI / 2, 0.08); w.position.z = 0.02; c.bones.head.add(h); }
+    if (S.eq.sword) { const sh = buildSheath(S.eq.sword === 'sanbon' ? SANBON[0] : S.eq.sword, !!(S.t2 || {})[S.eq.sword], vm.mat, S.slot !== 'sword'); if (sh) { sh.userData.sheath = 1; sh.position.set(0.21, -0.02, 0.1); sh.rotation.set(-0.55, 0.12, Math.PI); c.bones.hips.add(sh); } }
     if (S.slot === 'gun') grab(vm.gun, hand, 0);
     const f = S.slot === 'fruit' && S.eq.fruit && FRUITS[S.eq.fruit]; if (f) { const col = f.glow || f.col[0]; this.glows = [hand, handL].map(bn => { const m = new B.Mesh(new B.SphereGeometry(0.14, 10, 8), new B.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, depthWrite: false, blending: B.AdditiveBlending })); m.position.set(0, fy, 0); bn.add(m); return m; }); } else this.glows = null; }
   // called after player movement; returns true if it placed the camera

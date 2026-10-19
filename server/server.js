@@ -37,7 +37,8 @@ const rooms = new Map(); let nextId = 1;
 const cleanLook = (L) => { if (!L || typeof L !== 'object') return null; const o = {}; for (const k of ['skin', 'hairC', 'eye', 'top', 'pants']) o[k] = Math.max(0, Math.min(40, L[k] | 0)); for (const k of ['hairS', 'mouth', 'brow', 'outfit', 'hat']) o[k] = String(L[k] || '').replace(/[^a-z]/g, '').slice(0, 12); return o; };
 const cleanCos = (C) => { if (!C || typeof C !== 'object') return {}; const o = {}; for (const k of ['hat', 'back', 'face', 'neck', 'extra']) if (C[k]) o[k] = String(C[k]).replace(/[^a-zA-Z]/g, '').slice(0, 16);
   if (Array.isArray(C.wear)) o.wear = C.wear.slice(0, 3).map(w => String(w).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)).filter(Boolean); // worn gear
-  for (const k of ['aw', 'hk']) if (C[k]) o[k] = String(C[k]).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16); // awakened fruit look, armament colour
+  for (const k of ['aw', 'hk', 'sw']) if (C[k]) o[k] = String(C[k]).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16); // awakened fruit look, armament colour
+  if (C.s2) o.s2 = 1; // equipped sword look + Tier II flag
   if (C.rb) o.rb = Math.max(0, Math.min(999, C.rb | 0)); return o; }; // rebirth count (nameplate)
 const clean = (s, n = 16) => String(s || '').replace(/[<>&"]/g, '').slice(0, n);
 const ITEM_K = ['fruit', 'sword', 'gun', 'wear'];

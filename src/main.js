@@ -1,5 +1,8 @@
 import { SWORDS as SWORDS_, T2 as T2_ } from './data.js';
 import { remoteWeapon as remoteWeapon_ } from './canonw.js';
+import * as SL_ from './swordlook.js';
+import * as THREE_ from 'three';
+import { renderer as RENDER_ } from './engine.js';
 import './style.css';
 import { THREE, renderer, applyQuality, Q, qset, qTick, isTouch } from './engine.js';
 import * as CL from './cloud.js';
@@ -22,7 +25,7 @@ const show = (id, d = 'block') => { $(id).style.display = d; }, hide = id => { $
 applyQuality();
 const params = new URLSearchParams(location.search);
 let mode = 'logo', cover = null, creator = null, game = null, sail = null; const ui = new UI();
-window.__g = { SWORDS: SWORDS_, T2: T2_, remoteWeapon: remoteWeapon_, Q, CL, saveNow: () => game && game.save && ST.save(game.save), get game() { return game; }, get mode() { return mode; }, get sail() { return sail; }, ui, IN };
+window.__g = { SL: SL_, THREE: THREE_, R: RENDER_, SWORDS: SWORDS_, T2: T2_, remoteWeapon: remoteWeapon_, Q, CL, saveNow: () => game && game.save && ST.save(game.save), get game() { return game; }, get mode() { return mode; }, get sail() { return sail; }, ui, IN };
 window.__forceFruit = (fruit, island) => game && game.hunt && game.hunt.force(fruit, island); // dev/test: force a world Devil Fruit spawn
 window.__info = () => { const i = renderer.info.render; return { calls: i.calls, tris: i.triangles, geos: renderer.info.memory.geometries }; };
 initMouse(renderer.domElement); initTouch($('#hud'));
