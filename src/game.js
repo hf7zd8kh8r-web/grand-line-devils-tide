@@ -98,7 +98,7 @@ export class Game {
   refreshEquip() {
     { const st = styleOf(this.save); this.vm.setStyle && this.vm.setStyle(st.col, st.id !== 'brawler'); }
     const S = this.save; this.st = ST.stats(S);
-    this.vm.setSword(S.eq.sword ? ((S.t2 || {})[S.eq.sword] ? { ...SWORDS[S.eq.sword], col: 0x1a1a22 } : SWORDS[S.eq.sword]) : null);
+    this.vm.setSword(S.eq.sword ? { ...SWORDS[S.eq.sword], _id: S.eq.sword, _t2: !!(S.t2 || {})[S.eq.sword] } : null);
     if (S.slot === 'sword' && !S.eq.sword) S.slot = 'fist'; if (S.slot === 'gun' && !S.eq.gun) S.slot = 'fist'; if (S.slot === 'fruit' && !S.eq.fruit) S.slot = 'fist';
     this.vm.setMode(S.slot === 'fruit' ? 'fist' : S.slot);
     const f = S.eq.fruit && FRUITS[S.eq.fruit]; this.vm.tint(f && S.slot === 'fruit' ? f.col[0] : 0, S.slot === 'fruit' ? 0.2 : 0); this.vm.aura(f && S.slot === 'fruit' ? (f.glow || f.col[0]) : 0);
@@ -238,7 +238,7 @@ export class Game {
   stockTick() { const w = FS.windowId(); if (this._stockW === w) return; const first = this._stockW === undefined; this._stockW = w;
     if (!first && this.ui.modal === 'shop' && this.ui.shopId === 'rot') this.ui.open('shop', 'rot'); // stock UI refreshes with the new window
     const rare = []; for (const I of ISLANDS) { if (I.secret || !(this.save.unlocked || []).includes(I.id) && I.id !== this.island.id) continue; const sold = ((this.save.fsold || {})[I.id + ':' + w]) || []; for (const o of FS.rareSlots(I.id, w)) if (!sold.includes(o.slot)) rare.push([I, o]); }
-    if (rare.length) { const [I, o] = rare.sort((a, b) => b[1].rar - a[1].rar)[0]; setTimeout(() => { if (FS.windowId() !== w || (((this.save.fsold || {})[I.id + ':' + w]) || []).includes(o.slot)) return; if (this.ui.modal === 'shop' && this.ui.shopId === 'rot') this.ui.open('shop', 'rot'); this.ui.banner('RARE STOCK!', `${FRUITS[o.id].name} (${RARITY[o.rar]}) at the ${I.name} Fruit Dealer`); this.ui.chat('📢 Fruit Dealer', `RARE STOCK! ${RARITY[o.rar]} ${FRUITS[o.id].name} on ${I.name} for the next ${FS.fmtLeft(FS.msLeft())}!`); }, first ? 9000 : 500); }
+    if (rare.length) { const [I, o] = rare.sort((a, b) => b[1].rar - a[1].rar)[0]; setTimeout(() => { if (FS.windowId() !== w || (((this.save.fsold || {})[I.id + ':' + w]) || []).includes(o.slot)) return; if (this.ui.modal === 'shop' && this.ui.shopId === 'rot') this.ui.open('shop', 'rot'); const here = I.id === this.island.id; this.ui.banner('RARE STOCK!', `${FRUITS[o.id].name} (${RARITY[o.rar]}) at ${here ? 'the' : 'any'} Fruit Dealer${here ? '' : ' (from ' + I.name + ')'}`); this.ui.chat('📢 Fruit Dealer', `RARE STOCK! ${RARITY[o.rar]} ${FRUITS[o.id].name} (${I.name}) — buy it at any Fruit Dealer for the next ${FS.fmtLeft(FS.msLeft())}!`); }, first ? 9000 : 500); }
     else if (!first && !(this.ui.modal === 'shop' && this.ui.shopId === 'rot')) this.ui.toast('🍇 Fruit Dealers restocked!', 'item'); }
   questTick(dt) { const S = this.save; QH.migrateQuests(S); const list = S.quests; if (!list.length) { if (this.gather) this.clearGather(); this.ui.questTimer(null); return; }
     let timerLeft = null;
