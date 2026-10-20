@@ -97,7 +97,7 @@ function bossTick(g, e, dt, dist) {
 export function bossMove(g, e, id, idx) {
   const f = FRUITS[id], R = e.c.root, P = g.p; if (idx == null) idx = Math.floor(Math.random() * f.moves.length); const mv = f.moves[idx]; const D = bossDmg(e) * (1.6 + Math.min(4, mv.dmg || 2) * 0.15);
   const wind = e.phase === 3 ? 0.9 : 1.15; const tgt = telegraph(g, P.pos, 3.2, wind); const col = f.col[0]; let t = 0, fired = false;
-  g.ui.toast(`${e.def.name}: "${mv.name}!"`, 'boss'); g.ui.moveName(mv.name, col); e.state = 'skill'; e.atk = wind + 0.5; e.yaw = Math.atan2(P.pos.x - R.position.x, P.pos.z - R.position.z);
+  g.ui.toast(`${e.def.name}: "${mv.name}!"`, 'boss'); g.ui.moveName(mv.name, col); e.state = 'skill'; e.atk = wind + 0.5; e._act = { k: 'move', kind: (mv.k || '') + ' ' + mv.name + ' ' + id, t: 0, wind }; e.yaw = Math.atan2(P.pos.x - R.position.x, P.pos.z - R.position.z);
   e.skillUpd = dt => { t += dt; e.anim.windup = t < wind; if (t < wind && Math.random() < 0.6) g.fx.burst(g.chest(e, V()), 2, col, { speed: 2, size: 0.4, life: 0.3, grav: -2 });
     if (!fired && t >= wind) { fired = true; e.anim.attack = 1; e.anim.windup = false; try { remoteMove(g, peerOf(g, e, tgt), `mv:${id}:${idx}`, g.chest(e, V())); } catch (er) { /* visual only */ }
       g.fx.shock(tgt.clone().setY(tgt.y + 0.3), col, 3.4, 0.35); g.fx.burst(tgt.clone().setY(tgt.y + 0.5), 16, col, { speed: 6, up: 4, size: 0.5, life: 0.5 });
@@ -106,7 +106,7 @@ export function bossMove(g, e, id, idx) {
 }
 export function bossSpecial(g, e, id) {
   const f = FRUITS[id], R = e.c.root, P = g.p; const name = (f.special && f.special.name) || `${f.short} Cataclysm`; const W = 2.3, r = Math.min(13, e.s.arena.r + 1); const c0 = R.position.clone(); telegraph(g, c0, r, W, 0xff1a1a); const col = f.col[0], col2 = f.col[1] || 0xffffff;
-  g.ui.banner(`⚠ ${name}`, `${e.def.name}'s special — get out of the red circle!`); audio.sfx('special'); e.state = 'skill'; e.atk = W + 1.1; let t = 0, fired = 0;
+  g.ui.banner(`⚠ ${name}`, `${e.def.name}'s special — get out of the red circle!`); audio.sfx('special'); e.state = 'skill'; e.atk = W + 1.1; e._act = { k: 'special', t: 0, wind: W }; let t = 0, fired = 0;
   e.skillUpd = dt => { t += dt; R.userData.air = Math.min(2.2, (R.userData.air || 0) + dt * 2) * (t < W + 0.3 ? 1 : 0); e.anim.windup = t < W; e.anim.taunt = t < W * 0.5;
     if (t < W && Math.random() < 0.9) { const a = Math.random() * 6.283; g.fx.burst(c0.clone().add(V(Math.cos(a) * r * 0.9, 0.5, Math.sin(a) * r * 0.9)), 2, col, { speed: 1, up: 6, size: 0.5, life: 0.5, grav: -4 }); }
     if (fired === 0 && t >= W) { fired = 1; e.anim.attack = 1; const n = f.moves.length; for (let k = 0; k < 2; k++) { const a = k * 3.1 + Math.random(); const q = c0.clone().add(V(Math.cos(a) * 5, 0, Math.sin(a) * 5)); setTimeout(() => { try { remoteMove(g, peerOf(g, e, q), `mv:${id}:${n - 1 - k}`, g.chest(e, V())); } catch (er) { } }, k * 260); }

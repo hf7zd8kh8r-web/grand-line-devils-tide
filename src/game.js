@@ -28,6 +28,7 @@ import { Net } from './net.js';
 import { FruitHunt } from './fruithunt.js';
 import { Travel } from './travel.js';
 import * as HD from './hard.js';
+import * as BA from './bossanim.js';
 import { AwakenTrial, decorateIsland } from './awakenisle.js';
 import { Duel } from './duel.js';
 import { Roller } from './roller.js';
@@ -487,7 +488,7 @@ export class Game {
       const R = e.c.root; e.t += dt;
       if (e.ext) { e.ext(dt); continue; }
       if (e.temp && e.dead && e.deadT > 2.2) { this.scene.remove(R); e.gone = true; continue; }
-      if (e.dead) { e.deadT += dt; animChar(e.c, { dead: e.deadT }, this.t); if (e.deadT > 1.6) R.visible = false;
+      if (e.dead) { e.deadT += dt; if (e.boss && !e.duelFoe) BA.animBoss(this, e, dt); else animChar(e.c, { dead: e.deadT }, this.t); if (e.deadT > (e.boss ? 2.4 : 1.6)) R.visible = false;
         if (e.deadT > (e.boss ? 60 : 14)) { e.dead = false; e.hp = e.max; e.c.face && e.c.face.set(null); R.visible = true; R.rotation.x = 0; R.position.set(e.home.x, this.island.hf(e.home.x, e.home.z), e.home.z); e.state = 'idle'; e.aggro = false; e.phase2 = false; if (e.boss) this.bossIntroDone[e.s.type] = false; } continue; }
       const toP = tmp.copy(p.pos).sub(R.position); toP.y = 0; const dist = toP.length();
       R.visible = dist < far; if (dist > far && !e.aggro) continue;
@@ -532,10 +533,11 @@ export class Game {
       R.rotation.y = damp(R.rotation.y, R.rotation.y + angDiff(R.rotation.y, e.yaw), 10, dt);
       e.anim.move = Math.abs(moving) > 0 ? Math.min(1, Math.abs(moving) * 1.2) : 0; e.anim.windup = e.state === 'windup' && !def.ranged; e.anim.aim = e.state === 'windup' && def.ranged; e.anim.hit = e.state === 'hit' ? Math.max(0, e.hitT * 4) : 0;
       e.anim.attack = Math.max(0, (e.anim.attack || 0) - dt * 3);
-      e.anim.angry = !!e.aggro && !e.boss; e.anim.angryFace = !!e.aggro; e.anim.idleV = true; e.anim.look = e.aggro || dist < 8 ? (this._eyeV || (this._eyeV = V())).copy(this.eyePos()) : null; animChar(e.c, e.anim, this.t); this.flashMat(e);
+      e.anim.angry = !!e.aggro && !e.boss; e.anim.angryFace = !!e.aggro; e.anim.idleV = true; e.anim.look = e.aggro || dist < 8 ? (this._eyeV || (this._eyeV = V())).copy(this.eyePos()) : null; this.animEnemy(e, dt); this.flashMat(e);
     }
     if (bossActive) this.ui.bossBar(bossActive); else if (this.ui.bossShown && !this.enemies.some(e => e.boss && e.aggro && !e.dead)) this.ui.bossBar(null);
   }
+  animEnemy(e, dt) { if (e.boss && !e.duelFoe) BA.animBoss(this, e, dt); else animChar(e.c, e.anim, this.t); }
   flashMat(e) { const m = e.c.material; if (e.flash > 0) { m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.12 * Math.min(1, e.flash / 0.09); } else if (e.state === 'windup' || e.state === 'skill') { m.emissive.setHex(0xff2010); m.emissiveIntensity = 0.35 + Math.sin(this.t * 30) * 0.25; } else { m.emissiveIntensity = 0; } }
   enemyStrike(e, dist) {
     if (HD.strike(this, e, dist)) return; const def = e.def; e.state = 'chase'; e.cd = def.cd * (0.8 + Math.random() * 0.5) / (e.phase2 ? 1.3 : 1); e.anim.attack = 1;
@@ -571,7 +573,7 @@ export class Game {
     }
   }
   genSkill(e, type, name, col, dist) {
-    const R = e.c.root, def = e.def; const D = HD.eDmg(e); this.ui.toast(`${def.name}: "${name}!"`, 'boss'); this.ui.moveName(name, col);
+    const R = e.c.root, def = e.def; const D = HD.eDmg(e); if (e.boss) e._act = { k: 'move', kind: type + ' ' + name, t: 0, wind: 0.4 }; this.ui.toast(`${def.name}: "${name}!"`, 'boss'); this.ui.moveName(name, col);
     const P = this.p; let t = 0;
     if (type === 'lunge') { e.atk = 0.95; const dir = new B.Vector3(P.pos.x - R.position.x, 0, P.pos.z - R.position.z).normalize(); let hit = false;
       e.skillUpd = (dt) => { t += dt; if (t > 0.4 && t < 0.8) { R.position.addScaledVector(dir, 24 * dt); this.fx.burst(this.chest(e, V()), 3, col, { speed: 1, size: 0.5, life: 0.3, grav: 0 }); if (!hit && R.position.distanceTo(P.pos) < 2.4) { hit = true; this.hurtPlayer(D * 1.8, R.position, { kb: 9 }); } } }; }
