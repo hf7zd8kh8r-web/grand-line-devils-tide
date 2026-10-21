@@ -398,7 +398,7 @@ export class Game {
       for (let i = 0; i < 4; i++) if (consume('m' + (i + 1))) this.move(i);
       if (consume('special')) this.special();
       if (consume('swap')) this.ui.cycleSlot();
-      if (consume('interact')) { const n = this.nearestNpc(); if (this.hunt.near && !n) this.hunt.pickup(); else if (n) this.ui.talk(n); else if (this.fishing.nearWater()) this.fishing.press(); }
+      if (consume('interact')) { const n = this.nearestNpc(); if (this.hunt.near && !n) this.hunt.pickup(); else if (n) this.ui.talk(n); else if (this.secInter) this.secInter.act(this); else if (this.fishing.nearWater()) this.fishing.press(); }
       if (consume('fish')) this.fishing.press();
       if (this.fishing.state === 'bite' && (IN.pressed.has('attack') || IN.pressed.has('interact'))) { IN.pressed.delete('attack'); IN.pressed.delete('interact'); this.fishing.press(); }
       if (consume('haki')) hakiToggle(this);
@@ -623,7 +623,7 @@ export class Game {
   }
   updateNpcs(dt) {
     this.folk && this.folk.update(dt);
-    const near = this.nearestNpc(); if (!near && this.hunt.near && !this.cut) this.ui.promptFruit(this.hunt.obj && this.hunt.obj.fruit); else this.ui.prompt(near && !this.cut ? `${near.name}` : null);
+    const near = this.nearestNpc(); if (!near && this.hunt.near && !this.cut) this.ui.promptFruit(this.hunt.obj && this.hunt.obj.fruit); else if (!near && this.secInter && !this.cut) this.ui.promptAct(this.secInter.label); else this.ui.prompt(near && !this.cut ? `${near.name}` : null);
     for (const n of this.npcs) { const d = n.c.root.position.distanceTo(this.p.pos);
       if (n.role === 'board') { if (n.mark) { n.mark.rotation.y += dt * 2; n.mark.position.y = n.c.root.position.y + n.c.height + 0.6 + Math.sin(this.t * 3) * 0.1; n.mark.visible = this.boardHasOpen(); } continue; }
       if (d < 6) { const want = Math.atan2(this.p.pos.x - n.c.root.position.x, this.p.pos.z - n.c.root.position.z); n.c.root.rotation.y = damp(n.c.root.rotation.y, n.c.root.rotation.y + angDiff(n.c.root.rotation.y, want), 4, dt); }
