@@ -2,6 +2,8 @@
 // real faces (eyes w/ iris+highlight, brows, nose, mouth), hair styles, hats, coats/capes/vests.
 import { THREE, Builder, mat, toonMat, OUTLINE_MAT, qv } from './engine.js';
 import { buildFace } from './face.js';
+import { buildBody4, headGeo, strand, solid, charShade } from './body4.js';
+import { RAMP4 } from './engine.js';
 const B = THREE;
 const box = (w, h, d) => new B.BoxGeometry(w, h, d);
 const cyl = (rt, rb, h, s = 10) => new B.CylinderGeometry(rt, rb, h, s);
@@ -88,34 +90,26 @@ export function makeChar(lookId, overrides = {}) {
   const sandal = L.sandals ?? (!L.boots && !L.shoes && !L.armor && (lookId === 'player_pirate' || ((lookId === 'villager' || lookId === 'bandit') && hashS(lookId + (L.shirt ?? '') + (L.seed ?? '')) < 0.45)));
   for (const [s, th, sh] of [[-1, 5, 9], [1, 6, 10]]) {
     const x = s * 0.1 * g;
-    A(cyl(0.095 * g, 0.075 * g, 0.47), L.pants, mat(x, (hipY + kneeY) / 2, 0), th, { grad: 0.2 });
-    A(sph(0.074 * g, 8, 6), L.pants, mat(x, kneeY, 0), sh, { outline: false });
-    A(cyl(0.074 * g, 0.058 * g, 0.42), L.boots || L.pants, mat(x, kneeY - 0.22, 0), sh, { grad: 0.25 });
     if (sandal) { A(sph(0.08, 10, 7), sk, mat(x, 0.06, 0.05, 0, 0, 0, 0.95 * g, 0.6, 1.55), sh); A(box(0.15 * g, 0.03, 0.27), L.sole || 0x5a3a1e, mat(x, 0.015, 0.05), sh, { ot: 0.008 }); A(box(0.15 * g, 0.025, 0.035), L.strap || 0x7a4a22, mat(x, 0.075, 0.09, -0.35), sh, { outline: false }); }
     else A(sph(0.085, 10, 7), L.shoes || 0x2a1d14, mat(x, 0.055, 0.045, 0, 0, 0, 0.95 * g, 0.62, 1.55), sh);
   }
   // ---------- hips / torso ----------
-  A(cyl(W * 0.86, W * 0.8, 0.2, 12), L.pants, mat(0, hipY + 0.04, 0, 0, 0, 0, 1, 1, 0.66), 0);
-  A(cyl(W * 0.9, W * 0.9, 0.06, 12), L.belt || 0x3a2614, mat(0, hipY + 0.13, 0, 0, 0, 0, 1, 1, 0.68), 0, { outline: false });
   if (L.sash) A(cyl(W * 0.92, W * 0.92, 0.1, 12), L.sash, mat(0, hipY + 0.12, 0, 0, 0, 0, 1, 1, 0.7), 0);
   if (L.dress) A(cyl(W * 0.85, W * 1.35, 0.6, 12), L.pants, mat(0, hipY - 0.2, 0, 0, 0, 0, 1, 1, 0.8), 0, { grad: 0.2 });
   const chestC = L.open ? sk : L.shirt;
-  A(cyl(W * 1.0, W * 0.78, 0.36, 12), chestC, mat(0, shY - 0.2, 0, 0, 0, 0, 1, 1, 0.6), 1, { grad: 0.15 });
-  A(cyl(W * 0.78, W * 0.84, 0.22, 12), chestC, mat(0, hipY + 0.24, 0, 0, 0, 0, 1, 1, 0.64), 1);
   if (L.fem) A(sph(W * 0.42, 8, 6), chestC, mat(0, shY - 0.2, W * 0.42, 0, 0, 0, 1.6, 0.8, 0.6), 1, { outline: false });
   if (L.open) { // open vest / shirt: shell with a gap in front
-    const gap = 0.75; A(new B.CylinderGeometry(W * 1.05, W * 0.84, 0.58, 14, 1, false, gap / 2, Math.PI * 2 - gap), L.shirt, mat(0, shY - 0.29, 0, 0, 0, 0, 1, 1, 0.64), 1, { ot: 0.01 });
-    A(box(0.02, 0.18, 0.01), shade(sk, 0.8), mat(0, shY - 0.3, W * 0.5), 1, { outline: false });
+    const gap = 0.75; A(new B.CylinderGeometry(W * 1.15, W * 1.02, 0.6, 16, 1, false, gap / 2, Math.PI * 2 - gap), L.shirt, mat(0, shY - 0.3, 0.004, 0, 0, 0, 1, 1, 0.66), 1, { ot: 0.01 });
   }
-  if (L.vest) { const gap = 0.9; A(new B.CylinderGeometry(W * 1.06, W * 0.86, 0.52, 14, 1, false, gap / 2, Math.PI * 2 - gap), L.vest, mat(0, shY - 0.27, 0, 0, 0, 0, 1, 1, 0.66), 1, { ot: 0.01 }); }
+  if (L.vest) { const gap = 0.9; A(new B.CylinderGeometry(W * 1.17, W * 0.95, 0.54, 16, 1, false, gap / 2, Math.PI * 2 - gap), L.vest, mat(0, shY - 0.27, 0, 0, 0, 0, 1, 1, 0.66), 1, { ot: 0.01 }); }
   if (L.apron) A(box(W * 1.4, 0.7, 0.03), L.apron, mat(0, hipY + 0.05, W * 0.62), 1);
-  if (L.stripes) for (let i = -2; i <= 2; i++) A(box(0.012, 0.56, 0.01), shade(L.shirt, 0.6), mat(i * W * 0.32, shY - 0.29, W * 0.6), 1, { outline: false });
+  if (L.stripes) for (let i = -2; i <= 2; i++) A(box(0.012, 0.5, 0.01), shade(L.shirt, 0.6), mat(i * W * 0.3, shY - 0.3, W * 0.68), 1, { outline: false });
   if (L.collar) A(cyl(W * 0.8, W * 0.95, 0.08, 12), L.collar, mat(0, shY - 0.02, 0, 0, 0, 0, 1, 1, 0.66), 1);
   if (L.tie) A(box(0.05, 0.22, 0.02), L.tie, mat(0, shY - 0.17, W * 0.6), 1, { outline: false });
   if (L.armor) { A(box(W * 1.7, 0.36, W * 1.25), L.armor, mat(0, shY - 0.2, 0), 1, { grad: 0.3 }); for (const s of [-1, 1]) A(sph(0.13 * g, 10, 7), L.armor, mat(s * (W + 0.05), shY, 0, 0, 0, 0, 1, 0.7, 1), 1); }
   // coat (with sleeves + tails) or cape (draped over shoulders, Marine "Justice" style)
   if (L.coat) {
-    const gap = 0.6; A(new B.CylinderGeometry(W * 1.12, W * 0.95, 0.6, 14, 1, false, gap / 2, Math.PI * 2 - gap), L.coat, mat(0, shY - 0.29, 0, 0, 0, 0, 1, 1, 0.7), 1, { ot: 0.012 });
+    const gap = 0.6; A(new B.CylinderGeometry(W * 1.22, W * 1.0, 0.62, 16, 1, false, gap / 2, Math.PI * 2 - gap), L.coat, mat(0, shY - 0.29, 0, 0, 0, 0, 1, 1, 0.7), 1, { ot: 0.012 });
     A(box(W * 1.9, 0.5, 0.04), L.coat, mat(0, hipY - 0.2, -W * 0.68, -0.08), 0, { grad: 0.25 });
     for (const s of [-1, 1]) A(box(0.04, 0.5, W * 0.95), L.coat, mat(s * W * 0.98, hipY - 0.2, -W * 0.15, 0, 0, s * 0.08), 0, { grad: 0.25 });
     A(box(W * 2.0, 0.12, 0.04), L.coat, mat(0, shY + 0.04, -W * 0.58, -0.3), 1); // popped collar
@@ -148,18 +142,7 @@ export function makeChar(lookId, overrides = {}) {
   if (L.pigeon) { A(sph(0.07, 8, 6), 0xffffff, mat(-W - 0.04, shY + 0.1, 0, 0, 0, 0, 1, 0.9, 1.3), 1); A(sph(0.04, 8, 6), 0xffffff, mat(-W - 0.04, shY + 0.18, 0.06), 1); A(cone(0.012, 0.03, 4), 0xe0a030, mat(-W - 0.04, shY + 0.18, 0.11, Math.PI / 2), 1, { outline: false }); }
   // ---------- arms: upper (3/4) + forearm (7/8) ----------
   const AX = W + 0.07 * g;
-  for (const [s, up, fo] of [[-1, 3, 7], [1, 4, 8]]) {
-    const ax = s * AX; const sl = L.coat || L.longSleeve ? top : (L.open || L.sleeveless ? (L.open ? L.shirt : sk) : L.shirt);
-    A(sph(0.075 * g, 10, 7), L.open ? L.shirt : (L.coat || L.shirt), mat(ax, shY - 0.03, 0), up, { outline: !L.cape });
-    A(cyl(0.068 * g, 0.056 * g, 0.34), L.sleeveless ? sk : sl, mat(ax, shY - 0.19, 0), up);
-    A(sph(0.056 * g, 8, 6), L.coat || L.longSleeve ? top : sk, mat(ax, elY, 0), fo, { outline: false });
-    A(cyl(0.055 * g, 0.046 * g, 0.3), L.coat || L.longSleeve ? top : sk, mat(ax, elY - 0.16, 0), fo);
-    if (L.coat || L.longSleeve) A(cyl(0.06 * g, 0.06 * g, 0.05), shade(top, 0.8), mat(ax, elY - 0.29, 0), fo, { outline: false });
-    if (L.gloves) A(cyl(0.052 * g, 0.05 * g, 0.12), L.gloves, mat(ax, elY - 0.25, 0), fo, { outline: false });
-    // hand: palm + thumb
-    A(sph(0.06 * g, 10, 7), L.gloves || sk, mat(ax, elY - 0.36, 0.01, 0, 0, 0, 0.85, 1.05, 1.05), fo);
-    A(sph(0.025 * g, 6, 5), L.gloves || sk, mat(ax - s * 0.035, elY - 0.33, 0.05), fo, { outline: false });
-  }
+  buildBody4(b, { g, W, P, hipY, kneeY, shY, elY, hipN, shN, hyN, hr, AXn: AX + AX * (P.chest - 1) * 0.82, sk, L, top });
   const HX = AX, HY = elY - 0.37;
   if (L.weapon === 'sabre' || L.weapon === 'katana') { A(box(0.02, 0.06, 0.95), 0xdfe4ea, mat(HX, HY, 0.58), 8, { ot: 0.01 }); A(cyl(0.06, 0.06, 0.02, 10), 0xc9a23a, mat(HX, HY, 0.1, Math.PI / 2), 8, { outline: false }); A(cyl(0.02, 0.02, 0.18, 6), 0x2a1a2a, mat(HX, HY, 0.0, Math.PI / 2), 8); }
   if (L.weapon === 'axe') { A(cyl(0.05, 0.05, 0.55), 0x6a4a2a, mat(HX, HY - 0.1, 0.0), 8); A(box(0.05, 0.6, 0.55), 0xaab2bc, mat(HX + 0.02, HY - 0.2, 0.25), 8, { grad: 0.3 }); }
@@ -187,9 +170,7 @@ export function makeChar(lookId, overrides = {}) {
   if (L.weapon === 'trident') { A(cyl(0.025, 0.025, 1.5, 6), 0xc9a23a, mat(HX, HY, 0.5, Math.PI / 2), 8); for (let i = -1; i <= 1; i++) A(cone(0.03, 0.18, 4), 0xdddddd, mat(HX + i * 0.06, HY, 1.3, Math.PI / 2), 8); }
   if (L.hook) A(new B.TorusGeometry(0.09, 0.02, 5, 10, Math.PI * 1.4), 0xe0c040, mat(-HX, HY - 0.06, 0.04, 0, Math.PI / 2, 0), 7, { ot: 0.008 });
   // ---------- head (2) ----------
-  A(cyl(0.06 * g, 0.07 * g, 0.14), sk, mat(0, shY + 0.06, 0), 2, { outline: false });
-  A(sph(hr, 16, 12), sk, mat(0, hy, 0, 0, 0, 0, 1, 1.04, 0.98), 2, { ot: 0.012 });
-  A(sph(hr * 0.72, 10, 7), sk, mat(0, hy - hr * 0.42, hr * 0.18, 0, 0, 0, L.jawW || 1, 0.8, 0.9), 2, { outline: false }); // chin/jaw
+  b.addSkinned(solid(headGeo(hr * P.head, L.jawW || 1), sk, mat(0, hyN, 0, 0, 0, 0, 1, 1.02, 1), 2), { ot: 0.012 });
   for (const s of [-1, 1]) A(sph(0.04, 8, 6), sk, mat(s * hr * 0.98, hy - 0.01, -0.01, 0, 0, 0, 0.5, 1, 0.8), 2, { outline: false }); // ears
   if (L.earlobes) for (const s of [-1, 1]) A(cyl(0.03, 0.04, 0.22, 6), sk, mat(s * hr * 0.98, hy - 0.15, 0), 2, { outline: false });
   // face — helper places a flat part on the head surface facing outward
@@ -231,7 +212,10 @@ export function makeChar(lookId, overrides = {}) {
   const hc = L.hair || 0x222222, hs = L.hat === 'helmet' && L.hairS !== 'bald' ? 'buzz' : L.hairS;
   const capH = (k = 1.07, back = -0.32, sy = 1) => A(new B.SphereGeometry(hr * k, 16, 9, 0, Math.PI * 2, 0, Math.PI * 0.55), hc, mat(0, hy + 0.01, -0.012, back, 0, 0, 1, sy, 1), 2, { ot: 0.012 });
   const back = (len = 0.12, w = 1) => A(sph(hr * 1.02, 12, 8), hc, mat(0, hy - len * 0.3, -hr * 0.28, 0, 0, 0, w, 1 + len, 0.85), 2, { ot: 0.012 });
-  const spike = (x, y, z, rx, rz, r = 0.05, h = 0.16) => A(cone(r, h, 5), hc, mat(x, y, z, rx, 0, rz), 2, { ot: 0.008 });
+  const _e = new B.Euler(), _d = new B.Vector3();
+  const spike = (x, y, z, rx, rz, r = 0.05, h = 0.16) => { _e.set(rx, 0, rz); _d.set(0, 1, 0).applyEuler(_e); const L2 = h * 1.12; // curved, tapered, flattened clump instead of a cone
+    const gb = strand([x - _d.x * L2 * 0.5, y - _d.y * L2 * 0.5, z - _d.z * L2 * 0.5], [_d.x, _d.y, _d.z], L2, r * 1.05, hc, 2, [_d.x * 0.1, -0.22 - Math.max(0, _d.y) * 0.1, _d.z * 0.1], 0.5);
+    b.addSkinned(deform(gb, null, 2), { ot: 0.006 }); };
   if (hs !== 'bald') {
     if (hs === 'afro') A(sph(hr * 1.55, 12, 9), hc, mat(0, hy + 0.1, -0.04), 2, { ot: 0.012 });
     else if (hs === 'buzz') { capH(1.025, -0.4, 0.9); back(0.0); }
@@ -285,7 +269,7 @@ export function makeChar(lookId, overrides = {}) {
   const foreL = mk(0, (elY - shY + 0.03) * P.arm, 0, armL); const foreR = mk(0, (elY - shY + 0.03) * P.arm, 0, armR);
   const shinL = mk(0, (kneeY - hipY) * P.leg, 0, legL); const shinR = mk(0, (kneeY - hipY) * P.leg, 0, legR);
   const skel = new B.Skeleton(bones);
-  const material = toonMat({ emissive: 0x000000 });
+  const material = charShade(toonMat({ emissive: 0x000000, gradientMap: RAMP4 }));
   const root = new B.Group();
   const mesh = new B.SkinnedMesh(fill, material); mesh.add(hips); mesh.bind(skel); mesh.frustumCulled = false;
   const om = new B.SkinnedMesh(line, OUTLINE_MAT); om.bind(skel, mesh.bindMatrix); om.frustumCulled = false; om.userData.isOutline = true;

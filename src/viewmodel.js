@@ -1,4 +1,5 @@
 import { THREE, Builder, mat, toonMat } from './engine.js';
+import { loft } from './body4.js';
 import { buildSword, lookOf, auraOf, SANBON, tickSwordFx } from './swordlook.js';
 import { SWINGS, COMBO, swingPose, bladeQuat, Crescent, Sparks, placeArm, POSES, REST, CHARGE, eOut3, sstep, c01 } from './vmanim.js';
 const B = THREE;
@@ -18,18 +19,27 @@ export class ViewModel {
     this.root.clear();
     const cyl = (rt, rb, h, n = 12) => new B.CylinderGeometry(rt, rb, h, n); const sph = (r, w = 12, h = 9) => new B.SphereGeometry(r, w, h); const RX = Math.PI / 2;
     const dk = new B.Color(skin).multiplyScalar(0.82).getHex(), nail = new B.Color(skin).lerp(new B.Color(0xffffff), 0.35).getHex();
-    const mk = (s) => { const b = new Builder(); const o = { ot: 0.005 };
-      b.add(cyl(0.085, 0.078, 0.34), sleeve, mat(0, 0, 0.14, RX), o); b.add(cyl(0.09, 0.085, 0.8), sleeve, mat(0, 0, 0.7, RX), { outline: false });                                  // sleeve
-      b.add(new B.TorusGeometry(0.078, 0.018, 6, 14), cuff, mat(0, 0, -0.03), { outline: false });        // cuff ring
-      b.add(cyl(0.056, 0.064, 0.3), skin, mat(0, 0, -0.18, RX), o);                                    // forearm (tapers to wrist)
-      b.add(sph(0.05, 10, 7), skin, mat(0, -0.005, -0.33, 0, 0, 0, 1.05, 0.9, 1), { outline: false }); // wrist
-      b.add(sph(0.075, 12, 9), skin, mat(0, 0.0, -0.41, 0, 0, 0, 1.0, 0.72, 1.05), o);                 // palm/back of hand
-      for (let i = 0; i < 4; i++) { const x = -0.045 + i * 0.03, ln = i === 0 || i === 3 ? 0.9 : 1;     // curled fingers (fist)
-        b.add(cyl(0.016, 0.016, 0.05 * ln, 8), skin, mat(x, 0.022, -0.47, RX + 0.25), { outline: false });
-        b.add(sph(0.017, 8, 6), skin, mat(x, 0.028, -0.495), { ot: 0.003 });                              // knuckle
-        b.add(cyl(0.015, 0.014, 0.05, 8), dk, mat(x, -0.012, -0.495, 0.1), { outline: false });          // folded segment
-        b.add(sph(0.0085, 6, 4), nail, mat(x, -0.03, -0.482), { outline: false }); }
-      b.add(cyl(0.017, 0.015, 0.07, 8), skin, mat(-s * 0.068, -0.012, -0.445, RX, 0, s * 0.9), { ot: 0.003 }); // thumb
+    const mk = (s) => { const b = new Builder(); const o = { ot: 0.004 }; const lt = new B.Color(skin).lerp(new B.Color(0xffffff), 0.12).getHex(), dk2 = new B.Color(skin).multiplyScalar(0.7).getHex();
+      const L = (rings, col, opt = o, seg = 14) => b.add(loft(rings.map(([z, rx, ry, x = 0, y = 0]) => ({ c: [x, y, z], rx, rz: ry, col })), seg, { axis: new B.Vector3(0, 1, 0), cap0: true, cap1: true }), col, null, opt);
+      // sleeve with soft folds + a rolled cuff, forearm with a muscle swell and a flattened wrist
+      b.add(loft([1.1, 0.8, 0.5, 0.3, 0.14, 0.04].map((z, i) => ({ c: [0, 0, z], rx: 0.094 - i * 0.001, rz: 0.09 - i * 0.001, col: sleeve, prof: a => 1 + 0.045 * Math.sin(a * 3 + z * 17) + 0.02 * Math.sin(a * 7 - z * 9) })), 16, { axis: new B.Vector3(0, 1, 0) }), sleeve, null, { outline: false });
+      L([[0.06, 0.097, 0.094], [0.02, 0.102, 0.098], [-0.025, 0.099, 0.095], [-0.035, 0.088, 0.085]], cuff, { ot: 0.004 }, 16);
+      L([[0.05, 0.066, 0.062], [-0.06, 0.072, 0.064, 0, 0.004], [-0.17, 0.062, 0.056], [-0.27, 0.052, 0.044], [-0.33, 0.049, 0.037], [-0.355, 0.05, 0.036]], skin, o, 14);
+      // fist: back of hand, knuckle ridge, curled fingers (3 segments each) with nails, thumb wrapped across the front
+      b.add(sph(0.06, 14, 10), skin, mat(0, 0.004, -0.405, 0, 0, 0, 1.0, 0.68, 1.12), o);
+      b.add(sph(0.03, 8, 6), dk2, mat(s * 0.035, -0.03, -0.395, 0, 0, 0, 1, 0.6, 1.4), { outline: false }); // palm heel shadow
+      for (let i = 0; i < 4; i++) { const x = -0.043 + i * 0.0287, sc = i === 3 ? 0.86 : i === 0 ? 0.95 : 1, zk = -0.462 + (i === 1 || i === 2 ? -0.004 : 0);
+        b.add(sph(0.0175 * sc, 10, 8), lt, mat(x, 0.02, zk, 0, 0, 0, 1, 0.9, 1), { ot: 0.003 });                                  // knuckle
+        b.add(cyl(0.0155 * sc, 0.0148 * sc, 0.04, 8), skin, mat(x, 0.008, zk - 0.02, RX - 0.95), { outline: false });          // proximal (forward + down)
+        b.add(sph(0.0152 * sc, 8, 6), skin, mat(x, -0.012, zk - 0.035), { ot: 0.003 });                                         // middle joint
+        b.add(cyl(0.0145 * sc, 0.0135 * sc, 0.034, 8), skin, mat(x, -0.03, zk - 0.026, RX + 0.9), { outline: false });         // middle (curls back)
+        b.add(sph(0.0138 * sc, 8, 6), dk, mat(x, -0.041, zk - 0.008), { outline: false });                                    // fingertip tucked into the palm
+        b.add(new B.CircleGeometry(0.0072 * sc, 8), nail, mat(x, -0.03, zk - 0.042, 0, 0, 0, 1, 0.75, 1), { outline: false }); // nail edge seen from the front
+        if (i < 3) b.add(box(0.0035, 0.025, 0.012), dk2, mat(x + 0.0143, 0.0, zk - 0.03), { outline: false }); }             // finger gap crease
+      b.add(sph(0.022, 10, 8), skin, mat(-s * 0.052, -0.018, -0.43, 0, 0, 0, 1, 0.9, 1.3), { ot: 0.003 });                    // thumb base (thenar)
+      b.add(cyl(0.0145, 0.0135, 0.05, 8), skin, mat(-s * 0.03, -0.034, -0.468, 0, 0, s * 1.35), { ot: 0.003 });              // thumb wrapped across the fingers
+      b.add(new B.CircleGeometry(0.008, 8), nail, mat(-s * 0.004, -0.032, -0.485, 0, 0, s * 1.35, 1.2, 0.8, 1), { outline: false });
+      b.add(box(0.06, 0.004, 0.03), dk2, mat(0, 0.034, -0.41), { outline: false });                                          // tendon/crease hint on the back
       const g = b.build(this.mat); const grp = new B.Group(); grp.add(g);
       // devil-fruit aura (shown in fruit slot)
       const au = new B.Group(); au.visible = false; for (let i = 0; i < 9; i++) { const m = new B.Mesh(sph(0.03, 6, 4), this.auraMat); m.userData.ph = Math.random() * 6.28; au.add(m); } au.position.set(0, 0, -0.42); grp.add(au); grp.userData.aura = au;

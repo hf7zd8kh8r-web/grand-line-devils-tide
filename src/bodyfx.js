@@ -22,7 +22,7 @@ export const HAKI_COLORS = {
 export const hakiColorOf = S => HAKI_COLORS[(S && S.hakiCol) || 'black'] ? (S.hakiCol || 'black') : 'black';
 const T = { v: 0 }; // shared time uniform
 const mats = {};
-const VS = `varying vec3 vN; varying vec3 vV; varying vec3 vW;
+const VS = `varying vec3 vN; varying vec3 vV; varying vec3 vW; varying vec3 vL;
 #include <common>
 #include <skinning_pars_vertex>
 void main(){
@@ -31,24 +31,36 @@ void main(){
   #include <beginnormal_vertex>
   #include <skinnormal_vertex>
   #include <skinning_vertex>
-  vec4 wp = modelMatrix * vec4(transformed, 1.0); vW = wp.xyz; vec4 mv = viewMatrix * wp; vV = -mv.xyz; vN = normalize(normalMatrix * objectNormal); gl_Position = projectionMatrix * mv; }`;
-const FS = `uniform vec3 uC; uniform vec3 uS; uniform float uT; uniform float uA; uniform float uRb; varying vec3 vN; varying vec3 vV; varying vec3 vW;
+  vL = position; vec4 wp = modelMatrix * vec4(transformed, 1.0); vW = wp.xyz; vec4 mv = viewMatrix * wp; vV = -mv.xyz; vN = normalize(normalMatrix * objectNormal); gl_Position = projectionMatrix * mv; }`;
+// glossy hardened metal: dark lacquer base + fake sky/ground reflection + two specular lobes + coloured rim, sheen sweep,
+// and (first-person arms) a jagged crackle edge where the coat creeps up the forearm, with glowing hairline cracks behind it.
+const FS = `uniform vec3 uC; uniform vec3 uS; uniform float uT; uniform float uA; uniform float uRb; uniform float uE; varying vec3 vN; varying vec3 vV; varying vec3 vW; varying vec3 vL;
 vec3 hue(float h){ return clamp(abs(mod(h*6.0+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.); }
-void main(){ vec3 n = normalize(vN), v = normalize(vV); float fr = pow(1.0 - max(dot(n, v), 0.0), 2.2);
-  vec3 l = normalize(vec3(0.4, 0.8, 0.5)); vec3 h = normalize(l + v); float sp = pow(max(dot(n, h), 0.0), 36.0); float dif = 0.45 + 0.55 * max(dot(n, l), 0.0);
-  float band = smoothstep(0.9, 1.0, sin(vW.y * 7.0 + vW.x * 3.0 + vW.z * 3.0 - uT * 3.2)) ;
+float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f); return mix(mix(h21(i), h21(i+vec2(1,0)), f.x), mix(h21(i+vec2(0,1)), h21(i+vec2(1,1)), f.x), f.y); }
+void main(){ vec3 n = normalize(vN), v = normalize(vV); float ndv = max(dot(n, v), 0.0); float fr = pow(1.0 - ndv, 3.0);
+  float ce = 0.0, crack = 0.0;
+  if (uE < 50.0) { float ang = atan(vL.y, vL.x); float edge = uE + 0.03 * (vn(vec2(ang * 3.0, 1.7)) - 0.5) * 2.0 + 0.012 * sin(ang * 11.0) + 0.006 * sin(uT * 2.0 + ang * 5.0);
+    float e = vL.z - edge; if (e > 0.0) discard; ce = smoothstep(-0.03, 0.0, e);
+    float c1 = abs(vn(vec2(ang * 6.0, vL.z * 40.0)) - 0.5), c2 = abs(vn(vec2(ang * 13.0 + 4.0, vL.z * 75.0)) - 0.5); crack = (smoothstep(0.045, 0.0, c1) + smoothstep(0.03, 0.0, c2) * 0.6) * smoothstep(-0.16, -0.01, e); }
+  vec3 r = reflect(-v, n); vec3 lA = normalize(vec3(0.4, 0.85, 0.45)), lB = normalize(vec3(-0.6, 0.3, 0.7));
+  float sky = smoothstep(-0.3, 0.9, r.y); vec3 base = uC * 0.55; vec3 refl = mix(uC * 0.35 + vec3(0.01), mix(uC * 2.2, vec3(0.8, 0.85, 0.95), 0.35), sky);
+  float sp = pow(max(dot(n, normalize(lA + v)), 0.0), 90.0) * 1.4 + pow(max(dot(n, normalize(lB + v)), 0.0), 18.0) * 0.22;
+  float band = smoothstep(0.93, 1.0, sin(vW.y * 6.0 + vW.x * 2.5 + vW.z * 2.5 - uT * 2.6));
   vec3 s = mix(uS, hue(fract(uT * 0.15 + vW.y * 0.3)), uRb);
-  vec3 c = uC * dif + s * (fr * 0.95 + band * 0.75) + vec3(1.0) * sp * 0.9;
+  vec3 c = base * (0.35 + 0.65 * max(dot(n, lA), 0.0)) + refl * (0.35 + 0.65 * fr) + s * (smoothstep(0.35, 0.85, fr) * 0.75 + band * 0.35) + vec3(1.0) * sp;
+  c += s * (ce * 1.4 + crack * 1.1);
   gl_FragColor = vec4(c, uA); }`;
-export function coatMat(id, alpha = 1, skinned = false) { const k = id + ':' + alpha + ':' + skinned; if (mats[k]) return mats[k]; const H = HAKI_COLORS[id] || HAKI_COLORS.black;
+export function coatMat(id, alpha = 1, skinned = false, edge = 1e3) { const k = id + ':' + alpha + ':' + skinned + ':' + edge; if (mats[k]) return mats[k]; const H = HAKI_COLORS[id] || HAKI_COLORS.black;
   const m = new B.ShaderMaterial({ vertexShader: VS, fragmentShader: FS, transparent: alpha < 1, depthWrite: alpha >= 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2,
-    uniforms: { uC: { value: new B.Color(H.c) }, uS: { value: new B.Color(H.s) }, uT: T, uA: { value: alpha }, uRb: { value: H.rainbow ? 1 : 0 } } });
+    uniforms: { uC: { value: new B.Color(H.c) }, uS: { value: new B.Color(H.s) }, uT: T, uA: { value: alpha }, uRb: { value: H.rainbow ? 1 : 0 }, uE: { value: edge } } });
   m.userData.keep = true; mats[k] = m; return m; }
+const isIn = (o, p) => { for (let q = o; q; q = q.parent) if (q === p) return true; return false; };
 // ---------------- first-person coating ----------------
 // every solid mesh of the view model (arms, fists, held blade) gets a coat overlay that shares its geometry
 export function fpHaki(g) { const S = g.save, vm = g.vm; if (!vm || !vm.root) return; const on = !!(S.haki && S.haki.buso); const id = hakiColorOf(S); const k = on ? id : '';
   vm.root.traverse(o => { if (!o.isMesh || o.userData.isOutline || o.userData.hkOv) return; const m = o.material; if (!m || m.transparent || m.blending === B.AdditiveBlending || !o.geometry) return;
-    let ov = o.userData.hk; if (!on && !ov) return; if (!ov || ov.userData.k !== k) { if (ov) { o.remove(ov); ov = null; } if (on) { ov = new B.Mesh(o.geometry, coatMat(id, 0.92)); ov.userData.hkOv = true; ov.userData.k = k; ov.renderOrder = 2; o.add(ov); } o.userData.hk = ov; }
+    let ov = o.userData.hk; if (!on && !ov) return; if (!ov || ov.userData.k !== k) { if (ov) { o.remove(ov); ov = null; } if (on) { let arm = false; for (let q = o; q; q = q.parent) if (q === vm.armL || q === vm.armR) { arm = q.userData && !o.userData.notArm; break; } if (arm && (vm.gun && isIn(o, vm.gun))) arm = false; ov = new B.Mesh(o.geometry, coatMat(id, arm ? 1 : 0.92, false, arm ? -0.17 : 1e3)); ov.userData.hkOv = true; ov.userData.k = k; ov.renderOrder = 2; o.add(ov); } o.userData.hk = ov; }
     if (ov) ov.visible = on; });
   if (vm.mat) { vm.mat.color.setScalar(1); vm.mat.emissive.setHex(0); vm.mat.emissiveIntensity = 0; } }
 // ---------------- avatar coating (bones) ----------------
@@ -57,9 +69,9 @@ for (const k in G) G[k].userData = { shared: true };
 function shared(m) { m.userData.shared = true; m.traverse && m.traverse(o => { if (o.geometry) o.userData.shared = true; }); return m; }
 function avatarCoat(c, id) { const L = c.look || {}; const gg = (L.big || 1); const out = new B.Group(); out.name = 'hkcoat';
   for (const [arm, fore] of [[c.bones.armL, c.bones.foreL], [c.bones.armR, c.bones.foreR]]) { if (!arm || !fore) continue; const fy = fore.position.y;
-    const up = new B.Mesh(G.cyl, coatMat(id)); up.scale.set(0.074 * gg, Math.abs(fy) * 0.8, 0.074 * gg); up.position.y = fy * 0.55; arm.add(shared(up)); up.userData.hkPart = true;
-    const lo = new B.Mesh(G.cyl, coatMat(id)); lo.scale.set(0.07 * gg, Math.abs(fy) * 0.98, 0.07 * gg); lo.position.y = fy * 0.5; fore.add(shared(lo)); lo.userData.hkPart = true;
-    const fist = new B.Mesh(G.sph, coatMat(id)); fist.scale.set(0.074 * gg, 0.082 * gg, 0.08 * gg); fist.position.set(0, fy * 1.08, 0.01); fore.add(shared(fist)); fist.userData.hkPart = true; }
+    const up = new B.Mesh(G.cyl, coatMat(id)); up.scale.set(0.09 * gg, Math.abs(fy) * 0.8, 0.088 * gg); up.position.y = fy * 0.55; arm.add(shared(up)); up.userData.hkPart = true;
+    const lo = new B.Mesh(G.cyl, coatMat(id)); lo.scale.set(0.072 * gg, Math.abs(fy) * 0.98, 0.07 * gg); lo.position.y = fy * 0.5; fore.add(shared(lo)); lo.userData.hkPart = true;
+    const fist = new B.Mesh(G.sph, coatMat(id)); fist.scale.set(0.05 * gg, 0.075 * gg, 0.068 * gg); fist.position.set(0, fy * 1.08, 0.01); fore.add(shared(fist)); fist.userData.hkPart = true; }
   return out; }
 function dropCoat(c) { const rm = []; c.root.traverse(o => { if (o.userData.hkPart) rm.push(o); }); for (const o of rm) o.removeFromParent(); }
 // ---------------- auras ----------------

@@ -90,6 +90,12 @@ export class Builder {
     }
     return this;
   }
+  // pre-skinned geometry (position, normal, color, skinIndex, skinWeight): smooth-weighted lofted body parts. Outline = normal-offset shell.
+  addSkinned(geo, opt = {}) { const g = geo.index ? geo.toNonIndexed() : geo; this.f.push(g);
+    if (opt.outline !== false) { const t = opt.ot ?? 0.012; const og = new THREE.BufferGeometry(); const p = g.attributes.position, n = g.attributes.normal, a = new Float32Array(p.count * 3);
+      for (let i = 0; i < p.count; i++) { a[i * 3] = p.getX(i) + n.getX(i) * t; a[i * 3 + 1] = p.getY(i) + n.getY(i) * t; a[i * 3 + 2] = p.getZ(i) + n.getZ(i) * t; }
+      og.setAttribute('position', new THREE.BufferAttribute(a, 3)); og.setAttribute('skinIndex', g.attributes.skinIndex.clone()); og.setAttribute('skinWeight', g.attributes.skinWeight.clone()); this.o.push(og); }
+    return this; }
   _skin(g, b) {
     const n = g.attributes.position.count; const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) { si[i * 4] = b; sw[i * 4] = 1; }
